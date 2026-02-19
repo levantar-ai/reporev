@@ -131,8 +131,8 @@ export function DiscoverPage({ onNavigate }: Props) {
     // Default: at least require some qualifier
     if (parts.length === 0) parts.push('stars:>=100');
 
-    const q = encodeURIComponent(parts.join('+'));
-    return `/search/repositories?q=${q}&sort=${sort}&per_page=12`;
+    const q = parts.join(' ');
+    return `/search/repositories?q=${encodeURIComponent(q)}&sort=${sort}&per_page=12`;
   }, [language, minStars, topic, sort]);
 
   // ── Search ───────────────────────────────────────────────────────────────
