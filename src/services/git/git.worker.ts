@@ -1,3 +1,6 @@
+import { Buffer } from 'buffer';
+(self as unknown as Record<string, unknown>).Buffer = Buffer;
+
 import git from 'isomorphic-git';
 import http from 'isomorphic-git/http/web';
 import LightningFS from '@isomorphic-git/lightning-fs';
