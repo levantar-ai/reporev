@@ -1,0 +1,6 @@
+name = "reporev-git-proxy"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://reporev.app,http://localhost:5173"

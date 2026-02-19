@@ -1,0 +1,196 @@
+import git from 'isomorphic-git';
+import http from 'isomorphic-git/http/web';
+import LightningFS from '@isomorphic-git/lightning-fs';
+import type { GitStatsRawData } from '../../types/gitStats';
+import {
+  logToCommits,
+  diffCommit,
+  computeLanguages,
+  computeWeeklyAggregates,
+  sampleIndices,
+} from './extractors';
+
+export interface CloneMessage {
+  type: 'clone';
+  owner: string;
+  repo: string;
+  corsProxy: string;
+}
+
+export interface ProgressMessage {
+  type: 'progress';
+  step: string;
+  percent: number;
+  message: string;
+}
+
+export interface ResultMessage {
+  type: 'result';
+  data: GitStatsRawData;
+}
+
+export interface ErrorMessage {
+  type: 'error';
+  message: string;
+}
+
+export type WorkerOutMessage = ProgressMessage | ResultMessage | ErrorMessage;
+
+const DIR = '/repo';
+
+self.onmessage = async (e: MessageEvent<CloneMessage>) => {
+  const { owner, repo, corsProxy } = e.data;
+
+  try {
+    // Initialize in-memory filesystem
+    const fs = new LightningFS('reporev-clone', { wipe: true });
+
+    const url = `https://github.com/${owner}/${repo}.git`;
+
+    // 1. Clone
+    postProgress('cloning', 0, 'Cloning repository...');
+
+    await git.clone({
+      fs,
+      http,
+      dir: DIR,
+      url,
+      depth: 1000,
+      singleBranch: true,
+      corsProxy,
+      onProgress: (progress) => {
+        let percent = 0;
+        if (progress.total && progress.total > 0) {
+          percent = Math.round((progress.loaded / progress.total) * 40);
+        } else if (progress.loaded) {
+          // No total available, estimate based on loaded bytes
+          percent = Math.min(38, Math.round(progress.loaded / 100000));
+        }
+        const phase = progress.phase || 'Downloading';
+        postProgress('cloning', percent, `${phase}... ${formatBytes(progress.loaded)}`);
+      },
+    });
+
+    postProgress('cloning', 40, 'Clone complete');
+
+    // 2. Extract commits via git.log()
+    postProgress('extracting-commits', 42, 'Reading commit history...');
+
+    const logEntries = await git.log({ fs, dir: DIR, depth: 1000 });
+    const commits = logToCommits(logEntries);
+
+    postProgress('extracting-commits', 50, `Found ${logEntries.length} commits`);
+
+    // 3. Diff sampled commits for details
+    postProgress('extracting-details', 52, 'Computing file diffs...');
+
+    const maxDetails = 200;
+    const indices = sampleIndices(logEntries.length, maxDetails);
+    const commitDetails: GitStatsRawData['commitDetails'] = [];
+    const diffStatsMap = new Map<string, { additions: number; deletions: number }>();
+
+    for (let i = 0; i < indices.length; i++) {
+      const entry = logEntries[indices[i]];
+      const parentOid = entry.commit.parent.length > 0 ? entry.commit.parent[0] : null;
+
+      try {
+        const result = await diffCommit(fs, DIR, entry.oid, parentOid);
+        const stats = result.stats;
+
+        commitDetails.push({
+          sha: entry.oid,
+          commit: {
+            message: entry.commit.message,
+            author: {
+              name: entry.commit.author.name,
+              email: entry.commit.author.email,
+              date: new Date(entry.commit.author.timestamp * 1000).toISOString(),
+            },
+          },
+          author: {
+            login: entry.commit.author.name,
+            avatar_url: '',
+          },
+          stats: {
+            total: stats.total,
+            additions: stats.additions,
+            deletions: stats.deletions,
+          },
+          files: result.map((f) => ({
+            sha: f.sha,
+            filename: f.filename,
+            status: f.status,
+            additions: f.additions,
+            deletions: f.deletions,
+            changes: f.changes,
+          })),
+        });
+
+        diffStatsMap.set(entry.oid, {
+          additions: stats.additions,
+          deletions: stats.deletions,
+        });
+      } catch {
+        // Skip commits that fail to diff (e.g. shallow boundary)
+      }
+
+      if (i % 10 === 0 || i === indices.length - 1) {
+        const percent = 52 + Math.round((i / indices.length) * 25);
+        postProgress('extracting-details', percent, `Diffing commits... ${i + 1}/${indices.length}`);
+      }
+    }
+
+    // 4. Compute aggregate stats
+    postProgress('computing-stats', 80, 'Computing statistics...');
+
+    // Get file list for language detection
+    const fileList = await git.listFiles({ fs, dir: DIR });
+    const languages = computeLanguages(fileList);
+
+    postProgress('computing-stats', 85, 'Building weekly aggregates...');
+
+    const aggregates = computeWeeklyAggregates(logEntries, diffStatsMap);
+
+    // 5. Assemble GitStatsRawData
+    postProgress('computing-stats', 95, 'Assembling results...');
+
+    const rawData: GitStatsRawData = {
+      commits,
+      commitDetails,
+      contributorStats: aggregates.contributorStats,
+      codeFrequency: aggregates.codeFrequency,
+      commitActivity: aggregates.commitActivity,
+      participation: null, // Not easily derived from clone data
+      punchCard: aggregates.punchCard,
+      languages,
+    };
+
+    const resultMsg: ResultMessage = { type: 'result', data: rawData };
+    self.postMessage(resultMsg);
+
+    // 6. Clean up filesystem
+    try {
+      // LightningFS wipe on next init is sufficient, but attempt cleanup
+      await fs.promises.rmdir(DIR, { recursive: true } as unknown as undefined);
+    } catch {
+      // Cleanup failure is non-critical
+    }
+  } catch (err) {
+    const errorMsg: ErrorMessage = {
+      type: 'error',
+      message: err instanceof Error ? err.message : 'Clone failed',
+    };
+    self.postMessage(errorMsg);
+  }
+};
+
+function postProgress(step: string, percent: number, message: string) {
+  const msg: ProgressMessage = { type: 'progress', step, percent, message };
+  self.postMessage(msg);
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
