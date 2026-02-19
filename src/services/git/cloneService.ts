@@ -3,11 +3,7 @@ import type { CloneMessage, WorkerOutMessage } from './git.worker';
 
 const TIMEOUT_MS = 120_000; // 2 minutes
 
-const DEFAULT_CORS_PROXY = 'https://cors.isomorphic-git.org';
-
-function getCorsProxy(): string {
-  return import.meta.env.VITE_CORS_PROXY_URL || DEFAULT_CORS_PROXY;
-}
+const CORS_PROXY = 'https://reporev-git-proxy.andy-rea.workers.dev';
 
 export function cloneAndExtract(
   owner: string,
@@ -57,7 +53,7 @@ export function cloneAndExtract(
       type: 'clone',
       owner,
       repo,
-      corsProxy: getCorsProxy(),
+      corsProxy: CORS_PROXY,
     };
 
     worker.postMessage(message);
