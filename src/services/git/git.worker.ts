@@ -1,4 +1,4 @@
-import { Buffer } from 'node:buffer';
+import { Buffer } from 'buffer'; // NOSONAR: browser polyfill, not Node.js built-in
 (self as unknown as Record<string, unknown>).Buffer = Buffer;
 
 import git from 'isomorphic-git';

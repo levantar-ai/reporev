@@ -10,11 +10,15 @@ export default defineConfig({
     setupFiles: ['src/test/setup.ts'],
     coverage: {
       reporter: ['text', 'lcov'],
-      include: [
-        'src/services/analysis/**',
-        'src/services/export/**',
-        'src/services/github/parser.ts',
-        'src/utils/**',
+      include: ['src/**'],
+      exclude: [
+        'src/**/*.test.ts',
+        'src/**/*.test.tsx',
+        'src/**/*.stories.tsx',
+        'src/stories/**',
+        'src/test/**',
+        'src/**/*.d.ts',
+        'src/vite-env.d.ts',
       ],
     },
   },
