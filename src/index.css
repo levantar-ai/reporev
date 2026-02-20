@@ -196,12 +196,17 @@ body {
 
 .bg-gradient-dark {
   background:
-    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(56, 189, 248, 0.03) 0%, transparent 60%),
-    linear-gradient(180deg, #0f172a 0%, #0c1222 50%, #0f172a 100%);
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(56, 189, 248, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 60%, rgba(14, 165, 233, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 35% at 20% 80%, rgba(2, 132, 199, 0.04) 0%, transparent 50%),
+    linear-gradient(180deg, #0e1525 0%, #0f172a 30%, #0c1222 60%, #0b1120 100%);
 }
 
 .light .bg-gradient-dark {
-  background: var(--color-surface);
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(56, 189, 248, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 60%, rgba(14, 165, 233, 0.03) 0%, transparent 50%),
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 50%, #f8fafc 100%);
 }
 
 /* ── Scrollbar ───────────────────────────────────────────── */
