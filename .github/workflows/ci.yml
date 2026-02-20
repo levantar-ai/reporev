@@ -174,6 +174,9 @@ jobs:
     name: '3b·Deploy'
     needs: [codeql, semgrep, sonarcloud, dependency-review]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    concurrency:
+      group: cloudflare-deploy
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v6
