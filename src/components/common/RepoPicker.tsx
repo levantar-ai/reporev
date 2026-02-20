@@ -58,7 +58,7 @@ export function RepoPicker({ onSelect, disabled }: Props) {
             Add a GitHub token in <strong className="text-text-secondary">Settings</strong> (gear
             icon) to browse your repositories and scan private repos.{' '}
             <a
-              href="https://github.com/settings/tokens/new?scopes=repo,read:org&description=RepoRev"
+              href="https://github.com/settings/tokens/new?scopes=repo,read:org&description=Repo+Guru"
               target="_blank"
               rel="noopener noreferrer"
               className="text-neon hover:underline"

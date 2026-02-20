@@ -90,8 +90,8 @@ export function generateSbom(report: AnalysisReport): SbomDocument {
       timestamp: report.analyzedAt,
       tools: [
         {
-          vendor: 'RepoRev',
-          name: 'RepoRev Analyzer',
+          vendor: 'Repo Guru',
+          name: 'Repo Guru Analyzer',
           version: '1.0.0',
         },
       ],

@@ -4,7 +4,7 @@ import type { BadgeConfig } from '../../../types';
 
 function makeConfig(overrides: Partial<BadgeConfig> = {}): BadgeConfig {
   return {
-    label: 'RepoRev',
+    label: 'Repo Guru',
     grade: 'A',
     score: 92,
     style: 'flat',
@@ -124,20 +124,20 @@ describe('getBadgeDataUrl', () => {
     const base64Part = dataUrl.replace('data:image/svg+xml;base64,', '');
     const decoded = atob(base64Part);
     expect(decoded).toContain('<svg');
-    expect(decoded).toContain('RepoRev');
+    expect(decoded).toContain('Repo Guru');
   });
 });
 
 describe('getBadgeMarkdown', () => {
   it('returns an image markdown tag without link when repoUrl is absent', () => {
     const md = getBadgeMarkdown(makeConfig());
-    expect(md).toMatch(/^!\[RepoRev\]\(data:image\/svg\+xml;base64,.+\)$/);
+    expect(md).toMatch(/^!\[Repo Guru\]\(data:image\/svg\+xml;base64,.+\)$/);
   });
 
   it('returns a linked image markdown tag when repoUrl is provided', () => {
     const md = getBadgeMarkdown(makeConfig(), 'https://github.com/foo/bar');
     expect(md).toMatch(
-      /^\[!\[RepoRev\]\(data:image\/svg\+xml;base64,.+\)\]\(https:\/\/github\.com\/foo\/bar\)$/,
+      /^\[!\[Repo Guru\]\(data:image\/svg\+xml;base64,.+\)\]\(https:\/\/github\.com\/foo\/bar\)$/,
     );
   });
 

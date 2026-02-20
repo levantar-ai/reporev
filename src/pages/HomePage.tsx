@@ -45,7 +45,7 @@ export function HomePage({ onNavigate }: Props) {
         <button
           onClick={() => onNavigate('docs')}
           className="mt-4 inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-neon transition-colors"
-          aria-label="Learn how RepoRev scoring works"
+          aria-label="Learn how Repo Guru scoring works"
         >
           Learn how it works
           <svg

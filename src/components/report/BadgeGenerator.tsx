@@ -52,7 +52,7 @@ function BadgeSvg({ grade }: { grade: LetterGrade }) {
         fontSize={11}
         fontWeight={400}
       >
-        RepoRev
+        Repo Guru
       </text>
       <text
         x={leftWidth + rightWidth / 2}
@@ -74,12 +74,12 @@ export function BadgeGenerator({ owner, repo, grade, score }: Props) {
   const [activeTab, setActiveTab] = useState<SnippetTab>('markdown');
   const { copied, copy } = useClipboard();
 
-  const badgeUrl = `https://reporev.dev/badge/${owner}/${repo}.svg`;
-  const repoUrl = `https://reporev.dev/report/${owner}/${repo}`;
+  const badgeUrl = `https://repo.guru/badge/${owner}/${repo}.svg`;
+  const repoUrl = `https://repo.guru/report/${owner}/${repo}`;
 
   const snippets: Record<SnippetTab, string> = {
-    markdown: `[![RepoRev Grade: ${grade}](${badgeUrl})](${repoUrl})`,
-    html: `<a href="${repoUrl}"><img src="${badgeUrl}" alt="RepoRev Grade: ${grade}" /></a>`,
+    markdown: `[![Repo Guru Grade: ${grade}](${badgeUrl})](${repoUrl})`,
+    html: `<a href="${repoUrl}"><img src="${badgeUrl}" alt="Repo Guru Grade: ${grade}" /></a>`,
     url: badgeUrl,
   };
 

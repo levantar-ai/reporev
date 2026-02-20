@@ -12,7 +12,7 @@ export function LoadingScreen() {
   return (
     <output
       className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0f172a]"
-      aria-label="Loading RepoRev"
+      aria-label="Loading Repo Guru"
     >
       {/* Background animated dots — decorative */}
       <div className="absolute inset-0 overflow-hidden" aria-hidden="true">

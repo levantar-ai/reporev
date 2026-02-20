@@ -72,7 +72,7 @@ export function HowItWorksPage({ onBack }: Props) {
           Back to analyzer
         </button>
         <h1 className="text-4xl lg:text-5xl font-bold text-text">
-          How <span className="text-neon neon-text">RepoRev</span> Works
+          How <span className="text-neon neon-text">Repo Guru</span> Works
         </h1>
         <p className="text-lg text-text-secondary mt-3 max-w-2xl leading-relaxed">
           A complete guide to the analysis methodology, scoring system, and what each category
@@ -111,13 +111,13 @@ export function HowItWorksPage({ onBack }: Props) {
         {/* Overview */}
         <Section id="overview" title="Overview">
           <p>
-            RepoRev is a fully client-side tool that analyzes public GitHub repositories for
+            Repo Guru is a fully client-side tool that analyzes public GitHub repositories for
             engineering best practices. It produces a "report card" with a letter grade (A through
             F) based on 7 categories: documentation, security, CI/CD, dependencies, code quality,
             license, and community health.
           </p>
           <p>
-            Everything runs in your browser. RepoRev makes direct calls to the GitHub REST API to
+            Everything runs in your browser. Repo Guru makes direct calls to the GitHub REST API to
             fetch repository metadata and files, then runs heuristic analysis locally. No data is
             sent to any backend server. The only external call is an optional AI enrichment step
             using the Anthropic API if you provide your own key.
@@ -133,7 +133,7 @@ export function HowItWorksPage({ onBack }: Props) {
 
         {/* Analysis Pipeline */}
         <Section id="pipeline" title="Analysis Pipeline">
-          <p>When you enter a GitHub URL, RepoRev executes these steps in sequence:</p>
+          <p>When you enter a GitHub URL, Repo Guru executes these steps in sequence:</p>
           <div className="space-y-3 mt-2">
             {[
               {
@@ -380,7 +380,7 @@ export function HowItWorksPage({ onBack }: Props) {
         {/* GitHub API */}
         <Section id="github-api" title="GitHub API Usage">
           <p>
-            RepoRev uses the GitHub REST API v3. A typical analysis requires{' '}
+            Repo Guru uses the GitHub REST API v3. A typical analysis requires{' '}
             <strong className="text-text">2 + N</strong> API calls, where N is the number of files
             selected for content analysis (typically 15-25).
           </p>
@@ -421,16 +421,16 @@ export function HowItWorksPage({ onBack }: Props) {
           <p className="mt-4">
             <strong className="text-text">Rate limits:</strong> Without authentication, GitHub
             allows 60 requests per hour. With a personal access token (entered in Settings), this
-            increases to 5,000 per hour. RepoRev tracks your remaining quota in the header and warns
-            you when running low.
+            increases to 5,000 per hour. Repo Guru tracks your remaining quota in the header and
+            warns you when running low.
           </p>
         </Section>
 
         {/* File Selection */}
         <Section id="file-selection" title="File Selection Strategy">
           <p>
-            After fetching the full tree (which can contain thousands of entries), RepoRev selects a
-            maximum of 25 files to download for content analysis. Files are prioritized in two
+            After fetching the full tree (which can contain thousands of entries), Repo Guru selects
+            a maximum of 25 files to download for content analysis. Files are prioritized in two
             tiers:
           </p>
 
@@ -479,8 +479,8 @@ export function HowItWorksPage({ onBack }: Props) {
         {/* AI Enrichment */}
         <Section id="ai-enrichment" title="AI Enrichment (Optional)">
           <p>
-            When enabled in Settings, RepoRev sends a structured summary of the analysis results to
-            the Anthropic Messages API. This is the only step that transmits data outside your
+            When enabled in Settings, Repo Guru sends a structured summary of the analysis results
+            to the Anthropic Messages API. This is the only step that transmits data outside your
             browser.
           </p>
           <p>
@@ -511,7 +511,7 @@ export function HowItWorksPage({ onBack }: Props) {
 
         {/* Privacy */}
         <Section id="privacy" title="Privacy & Security">
-          <p>RepoRev is designed with privacy as a core constraint:</p>
+          <p>Repo Guru is designed with privacy as a core constraint:</p>
           <ul className="list-disc list-inside space-y-2 text-text-secondary ml-2">
             <li>
               <strong className="text-text">No backend</strong> — There is no server. The app is
@@ -531,7 +531,7 @@ export function HowItWorksPage({ onBack }: Props) {
               and settings (theme, LLM mode) are cached locally. No credentials are persisted.
             </li>
             <li>
-              <strong className="text-text">Public repos only</strong> — RepoRev only works with
+              <strong className="text-text">Public repos only</strong> — Repo Guru only works with
               public GitHub repositories. It cannot access private repos even with a token (the
               token only increases rate limits).
             </li>

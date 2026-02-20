@@ -208,7 +208,7 @@ export function Header({ onNavigate, currentPage }: Props) {
           <button
             onClick={() => onNavigate('home')}
             className="flex items-center gap-2.5 shrink-0"
-            aria-label="RepoRev — Go to home page"
+            aria-label="Repo Guru — Go to home page"
           >
             <img
               src="/logo.png"
@@ -217,7 +217,7 @@ export function Header({ onNavigate, currentPage }: Props) {
               aria-hidden="true"
             />
             <span className="text-xl font-bold tracking-tight text-text">
-              Repo<span className="text-neon neon-text">Rev</span>
+              Repo<span className="text-neon neon-text"> Guru</span>
             </span>
           </button>
 

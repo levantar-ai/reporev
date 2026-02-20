@@ -20,8 +20,8 @@ export function ShareToolbar({ report }: Props) {
   const handlePrint = () => window.print();
   const handleShare = () => {
     share({
-      title: `RepoRev: ${report.repo.owner}/${report.repo.repo} — Grade ${report.grade}`,
-      text: `${report.repo.owner}/${report.repo.repo} scored ${report.grade} (${report.overallScore}/100) on RepoRev`,
+      title: `Repo Guru: ${report.repo.owner}/${report.repo.repo} — Grade ${report.grade}`,
+      text: `${report.repo.owner}/${report.repo.repo} scored ${report.grade} (${report.overallScore}/100) on Repo Guru`,
     });
   };
 

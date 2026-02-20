@@ -109,11 +109,11 @@ describe('generateSbom', () => {
     expect(sbom.metadata.timestamp).toBe('2024-06-15T10:00:00Z');
   });
 
-  it('includes RepoRev tool info in metadata', () => {
+  it('includes Repo Guru tool info in metadata', () => {
     const sbom = generateSbom(makeReport());
     expect(sbom.metadata.tools).toHaveLength(1);
-    expect(sbom.metadata.tools[0].vendor).toBe('RepoRev');
-    expect(sbom.metadata.tools[0].name).toBe('RepoRev Analyzer');
+    expect(sbom.metadata.tools[0].vendor).toBe('Repo Guru');
+    expect(sbom.metadata.tools[0].name).toBe('Repo Guru Analyzer');
     expect(sbom.metadata.tools[0].version).toBe('1.0.0');
   });
 
