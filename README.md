@@ -1,6 +1,10 @@
-# RepoRev
+<p align="center">
+  <img src="public/logo.png" alt="RepoRev" width="200" />
+</p>
 
-**Instant report cards for GitHub repositories.**
+<h1 align="center">RepoRev</h1>
+
+<p align="center"><strong>Instant report cards for GitHub repositories.</strong></p>
 
 Analyze any public GitHub repo for security, documentation, CI/CD, dependencies, code quality, licensing, and community health. Get a letter grade (A-F) instantly — all in your browser.
 

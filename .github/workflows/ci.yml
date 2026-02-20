@@ -124,6 +124,7 @@ jobs:
   sonarcloud:
     name: '3·SonarCloud'
     needs: [build]
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.actor != 'dependabot[bot]')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -135,9 +136,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test -- --coverage
-      - uses: SonarSource/sonarqube-scan-action@v5
+      - uses: SonarSource/sonarqube-scan-action@v6
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   dependency-review:

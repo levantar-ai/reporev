@@ -10,6 +10,12 @@ export default defineConfig({
     setupFiles: ['src/test/setup.ts'],
     coverage: {
       reporter: ['text', 'lcov'],
+      include: [
+        'src/services/analysis/**',
+        'src/services/export/**',
+        'src/services/github/parser.ts',
+        'src/utils/**',
+      ],
     },
   },
 });
