@@ -20,21 +20,23 @@ permissions:
   id-token: write
   deployments: write
 
-# ┌─────────────────────────────────────────────────────────────────┐
-# │  Pipeline: Quality → Build → Deploy + Security → Release       │
-# │                                                                 │
-# │  Stage 1 ─ Quality Gate (parallel)                              │
-# │    lint ─┐                                                      │
-# │    typecheck ─┼──► Stage 2 ─ Build                              │
-# │    test ──┘          │                                          │
-# │                      ├──► Stage 2b ─ Deploy (main push only)    │
-# │                      ▼                                          │
-# │              Stage 3 ─ Security (parallel)                      │
-# │                codeql ─┐                                        │
-# │                semgrep ─┤                                       │
-# │                sonarcloud ─┼──► Stage 4 ─ Release (tags only)   │
-# │                dep-review ─┘      build-release → provenance    │
-# └─────────────────────────────────────────────────────────────────┘
+# ┌──────────────────────────────────────────────────────────────────┐
+# │  Pipeline: Quality → Build → Security → Deploy → Release       │
+# │                                                                  │
+# │  Stage 1 ─ Quality Gate (parallel)                               │
+# │    lint ─┐                                                       │
+# │    typecheck ─┼──► Stage 2 ─ Build                               │
+# │    test ──┘          │                                           │
+# │                      ▼                                           │
+# │              Stage 3 ─ Security (parallel)                       │
+# │                codeql ─┐                                         │
+# │                semgrep ─┤                                        │
+# │                sonarcloud ─┼──► Stage 3b ─ Deploy (main only)    │
+# │                dep-review ─┘      │                              │
+# │                                   ▼                              │
+# │                           Stage 4 ─ Release (tags only)          │
+# │                             build-release → provenance           │
+# └──────────────────────────────────────────────────────────────────┘
 
 jobs:
   # ── Stage 1: Quality Gate ──────────────────────────────────────
@@ -96,23 +98,6 @@ jobs:
         with:
           name: dist-build
           path: dist/
-
-  # ── Stage 2b: Deploy to Cloudflare Pages (main only) ────────
-  deploy:
-    name: '2b·Deploy'
-    needs: [build]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v6
-        with:
-          name: dist-build
-          path: dist
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=reporev
 
   # ── Stage 3: Security ─────────────────────────────────────────
   codeql:
@@ -183,6 +168,23 @@ jobs:
       - name: Audit dependencies
         if: github.event_name != 'pull_request'
         run: npm audit --audit-level=high
+
+  # ── Stage 3b: Deploy to Cloudflare Pages (main only) ─────────
+  deploy:
+    name: '3b·Deploy'
+    needs: [codeql, semgrep, sonarcloud, dependency-review]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: dist-build
+          path: dist
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=reporev
 
   # ── Stage 4: Release (tags only) ──────────────────────────────
   build-release:
