@@ -1,73 +1,76 @@
-# React + TypeScript + Vite
+# RepoRev
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Instant report cards for GitHub repositories.**
 
-Currently, two official plugins are available:
+Analyze any public GitHub repo for security, documentation, CI/CD, dependencies, code quality, licensing, and community health. Get a letter grade (A-F) instantly — all in your browser.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+[![CI](https://github.com/levantar-ai/reporev/actions/workflows/ci.yml/badge.svg)](https://github.com/levantar-ai/reporev/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-97%25-brightgreen)](https://github.com/levantar-ai/reporev)
+[![Code Quality](https://img.shields.io/badge/code%20quality-A-brightgreen)](https://sonarcloud.io/dashboard?id=levantar-ai_reporev)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Repository Report Card** — Weighted scoring across 7 categories with detailed signal breakdowns
+- **Git Statistics** — Commit heatmaps, punch cards, bus factor, file churn, contributor breakdown, code frequency, and more
+- **Technology Detection** — Detect AWS, Azure, and GCP cloud services plus Node, Python, Go, Java, PHP, Rust, and Ruby dependencies
+- **Organization Scan** — Analyze all repos in a GitHub org with aggregate scores
+- **Repository Comparison** — Side-by-side comparison of two repositories
+- **Developer Portfolio** — Analyze a developer's public repositories
+- **Policy Engine** — Define custom compliance rules and evaluate repos against them
+- **Export** — CSV, Markdown, and SBOM export formats
+- **Privacy-First** — All analysis runs client-side in the browser. No data leaves your machine.
 
-## Expanding the ESLint configuration
+## Quick Start
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+```bash
+# Clone the repository
+git clone https://github.com/levantar-ai/reporev.git
+cd reporev
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# Install dependencies
+npm install
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Start development server
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Usage
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+1. Enter a GitHub repository (e.g., `facebook/react`) in the analyzer
+2. View the report card with scores across all categories
+3. Explore detailed signal breakdowns and fix-it links
+4. Use the Git Stats page for deep commit history analysis
+5. Use Tech Detection to discover cloud services and language dependencies
+
+## Tech Stack
+
+| Technology                                   | Purpose        |
+| -------------------------------------------- | -------------- |
+| [React 19](https://react.dev)                | UI framework   |
+| [TypeScript](https://www.typescriptlang.org) | Type safety    |
+| [Vite](https://vite.dev)                     | Build tool     |
+| [Tailwind CSS 4](https://tailwindcss.com)    | Styling        |
+| [ECharts](https://echarts.apache.org)        | Charts         |
+| [isomorphic-git](https://isomorphic-git.org) | In-browser git |
+
+## Available Scripts
+
+| Command             | Description              |
+| ------------------- | ------------------------ |
+| `npm run dev`       | Start dev server         |
+| `npm run build`     | Type-check and build     |
+| `npm run lint`      | Run ESLint               |
+| `npm run format`    | Format with Prettier     |
+| `npm run test`      | Run tests                |
+| `npm run typecheck` | TypeScript type checking |
+
+## Contributing
+
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details.
+
+## License
+
+[MIT](LICENSE)

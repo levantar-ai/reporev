@@ -13,6 +13,7 @@ export interface GitHubRepoResponse {
   topics: string[];
   archived: boolean;
   size: number;
+  owner: { login: string; type: string };
 }
 
 export interface GitHubTreeResponse {

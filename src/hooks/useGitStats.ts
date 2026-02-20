@@ -58,7 +58,7 @@ function reducer(state: GitStatsState, action: Action): GitStatsState {
         ...state,
         detailsFetched: action.count,
         progress: 40 + Math.min(30, (action.count / 200) * 30),
-        statusMessage: `Fetching commit details... ${action.count}/200`,
+        statusMessage: `Fetching commit details... ${action.count}`,
       };
     case 'DONE':
       return {
@@ -103,96 +103,100 @@ export function useGitStats() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { state: appState, dispatch: appDispatch } = useApp();
 
-  const handleRateLimit = useCallback((info: RateLimitInfo) => {
-    appDispatch({ type: 'SET_RATE_LIMIT', info });
-  }, [appDispatch]);
+  const handleRateLimit = useCallback(
+    (info: RateLimitInfo) => {
+      appDispatch({ type: 'SET_RATE_LIMIT', info });
+    },
+    [appDispatch],
+  );
 
-  const analyze = useCallback(async (input: string) => {
-    const parsed = parseOwnerRepo(input);
-    if (!parsed) {
-      dispatch({ type: 'ERROR', error: 'Invalid repo format. Use owner/repo or a GitHub URL.' });
-      return;
-    }
+  const analyze = useCallback(
+    async (input: string) => {
+      const parsed = parseOwnerRepo(input);
+      if (!parsed) {
+        dispatch({ type: 'ERROR', error: 'Invalid repo format. Use owner/repo or a GitHub URL.' });
+        return;
+      }
 
-    const token = appState.githubToken || undefined;
-    const { owner, repo } = parsed;
+      const token = appState.githubToken || undefined;
+      const { owner, repo } = parsed;
 
-    // Try clone-first approach (no token needed for public repos)
-    dispatch({
-      type: 'SET_STEP',
-      step: 'cloning',
-      progress: 0,
-      message: 'Cloning repository...',
-    });
+      // Try clone-first approach (no token needed for public repos)
+      dispatch({
+        type: 'SET_STEP',
+        step: 'cloning',
+        progress: 0,
+        message: 'Cloning repository...',
+      });
 
-    let rawData;
+      let rawData;
 
-    try {
-      rawData = await cloneAndExtract(
-        owner,
-        repo,
-        (step, percent, message) => {
+      try {
+        rawData = await cloneAndExtract(owner, repo, (step, percent, message) => {
           dispatch({ type: 'CLONE_PROGRESS', step, percent, message });
-        },
-      );
-    } catch (cloneErr) {
-      // Clone failed — fall back to REST API if token is available
-      if (token) {
-        console.warn('Clone failed, falling back to REST API:', cloneErr);
-
-        dispatch({
-          type: 'SET_STEP',
-          step: 'fetching-commits',
-          progress: 0,
-          message: 'Clone failed, fetching via API...',
         });
+      } catch (cloneErr) {
+        // Clone failed — fall back to REST API if token is available
+        if (token) {
+          console.warn('Clone failed, falling back to REST API:', cloneErr);
 
-        try {
-          rawData = await fetchGitStatsData(
-            owner,
-            repo,
-            token,
-            handleRateLimit,
-            (count) => dispatch({ type: 'COMMITS_PROGRESS', count }),
-            (count) => dispatch({ type: 'DETAILS_PROGRESS', count }),
-            () => dispatch({
-              type: 'SET_STEP',
-              step: 'fetching-stats',
-              progress: 72,
-              message: 'Fetching repository statistics...',
-            }),
-          );
-        } catch (apiErr) {
+          dispatch({
+            type: 'SET_STEP',
+            step: 'fetching-commits',
+            progress: 0,
+            message: 'Clone failed, fetching via API...',
+          });
+
+          try {
+            rawData = await fetchGitStatsData(
+              owner,
+              repo,
+              token,
+              handleRateLimit,
+              (count) => dispatch({ type: 'COMMITS_PROGRESS', count }),
+              (count) => dispatch({ type: 'DETAILS_PROGRESS', count }),
+              () =>
+                dispatch({
+                  type: 'SET_STEP',
+                  step: 'fetching-stats',
+                  progress: 72,
+                  message: 'Fetching repository statistics...',
+                }),
+            );
+          } catch (apiErr) {
+            dispatch({
+              type: 'ERROR',
+              error: apiErr instanceof Error ? apiErr.message : 'An unexpected error occurred.',
+            });
+            return;
+          }
+        } else {
           dispatch({
             type: 'ERROR',
-            error: apiErr instanceof Error ? apiErr.message : 'An unexpected error occurred.',
+            error:
+              cloneErr instanceof Error
+                ? `Clone failed: ${cloneErr.message}. Add a GitHub token in Settings to use the API fallback.`
+                : 'Clone failed. Add a GitHub token in Settings to use the API fallback.',
           });
           return;
         }
-      } else {
-        dispatch({
-          type: 'ERROR',
-          error: cloneErr instanceof Error
-            ? `Clone failed: ${cloneErr.message}. Add a GitHub token in Settings to use the API fallback.`
-            : 'Clone failed. Add a GitHub token in Settings to use the API fallback.',
-        });
-        return;
       }
-    }
 
-    dispatch({
-      type: 'SET_STEP',
-      step: 'analyzing',
-      progress: 88,
-      message: 'Analyzing data...',
-    });
+      dispatch({
+        type: 'SET_STEP',
+        step: 'analyzing',
+        progress: 88,
+        message: 'Analyzing data...',
+      });
 
-    // Run analysis (synchronous, but we yield the event loop)
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    const analysis = analyzeGitStats(rawData, owner, repo);
+      // Run analysis (synchronous, but we yield the event loop)
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      const analysis = analyzeGitStats(rawData, owner, repo);
 
-    dispatch({ type: 'DONE', analysis, rawData });
-  }, [appState.githubToken, handleRateLimit]);
+      dispatch({ type: 'DONE', analysis, rawData });
+    },
+    [appState.githubToken, handleRateLimit],
+  );
 
   const reset = useCallback(() => {
     dispatch({ type: 'RESET' });

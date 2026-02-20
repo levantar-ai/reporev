@@ -1,15 +1,56 @@
 import type { CategoryResult, FileContent, TreeEntry, Signal } from '../../types';
 
-export function analyzeDocumentation(
-  files: FileContent[],
-  tree: TreeEntry[]
-): CategoryResult {
+/** Case-insensitive lookup in a file map. Returns the file content if found. */
+function ciGet(
+  fileMap: Map<string, FileContent>,
+  ...candidates: string[]
+): FileContent | undefined {
+  // Try exact matches first
+  for (const c of candidates) {
+    const found = fileMap.get(c);
+    if (found) return found;
+  }
+  // Fall back to case-insensitive scan
+  const lowerSet = new Set(candidates.map((c) => c.toLowerCase()));
+  for (const [path, file] of fileMap) {
+    if (lowerSet.has(path.toLowerCase())) return file;
+  }
+  return undefined;
+}
+
+/** Case-insensitive check if any candidate path exists in the file map. */
+function ciHas(fileMap: Map<string, FileContent>, ...candidates: string[]): boolean {
+  return ciGet(fileMap, ...candidates) !== undefined;
+}
+
+/** Check if the found path uses non-standard casing (e.g. Readme.md instead of README.md). */
+function casingNote(fileMap: Map<string, FileContent>, canonical: string): string | undefined {
+  // Check if the canonical form exists
+  if (fileMap.has(canonical)) return undefined;
+  // Find the actual path
+  const lower = canonical.toLowerCase();
+  for (const path of fileMap.keys()) {
+    if (path.toLowerCase() === lower && path !== canonical) {
+      return `Found as "${path}" — standard convention is "${canonical}"`;
+    }
+  }
+  return undefined;
+}
+
+export function analyzeDocumentation(files: FileContent[], tree: TreeEntry[]): CategoryResult {
   const signals: Signal[] = [];
   const fileMap = new Map(files.map((f) => [f.path, f]));
 
-  // README exists
-  const readme = fileMap.get('README.md') || fileMap.get('readme.md') || fileMap.get('README.rst');
-  signals.push({ name: 'README exists', found: !!readme });
+  // README exists (case-insensitive)
+  const readme = ciGet(fileMap, 'README.md', 'readme.md', 'README.rst');
+  const readmeCasingNote = readme
+    ? (casingNote(fileMap, 'README.md') ?? casingNote(fileMap, 'README.rst'))
+    : undefined;
+  signals.push({
+    name: 'README exists',
+    found: !!readme,
+    details: readmeCasingNote || undefined,
+  });
 
   // README quality (length-based heuristic)
   const readmeLength = readme?.content.length ?? 0;
@@ -32,18 +73,32 @@ export function analyzeDocumentation(
   const hasCodeBlocks = /```[\s\S]*?```/.test(readme?.content ?? '');
   signals.push({ name: 'Code examples in README', found: hasCodeBlocks });
 
-  // CONTRIBUTING.md
+  // CONTRIBUTING.md (case-insensitive)
+  const hasContributing = ciHas(fileMap, 'CONTRIBUTING.md');
+  const contributingNote = hasContributing ? casingNote(fileMap, 'CONTRIBUTING.md') : undefined;
   signals.push({
     name: 'CONTRIBUTING.md',
-    found: fileMap.has('CONTRIBUTING.md'),
+    found: hasContributing,
+    details: contributingNote || undefined,
   });
 
-  // CHANGELOG or similar
-  const hasChangelog = fileMap.has('CHANGELOG.md') || fileMap.has('CHANGES.md') || fileMap.has('HISTORY.md');
-  signals.push({ name: 'CHANGELOG', found: hasChangelog });
+  // CHANGELOG or similar (case-insensitive)
+  const hasChangelog = ciHas(fileMap, 'CHANGELOG.md', 'CHANGES.md', 'HISTORY.md');
+  const changelogNote = hasChangelog
+    ? (casingNote(fileMap, 'CHANGELOG.md') ??
+      casingNote(fileMap, 'CHANGES.md') ??
+      casingNote(fileMap, 'HISTORY.md'))
+    : undefined;
+  signals.push({
+    name: 'CHANGELOG',
+    found: hasChangelog,
+    details: changelogNote || undefined,
+  });
 
   // docs/ directory
-  const hasDocs = tree.some((e) => e.type === 'tree' && (e.path === 'docs' || e.path === 'doc'));
+  const hasDocs = tree.some(
+    (e) => e.type === 'tree' && (e.path.toLowerCase() === 'docs' || e.path.toLowerCase() === 'doc'),
+  );
   signals.push({ name: 'docs/ directory', found: hasDocs });
 
   // Calculate score
@@ -52,7 +107,7 @@ export function analyzeDocumentation(
   if (hasSubstantialReadme) score += 20;
   if (readmeHeaders >= 3) score += 15;
   if (hasCodeBlocks) score += 10;
-  if (fileMap.has('CONTRIBUTING.md')) score += 10;
+  if (hasContributing) score += 10;
   if (hasChangelog) score += 10;
   if (hasDocs) score += 10;
 
@@ -60,7 +115,7 @@ export function analyzeDocumentation(
     key: 'documentation',
     label: 'Documentation',
     score: Math.min(100, score),
-    weight: 0.20,
+    weight: 0.2,
     signals,
   };
 }

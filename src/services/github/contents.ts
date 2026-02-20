@@ -21,23 +21,34 @@ export function filterTargetFiles(tree: TreeEntry[]): string[] {
   const exactMatches: string[] = [];
   const dynamicMatches: string[] = [];
 
+  // Build a set of lowercase target file paths for case-insensitive matching
+  const targetFilesLower = new Set(TARGET_FILES.map((f) => f.toLowerCase()));
+  const prTemplateLower = PR_TEMPLATE.toLowerCase();
+  const prTemplateAltLower = PR_TEMPLATE_ALT.toLowerCase();
+
   for (const entry of tree) {
     if (entry.type !== 'blob') continue;
 
+    const pathLower = entry.path.toLowerCase();
+
     // Exact matches (high priority — config files, manifests, READMEs)
-    if (TARGET_FILES.includes(entry.path)) {
+    // Case-insensitive so we catch Readme.md, contributing.md, etc.
+    if (targetFilesLower.has(pathLower)) {
       exactMatches.push(entry.path);
       continue;
     }
 
     // PR template (high priority)
-    if (entry.path === PR_TEMPLATE || entry.path === PR_TEMPLATE_ALT) {
+    if (pathLower === prTemplateLower || pathLower === prTemplateAltLower) {
       exactMatches.push(entry.path);
       continue;
     }
 
     // Workflow files (lower priority — cap at 5)
-    if (entry.path.startsWith(WORKFLOW_DIR) && (entry.path.endsWith('.yml') || entry.path.endsWith('.yaml'))) {
+    if (
+      entry.path.startsWith(WORKFLOW_DIR) &&
+      (entry.path.endsWith('.yml') || entry.path.endsWith('.yaml'))
+    ) {
       dynamicMatches.push(entry.path);
       continue;
     }
@@ -57,9 +68,15 @@ export function filterTargetFiles(tree: TreeEntry[]): string[] {
   // Prioritize exact matches, then fill remaining budget with dynamic matches
   const MAX_WORKFLOWS = 5;
   const MAX_TEMPLATES = 3;
-  const workflows = dynamicMatches.filter((p) => p.startsWith(WORKFLOW_DIR)).slice(0, MAX_WORKFLOWS);
-  const templates = dynamicMatches.filter((p) => p.startsWith(ISSUE_TEMPLATE_DIR)).slice(0, MAX_TEMPLATES);
-  const others = dynamicMatches.filter((p) => !p.startsWith(WORKFLOW_DIR) && !p.startsWith(ISSUE_TEMPLATE_DIR));
+  const workflows = dynamicMatches
+    .filter((p) => p.startsWith(WORKFLOW_DIR))
+    .slice(0, MAX_WORKFLOWS);
+  const templates = dynamicMatches
+    .filter((p) => p.startsWith(ISSUE_TEMPLATE_DIR))
+    .slice(0, MAX_TEMPLATES);
+  const others = dynamicMatches.filter(
+    (p) => !p.startsWith(WORKFLOW_DIR) && !p.startsWith(ISSUE_TEMPLATE_DIR),
+  );
 
   const combined = [...exactMatches, ...workflows, ...templates, ...others];
   return [...new Set(combined)].slice(0, MAX_FILES_TO_FETCH);
@@ -72,7 +89,7 @@ export async function fetchFileContents(
   filePaths: string[],
   token?: string,
   onRateLimit?: (info: RateLimitInfo) => void,
-  onFileProgress?: () => void
+  onFileProgress?: () => void,
 ): Promise<FileContent[]> {
   const results: FileContent[] = [];
 
@@ -81,7 +98,7 @@ export async function fetchFileContents(
       const data = await githubFetch<GitHubContentResponse>(
         `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`,
         token,
-        onRateLimit
+        onRateLimit,
       );
 
       if (data.encoding === 'base64' && data.content) {

@@ -15,14 +15,77 @@ import type {
 // ── Stopwords for word frequency ──
 
 const STOPWORDS = new Set([
-  'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
-  'of', 'with', 'by', 'from', 'is', 'it', 'that', 'this', 'was', 'are',
-  'be', 'has', 'had', 'have', 'not', 'as', 'we', 'do', 'if', 'so',
-  'no', 'up', 'out', 'all', 'can', 'will', 'just', 'into', 'when',
-  'been', 'some', 'than', 'its', 'also', 'more', 'use', 'new', 'get',
-  'set', 'only', 'should', 'would', 'could', 'about', 'which', 'each',
-  'make', 'like', 'them', 'then', 'now', 'any', 'my', 'our', 'their',
-  'other', 'these', 'those', 'may', 'using',
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'but',
+  'in',
+  'on',
+  'at',
+  'to',
+  'for',
+  'of',
+  'with',
+  'by',
+  'from',
+  'is',
+  'it',
+  'that',
+  'this',
+  'was',
+  'are',
+  'be',
+  'has',
+  'had',
+  'have',
+  'not',
+  'as',
+  'we',
+  'do',
+  'if',
+  'so',
+  'no',
+  'up',
+  'out',
+  'all',
+  'can',
+  'will',
+  'just',
+  'into',
+  'when',
+  'been',
+  'some',
+  'than',
+  'its',
+  'also',
+  'more',
+  'use',
+  'new',
+  'get',
+  'set',
+  'only',
+  'should',
+  'would',
+  'could',
+  'about',
+  'which',
+  'each',
+  'make',
+  'like',
+  'them',
+  'then',
+  'now',
+  'any',
+  'my',
+  'our',
+  'their',
+  'other',
+  'these',
+  'those',
+  'may',
+  'using',
 ]);
 
 // ── Contributor Summary ──
@@ -171,8 +234,17 @@ function analyzeCommitMessages(raw: GitStatsRawData): CommitMessageStats {
       medianLength: 0,
       mergeCommitCount: 0,
       conventionalCommits: {
-        feat: 0, fix: 0, docs: 0, style: 0, refactor: 0,
-        test: 0, chore: 0, ci: 0, perf: 0, build: 0, other: 0,
+        feat: 0,
+        fix: 0,
+        docs: 0,
+        style: 0,
+        refactor: 0,
+        test: 0,
+        chore: 0,
+        ci: 0,
+        perf: 0,
+        build: 0,
+        other: 0,
       },
       conventionalPercentage: 0,
       wordFrequency: [],
@@ -205,8 +277,17 @@ function analyzeCommitMessages(raw: GitStatsRawData): CommitMessageStats {
   };
 
   const conventional: CommitMessageStats['conventionalCommits'] = {
-    feat: 0, fix: 0, docs: 0, style: 0, refactor: 0,
-    test: 0, chore: 0, ci: 0, perf: 0, build: 0, other: 0,
+    feat: 0,
+    fix: 0,
+    docs: 0,
+    style: 0,
+    refactor: 0,
+    test: 0,
+    chore: 0,
+    ci: 0,
+    perf: 0,
+    build: 0,
+    other: 0,
   };
 
   let conventionalCount = 0;
@@ -223,9 +304,8 @@ function analyzeCommitMessages(raw: GitStatsRawData): CommitMessageStats {
     }
   }
 
-  const conventionalPercentage = totalCommits > 0
-    ? Math.round((conventionalCount / totalCommits) * 100)
-    : 0;
+  const conventionalPercentage =
+    totalCommits > 0 ? Math.round((conventionalCount / totalCommits) * 100) : 0;
 
   // Word frequency
   const wordCounts = new Map<string, number>();
@@ -234,7 +314,10 @@ function analyzeCommitMessages(raw: GitStatsRawData): CommitMessageStats {
     const firstLine = msg.split('\n')[0];
     // Remove conventional commit prefix
     const cleaned = firstLine.replace(/^\w+(?:\(.*?\))?!?:\s*/, '');
-    const words = cleaned.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2);
+    const words = cleaned
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length > 2);
     for (const word of words) {
       if (!STOPWORDS.has(word)) {
         wordCounts.set(word, (wordCounts.get(word) || 0) + 1);
@@ -349,6 +432,131 @@ function buildLanguageBreakdown(raw: GitStatsRawData): LanguageEntry[] {
     .sort((a, b) => b.bytes - a.bytes);
 }
 
+// ── Commits by Weekday ──
+
+function buildCommitsByWeekday(raw: GitStatsRawData): number[] {
+  const totals = [0, 0, 0, 0, 0, 0, 0]; // Sun..Sat
+  for (const commit of raw.commits) {
+    const day = new Date(commit.commit.author.date).getDay();
+    totals[day]++;
+  }
+  return totals;
+}
+
+// ── Commits by Month ──
+
+function buildCommitsByMonth(raw: GitStatsRawData): number[] {
+  const totals = new Array(12).fill(0); // Jan..Dec
+  for (const commit of raw.commits) {
+    const month = new Date(commit.commit.author.date).getMonth();
+    totals[month]++;
+  }
+  return totals;
+}
+
+// ── Commits by Year ──
+
+function buildCommitsByYear(raw: GitStatsRawData): { year: number; count: number }[] {
+  const yearMap = new Map<number, number>();
+  for (const commit of raw.commits) {
+    const year = new Date(commit.commit.author.date).getFullYear();
+    yearMap.set(year, (yearMap.get(year) || 0) + 1);
+  }
+  return [...yearMap.entries()]
+    .map(([year, count]) => ({ year, count }))
+    .sort((a, b) => a.year - b.year);
+}
+
+// ── Commits by File Extension ──
+
+function buildCommitsByExtension(raw: GitStatsRawData): { ext: string; count: number }[] {
+  const extMap = new Map<string, number>();
+  for (const detail of raw.commitDetails) {
+    if (!detail.files) continue;
+    const seenExts = new Set<string>();
+    for (const file of detail.files) {
+      const dotIndex = file.filename.lastIndexOf('.');
+      const ext = dotIndex > 0 ? file.filename.slice(dotIndex) : '(no ext)';
+      seenExts.add(ext);
+    }
+    for (const ext of seenExts) {
+      extMap.set(ext, (extMap.get(ext) || 0) + 1);
+    }
+  }
+  return [...extMap.entries()]
+    .map(([ext, count]) => ({ ext, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 20);
+}
+
+// ── Lines by Extension ──
+
+function buildLinesByExtension(
+  raw: GitStatsRawData,
+): { ext: string; additions: number; deletions: number }[] {
+  const extMap = new Map<string, { additions: number; deletions: number }>();
+  for (const detail of raw.commitDetails) {
+    if (!detail.files) continue;
+    for (const file of detail.files) {
+      const dotIndex = file.filename.lastIndexOf('.');
+      const ext = dotIndex > 0 ? file.filename.slice(dotIndex) : '(no ext)';
+      const existing = extMap.get(ext) || { additions: 0, deletions: 0 };
+      existing.additions += file.additions;
+      existing.deletions += file.deletions;
+      extMap.set(ext, existing);
+    }
+  }
+  return [...extMap.entries()]
+    .map(([ext, { additions, deletions }]) => ({ ext, additions, deletions }))
+    .sort((a, b) => b.additions + b.deletions - (a.additions + a.deletions))
+    .slice(0, 20);
+}
+
+// ── File Coupling ──
+
+function buildFileCoupling(
+  raw: GitStatsRawData,
+): { file1: string; file2: string; cochanges: number }[] {
+  const pairMap = new Map<string, number>();
+
+  for (const detail of raw.commitDetails) {
+    if (!detail.files || detail.files.length < 2 || detail.files.length > 50) continue;
+    const filenames = detail.files.map((f) => f.filename).sort();
+    // Only look at first 20 files per commit to limit computation
+    const limited = filenames.slice(0, 20);
+    for (let i = 0; i < limited.length; i++) {
+      for (let j = i + 1; j < limited.length; j++) {
+        const key = `${limited[i]}|||${limited[j]}`;
+        pairMap.set(key, (pairMap.get(key) || 0) + 1);
+      }
+    }
+  }
+
+  return [...pairMap.entries()]
+    .filter(([, count]) => count >= 3)
+    .map(([key, cochanges]) => {
+      const [file1, file2] = key.split('|||');
+      return { file1, file2, cochanges };
+    })
+    .sort((a, b) => b.cochanges - a.cochanges)
+    .slice(0, 20);
+}
+
+// ── First Commit & Repo Age ──
+
+function computeFirstCommitDate(raw: GitStatsRawData): string {
+  if (raw.commits.length === 0) return '';
+  const dates = raw.commits.map((c) => new Date(c.commit.author.date).getTime());
+  return new Date(Math.min(...dates)).toISOString();
+}
+
+function computeRepoAgeDays(firstCommitDate: string): number {
+  if (!firstCommitDate) return 0;
+  const first = new Date(firstCommitDate).getTime();
+  const now = Date.now();
+  return Math.floor((now - first) / (1000 * 60 * 60 * 24));
+}
+
 // ── Main analysis function ──
 
 export function analyzeGitStats(
@@ -365,11 +573,21 @@ export function analyzeGitStats(
   const punchCard = buildPunchCard(rawData);
   const weeklyActivity = buildWeeklyActivity(rawData);
   const languages = buildLanguageBreakdown(rawData);
+  const commitsByWeekday = buildCommitsByWeekday(rawData);
+  const commitsByMonth = buildCommitsByMonth(rawData);
+  const commitsByYear = buildCommitsByYear(rawData);
+  const commitsByExtension = buildCommitsByExtension(rawData);
+  const linesByExtension = buildLinesByExtension(rawData);
+  const fileCoupling = buildFileCoupling(rawData);
+  const firstCommitDate = computeFirstCommitDate(rawData);
+  const repoAgeDays = computeRepoAgeDays(firstCommitDate);
 
   return {
     owner,
     repo,
     totalCommits: rawData.commits.length,
+    totalLinesOfCode: rawData.totalLinesOfCode ?? 0,
+    binaryFileCount: rawData.binaryFileCount ?? 0,
     contributors,
     busFactor,
     fileChurn,
@@ -381,5 +599,13 @@ export function analyzeGitStats(
     languages,
     commitActivity: rawData.commitActivity,
     codeFrequency: rawData.codeFrequency,
+    commitsByWeekday,
+    commitsByMonth,
+    commitsByYear,
+    commitsByExtension,
+    linesByExtension,
+    fileCoupling,
+    firstCommitDate,
+    repoAgeDays,
   };
 }

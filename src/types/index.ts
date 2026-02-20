@@ -197,7 +197,13 @@ export interface OrgScanResult {
 export interface ComparisonReport {
   repoA: AnalysisReport;
   repoB: AnalysisReport;
-  categoryDiffs: { key: CategoryKey; label: string; scoreA: number; scoreB: number; diff: number }[];
+  categoryDiffs: {
+    key: CategoryKey;
+    label: string;
+    scoreA: number;
+    scoreB: number;
+    diff: number;
+  }[];
   winner: 'A' | 'B' | 'tie';
   generatedAt: string;
 }
@@ -292,7 +298,16 @@ export interface BadgeConfig {
 
 // ── Navigation ──
 
-export type PageId = 'home' | 'docs' | 'org-scan' | 'compare' | 'portfolio' | 'discover' | 'policy' | 'git-stats';
+export type PageId =
+  | 'home'
+  | 'docs'
+  | 'org-scan'
+  | 'compare'
+  | 'portfolio'
+  | 'discover'
+  | 'policy'
+  | 'git-stats'
+  | 'tech-detect';
 
 // ── Git Stats Types ──
 

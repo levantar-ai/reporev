@@ -2,6 +2,7 @@ import type { PageId } from '../types';
 import { useApp } from '../context/AppContext';
 import { useAnalysis } from '../hooks/useAnalysis';
 import { RepoInput } from '../components/input/RepoInput';
+import { RepoPicker } from '../components/common/RepoPicker';
 import { DemoRepoCards } from '../components/input/DemoRepoCards';
 import { RecentReposList } from '../components/input/RecentReposList';
 import { ProgressBar } from '../components/common/ProgressBar';
@@ -24,9 +25,10 @@ export function HomePage({ onNavigate }: Props) {
   }
 
   // File fetch progress
-  const progress = state.step === 'fetching-files' && state.filesTotal > 0
-    ? 35 + (state.filesFetched / state.filesTotal) * 45
-    : state.progress;
+  const progress =
+    state.step === 'fetching-files' && state.filesTotal > 0
+      ? 35 + (state.filesFetched / state.filesTotal) * 45
+      : state.progress;
 
   return (
     <div className="w-full px-8 lg:px-12 xl:px-16 py-16 sm:py-24">
@@ -46,7 +48,13 @@ export function HomePage({ onNavigate }: Props) {
           aria-label="Learn how RepoRev scoring works"
         >
           Learn how it works
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
@@ -58,12 +66,20 @@ export function HomePage({ onNavigate }: Props) {
           className="w-full max-w-2xl mx-auto mb-6 px-5 py-3 rounded-xl bg-grade-c/10 border border-grade-c/25 text-sm text-grade-c"
           role="alert"
         >
-          Low rate limit ({appState.rateLimit.remaining} remaining). Add a GitHub token in Settings for 5,000 req/hr.
+          Low rate limit ({appState.rateLimit.remaining} remaining). Add a GitHub token in Settings
+          for 5,000 req/hr.
         </div>
       )}
 
       {/* Input */}
       <RepoInput onSubmit={analyze} isLoading={isLoading} />
+
+      {/* My repos picker — hide during loading so progress bar is visible */}
+      {!isLoading && (
+        <div className="w-full max-w-2xl mx-auto">
+          <RepoPicker onSelect={analyze} disabled={isLoading} />
+        </div>
+      )}
 
       {/* Progress */}
       {isLoading && (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useGitStats } from '../hooks/useGitStats';
 import { GitStatsProgress } from '../components/git-stats/GitStatsProgress';
 import { StatsOverviewCards } from '../components/git-stats/StatsOverviewCards';
@@ -13,6 +13,12 @@ import { FileChurnTable } from '../components/git-stats/FileChurnTable';
 import { CommitPatterns } from '../components/git-stats/CommitPatterns';
 import { CommitMessageCloud } from '../components/git-stats/CommitMessageCloud';
 import { BusFactor } from '../components/git-stats/BusFactor';
+import { RepoPicker } from '../components/common/RepoPicker';
+import { CommitsByWeekday } from '../components/git-stats/CommitsByWeekday';
+import { CommitsByMonth } from '../components/git-stats/CommitsByMonth';
+import { CommitsByYear } from '../components/git-stats/CommitsByYear';
+import { CommitsByExtension } from '../components/git-stats/CommitsByExtension';
+import { FileCoupling } from '../components/git-stats/FileCoupling';
 
 interface Props {
   onBack: () => void;
@@ -40,6 +46,14 @@ export function GitStatsPage({ onBack }: Props) {
     }
   };
 
+  const handlePickerSelect = useCallback(
+    (slug: string) => {
+      setRepoInput(slug);
+      analyze(slug);
+    },
+    [analyze],
+  );
+
   return (
     <div className="w-full px-8 lg:px-12 xl:px-16 py-10 sm:py-16">
       {/* Back button */}
@@ -56,12 +70,11 @@ export function GitStatsPage({ onBack }: Props) {
       {/* Header */}
       <div className="text-center mb-10">
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-text tracking-tight">
-          Git{' '}
-          <span className="text-neon neon-text">Stats</span>
+          Git <span className="text-neon neon-text">Stats</span>
         </h1>
         <p className="mt-4 text-lg text-text-secondary max-w-2xl mx-auto leading-relaxed">
-          Deep commit and contributor analysis with interactive visualizations.
-          Analyze the last 1,000 commits for patterns, bus factor, code churn, and more.
+          Deep commit and contributor analysis with interactive visualizations. Analyze the last
+          1,000 commits for patterns, bus factor, code churn, and more.
         </p>
       </div>
 
@@ -86,10 +99,23 @@ export function GitStatsPage({ onBack }: Props) {
               {isLoading ? 'Analyzing...' : 'Analyze Git Stats'}
             </button>
           </div>
+          {/* Shared repo picker — hide during loading so progress bar is visible */}
+          {!isLoading && <RepoPicker onSelect={handlePickerSelect} disabled={isLoading} />}
+
           <div className="mt-4 px-5 py-3 rounded-xl bg-neon/5 border border-neon/20 text-sm text-text-secondary">
             <div className="flex items-start gap-2">
-              <svg className="h-4 w-4 mt-0.5 shrink-0 text-neon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="h-4 w-4 mt-0.5 shrink-0 text-neon"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               <span>
                 Clones the repository in your browser. No API token needed for public repos.
@@ -107,8 +133,18 @@ export function GitStatsPage({ onBack }: Props) {
         <div className="max-w-2xl mx-auto mb-8">
           <div className="px-5 py-4 rounded-xl bg-grade-f/10 border border-grade-f/25 text-sm">
             <div className="flex items-start gap-3">
-              <svg className="h-5 w-5 text-grade-f shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="h-5 w-5 text-grade-f shrink-0 mt-0.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               <div>
                 <p className="font-medium text-grade-f">Analysis failed</p>
@@ -131,14 +167,21 @@ export function GitStatsPage({ onBack }: Props) {
           {/* Action bar */}
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-text">
-              <span className="text-neon">{state.analysis.owner}/{state.analysis.repo}</span>
+              <span className="text-neon">
+                {state.analysis.owner}/{state.analysis.repo}
+              </span>
             </h2>
             <button
               onClick={reset}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border hover:bg-surface-hover hover:border-border-bright text-text-secondary hover:text-neon transition-all"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
               </svg>
               New Analysis
             </button>
@@ -219,6 +262,41 @@ export function GitStatsPage({ onBack }: Props) {
           <ChartSection title="File Churn (Most Changed Files)">
             <FileChurnTable fileChurn={state.analysis.fileChurn} />
           </ChartSection>
+
+          {/* Commits by Weekday + Month */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {state.analysis.commitsByWeekday.some((c) => c > 0) && (
+              <ChartSection title="Commits by Day of Week">
+                <CommitsByWeekday commitsByWeekday={state.analysis.commitsByWeekday} />
+              </ChartSection>
+            )}
+            {state.analysis.commitsByMonth.some((c) => c > 0) && (
+              <ChartSection title="Commits by Month">
+                <CommitsByMonth commitsByMonth={state.analysis.commitsByMonth} />
+              </ChartSection>
+            )}
+          </div>
+
+          {/* Commits by Year + Extension */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {state.analysis.commitsByYear.length > 0 && (
+              <ChartSection title="Commits by Year">
+                <CommitsByYear commitsByYear={state.analysis.commitsByYear} />
+              </ChartSection>
+            )}
+            {state.analysis.commitsByExtension.length > 0 && (
+              <ChartSection title="Commits by File Extension">
+                <CommitsByExtension commitsByExtension={state.analysis.commitsByExtension} />
+              </ChartSection>
+            )}
+          </div>
+
+          {/* File Coupling */}
+          {state.analysis.fileCoupling.length > 0 && (
+            <ChartSection title="File Coupling (Co-changed Files)">
+              <FileCoupling fileCoupling={state.analysis.fileCoupling} />
+            </ChartSection>
+          )}
         </div>
       )}
 
@@ -226,14 +304,24 @@ export function GitStatsPage({ onBack }: Props) {
       {state.step === 'idle' && (
         <div className="text-center mt-12">
           <div className="inline-flex items-center justify-center h-20 w-20 rounded-2xl bg-neon/10 border border-neon/20 mb-6">
-            <svg className="h-10 w-10 text-neon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            <svg
+              className="h-10 w-10 text-neon"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+              />
             </svg>
           </div>
           <h3 className="text-lg font-semibold text-text mb-2">Analyze Git History</h3>
           <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed">
-            Enter a repository to analyze commit patterns, contributor distribution,
-            code frequency, language breakdown, and more.
+            Enter a repository to analyze commit patterns, contributor distribution, code frequency,
+            language breakdown, and more.
           </p>
         </div>
       )}

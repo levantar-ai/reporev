@@ -33,6 +33,11 @@ export function StatsOverviewCards({ analysis }: Props) {
       accent: false,
     },
     {
+      label: 'Lines of Code',
+      value: analysis.totalLinesOfCode > 0 ? analysis.totalLinesOfCode.toLocaleString() : 'N/A',
+      accent: false,
+    },
+    {
       label: 'Contributors',
       value: analysis.contributors.length.toLocaleString(),
       accent: false,
@@ -57,23 +62,52 @@ export function StatsOverviewCards({ analysis }: Props) {
       value: analysis.languages.length.toString(),
       accent: false,
     },
+    ...(analysis.firstCommitDate
+      ? [
+          {
+            label: 'First Commit',
+            value: new Date(analysis.firstCommitDate).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+            }),
+            accent: false,
+          },
+        ]
+      : []),
+    ...(analysis.repoAgeDays > 0
+      ? [
+          {
+            label: 'Repo Age',
+            value:
+              analysis.repoAgeDays >= 365
+                ? `${Math.floor(analysis.repoAgeDays / 365)}y ${Math.floor((analysis.repoAgeDays % 365) / 30)}m`
+                : analysis.repoAgeDays >= 30
+                  ? `${Math.floor(analysis.repoAgeDays / 30)} months`
+                  : `${analysis.repoAgeDays} days`,
+            accent: false,
+          },
+        ]
+      : []),
+    ...(analysis.binaryFileCount > 0
+      ? [
+          {
+            label: 'Binary Files',
+            value: analysis.binaryFileCount.toLocaleString(),
+            accent: false,
+          },
+        ]
+      : []),
   ];
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
       {cards.map((card) => (
-        <div
-          key={card.label}
-          className="p-5 rounded-xl border border-border bg-surface-alt"
-        >
+        <div key={card.label} className="p-5 rounded-xl border border-border bg-surface-alt">
           <div className="text-xs text-text-muted font-medium uppercase tracking-wider mb-2">
             {card.label}
           </div>
-          <div
-            className={`text-2xl font-bold ${
-              card.accent ? 'text-grade-c' : 'text-text'
-            }`}
-          >
+          <div className={`text-2xl font-bold ${card.accent ? 'text-grade-c' : 'text-text'}`}>
             {card.value}
           </div>
         </div>

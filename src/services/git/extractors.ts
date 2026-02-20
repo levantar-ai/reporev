@@ -13,38 +13,60 @@ import type {
 // ── Extension → Language map ──
 
 const EXT_LANG: Record<string, string> = {
-  ts: 'TypeScript', tsx: 'TypeScript',
-  js: 'JavaScript', jsx: 'JavaScript', mjs: 'JavaScript', cjs: 'JavaScript',
-  py: 'Python', pyw: 'Python',
+  ts: 'TypeScript',
+  tsx: 'TypeScript',
+  js: 'JavaScript',
+  jsx: 'JavaScript',
+  mjs: 'JavaScript',
+  cjs: 'JavaScript',
+  py: 'Python',
+  pyw: 'Python',
   rs: 'Rust',
   go: 'Go',
   java: 'Java',
-  kt: 'Kotlin', kts: 'Kotlin',
+  kt: 'Kotlin',
+  kts: 'Kotlin',
   swift: 'Swift',
   rb: 'Ruby',
   php: 'PHP',
   cs: 'C#',
-  cpp: 'C++', cc: 'C++', cxx: 'C++', hpp: 'C++',
-  c: 'C', h: 'C',
+  cpp: 'C++',
+  cc: 'C++',
+  cxx: 'C++',
+  hpp: 'C++',
+  c: 'C',
+  h: 'C',
   scala: 'Scala',
   hs: 'Haskell',
-  ex: 'Elixir', exs: 'Elixir',
+  ex: 'Elixir',
+  exs: 'Elixir',
   erl: 'Erlang',
-  clj: 'Clojure', cljs: 'Clojure',
+  clj: 'Clojure',
+  cljs: 'Clojure',
   dart: 'Dart',
   lua: 'Lua',
   r: 'R',
-  m: 'Objective-C', mm: 'Objective-C',
-  pl: 'Perl', pm: 'Perl',
-  sh: 'Shell', bash: 'Shell', zsh: 'Shell',
-  html: 'HTML', htm: 'HTML',
-  css: 'CSS', scss: 'CSS', sass: 'CSS', less: 'CSS',
+  m: 'Objective-C',
+  mm: 'Objective-C',
+  pl: 'Perl',
+  pm: 'Perl',
+  sh: 'Shell',
+  bash: 'Shell',
+  zsh: 'Shell',
+  html: 'HTML',
+  htm: 'HTML',
+  css: 'CSS',
+  scss: 'CSS',
+  sass: 'CSS',
+  less: 'CSS',
   vue: 'Vue',
   svelte: 'Svelte',
   sql: 'SQL',
-  md: 'Markdown', mdx: 'Markdown',
+  md: 'Markdown',
+  mdx: 'Markdown',
   json: 'JSON',
-  yaml: 'YAML', yml: 'YAML',
+  yaml: 'YAML',
+  yml: 'YAML',
   xml: 'XML',
   toml: 'TOML',
   zig: 'Zig',
@@ -88,15 +110,28 @@ export async function diffCommit(
   dir: string,
   oid: string,
   parentOid: string | null,
-): Promise<GitHubCommitDetailResponse['files'] & { stats: { additions: number; deletions: number; total: number } }> {
-  const files: { sha: string; filename: string; status: string; additions: number; deletions: number; changes: number }[] = [];
+): Promise<
+  GitHubCommitDetailResponse['files'] & {
+    stats: { additions: number; deletions: number; total: number };
+  }
+> {
+  const files: {
+    sha: string;
+    filename: string;
+    status: string;
+    additions: number;
+    deletions: number;
+    changes: number;
+  }[] = [];
 
   const trees = parentOid
     ? [git.TREE({ ref: parentOid }), git.TREE({ ref: oid })]
     : [git.TREE({ ref: oid })];
 
   await git.walk({
-    fs, dir, trees,
+    fs,
+    dir,
+    trees,
     map: async (filepath: string, entries: (WalkerEntry | null)[] | null) => {
       if (!entries) return;
       if (filepath === '.') return;
@@ -187,6 +222,102 @@ export async function diffCommit(
   });
 }
 
+// ── Fast diff: OID-only comparison, no content reading ──
+// Returns file list with status but estimates additions/deletions as 1 per changed file.
+// ~10x faster than full diffCommit since it never reads blob content.
+
+export async function diffCommitFast(
+  fs: FsClient,
+  dir: string,
+  oid: string,
+  parentOid: string | null,
+): Promise<
+  GitHubCommitDetailResponse['files'] & {
+    stats: { additions: number; deletions: number; total: number };
+  }
+> {
+  const files: {
+    sha: string;
+    filename: string;
+    status: string;
+    additions: number;
+    deletions: number;
+    changes: number;
+  }[] = [];
+
+  const trees = parentOid
+    ? [git.TREE({ ref: parentOid }), git.TREE({ ref: oid })]
+    : [git.TREE({ ref: oid })];
+
+  await git.walk({
+    fs,
+    dir,
+    trees,
+    map: async (filepath: string, entries: (WalkerEntry | null)[] | null) => {
+      if (!entries || filepath === '.') return;
+
+      if (parentOid) {
+        const [parentEntry, currentEntry] = entries;
+        const parentOidVal = parentEntry ? await parentEntry.oid() : null;
+        const currentOidVal = currentEntry ? await currentEntry.oid() : null;
+
+        if (parentOidVal === currentOidVal) return;
+
+        const parentType = parentEntry ? await parentEntry.type() : null;
+        const currentType = currentEntry ? await currentEntry.type() : null;
+        if (parentType === 'tree' || currentType === 'tree') return;
+
+        let status = 'modified';
+        let additions = 1;
+        let deletions = 1;
+
+        if (!parentEntry || parentOidVal === null) {
+          status = 'added';
+          deletions = 0;
+        } else if (!currentEntry || currentOidVal === null) {
+          status = 'removed';
+          additions = 0;
+        }
+
+        files.push({
+          sha: currentOidVal || parentOidVal || '',
+          filename: filepath,
+          status,
+          additions,
+          deletions,
+          changes: additions + deletions,
+        });
+      } else {
+        const [entry] = entries;
+        if (!entry) return;
+        const type = await entry.type();
+        if (type === 'tree') return;
+        const entryOid = await entry.oid();
+
+        files.push({
+          sha: entryOid || '',
+          filename: filepath,
+          status: 'added',
+          additions: 1,
+          deletions: 0,
+          changes: 1,
+        });
+      }
+    },
+  });
+
+  const totalAdditions = files.reduce((sum, f) => sum + f.additions, 0);
+  const totalDeletions = files.reduce((sum, f) => sum + f.deletions, 0);
+
+  return Object.assign(files, {
+    stats: {
+      additions: totalAdditions,
+      deletions: totalDeletions,
+      total: totalAdditions + totalDeletions,
+    },
+  });
+}
+
 function countLines(content: Uint8Array): number {
   // Quick check for binary content
   if (isBinary(content)) return 0;
@@ -208,7 +339,10 @@ function isBinary(content: Uint8Array): boolean {
   return false;
 }
 
-function countLineDiff(oldContent: Uint8Array, newContent: Uint8Array): { additions: number; deletions: number } {
+function countLineDiff(
+  oldContent: Uint8Array,
+  newContent: Uint8Array,
+): { additions: number; deletions: number } {
   if (isBinary(oldContent) || isBinary(newContent)) {
     return { additions: 0, deletions: 0 };
   }
@@ -298,11 +432,14 @@ export function computeWeeklyAggregates(
   // A "week" starts on Sunday, aligned to midnight UTC
   const weekMap = new Map<number, { days: number[]; additions: number; deletions: number }>();
   // Per-author tracking
-  const authorMap = new Map<string, {
-    name: string;
-    totalCommits: number;
-    weeks: Map<number, { a: number; d: number; c: number }>;
-  }>();
+  const authorMap = new Map<
+    string,
+    {
+      name: string;
+      totalCommits: number;
+      weeks: Map<number, { a: number; d: number; c: number }>;
+    }
+  >();
 
   for (const entry of entries) {
     const ts = entry.commit.author.timestamp;

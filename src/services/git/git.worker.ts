@@ -84,10 +84,10 @@ self.onmessage = async (e: MessageEvent<CloneMessage>) => {
 
     postProgress('extracting-commits', 50, `Found ${logEntries.length} commits`);
 
-    // 3. Diff sampled commits for details
+    // 3. Diff sampled commits for details (full content diffs for accurate line counts)
     postProgress('extracting-details', 52, 'Computing file diffs...');
 
-    const maxDetails = 200;
+    const maxDetails = 100;
     const indices = sampleIndices(logEntries.length, maxDetails);
     const commitDetails: GitStatsRawData['commitDetails'] = [];
     const diffStatsMap = new Map<string, { additions: number; deletions: number }>();
@@ -139,28 +139,73 @@ self.onmessage = async (e: MessageEvent<CloneMessage>) => {
 
       if (i % 10 === 0 || i === indices.length - 1) {
         const percent = 52 + Math.round((i / indices.length) * 25);
-        postProgress('extracting-details', percent, `Diffing commits... ${i + 1}/${indices.length}`);
+        postProgress(
+          'extracting-details',
+          percent,
+          `Diffing commits... ${i + 1}/${indices.length}`,
+        );
       }
     }
 
     // 4. Compute aggregate stats
     postProgress('computing-stats', 80, 'Computing statistics...');
 
-    // Get file list from HEAD tree (no checkout needed)
+    // Get file list + LOC count from HEAD tree (no checkout needed)
     const headOid = await git.resolveRef({ fs, dir: DIR, ref: 'HEAD' });
     const fileList: string[] = [];
+    let totalLinesOfCode = 0;
+    let binaryFileCount = 0;
+
     await git.walk({
-      fs, dir: DIR,
+      fs,
+      dir: DIR,
       trees: [git.TREE({ ref: headOid })],
       map: async (filepath, entries) => {
         if (!entries || filepath === '.') return;
         const [entry] = entries;
         if (!entry) return;
         const type = await entry.type();
-        if (type === 'blob') fileList.push(filepath);
+        if (type !== 'blob') return;
+
+        fileList.push(filepath);
+
+        // Count lines of code (skip binary files)
+        try {
+          const content = await entry.content();
+          if (content) {
+            const bytes = content as Uint8Array;
+            // Quick binary check: look for null bytes in first 8KB
+            const limit = Math.min(bytes.length, 8192);
+            let isBin = false;
+            for (let j = 0; j < limit; j++) {
+              if (bytes[j] === 0) {
+                isBin = true;
+                break;
+              }
+            }
+            if (isBin) {
+              binaryFileCount++;
+            } else {
+              let lines = 0;
+              for (let j = 0; j < bytes.length; j++) {
+                if (bytes[j] === 10) lines++;
+              }
+              if (bytes.length > 0 && bytes[bytes.length - 1] !== 10) lines++;
+              totalLinesOfCode += lines;
+            }
+          }
+        } catch {
+          // Skip files that can't be read
+        }
       },
     });
     const languages = computeLanguages(fileList);
+
+    postProgress(
+      'computing-stats',
+      83,
+      `${totalLinesOfCode.toLocaleString()} lines of code, ${binaryFileCount} binary files`,
+    );
 
     postProgress('computing-stats', 85, 'Building weekly aggregates...');
 
@@ -178,6 +223,8 @@ self.onmessage = async (e: MessageEvent<CloneMessage>) => {
       participation: null,
       punchCard: aggregates.punchCard,
       languages,
+      totalLinesOfCode,
+      binaryFileCount,
     };
 
     const resultMsg: ResultMessage = { type: 'result', data: rawData };

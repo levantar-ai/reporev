@@ -75,7 +75,7 @@ export interface GitHubCommitActivity {
 }
 
 export interface GitHubParticipation {
-  all: number[];   // 52 weeks
+  all: number[]; // 52 weeks
   owner: number[]; // 52 weeks
 }
 
@@ -171,8 +171,8 @@ export interface RepoGrowthPoint {
 }
 
 export interface PunchCardData {
-  day: number;    // 0=Sun .. 6=Sat
-  hour: number;   // 0-23
+  day: number; // 0=Sun .. 6=Sat
+  hour: number; // 0-23
   commits: number;
 }
 
@@ -199,12 +199,16 @@ export interface GitStatsRawData {
   participation: GitHubParticipation | null;
   punchCard: GitHubPunchCard[] | null;
   languages: GitHubLanguages | null;
+  totalLinesOfCode?: number;
+  binaryFileCount?: number;
 }
 
 export interface GitStatsAnalysis {
   owner: string;
   repo: string;
   totalCommits: number;
+  totalLinesOfCode: number;
+  binaryFileCount: number;
   contributors: ContributorSummary[];
   busFactor: BusFactorData;
   fileChurn: FileChurnEntry[];
@@ -216,6 +220,14 @@ export interface GitStatsAnalysis {
   languages: LanguageEntry[];
   commitActivity: GitHubCommitActivity[] | null;
   codeFrequency: GitHubCodeFrequency[] | null;
+  commitsByWeekday: number[];
+  commitsByMonth: number[];
+  commitsByYear: { year: number; count: number }[];
+  commitsByExtension: { ext: string; count: number }[];
+  linesByExtension: { ext: string; additions: number; deletions: number }[];
+  fileCoupling: { file1: string; file2: string; cochanges: number }[];
+  firstCommitDate: string;
+  repoAgeDays: number;
 }
 
 // ── Pipeline state ──

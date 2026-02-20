@@ -24,12 +24,12 @@ function mapToRepoInfo(raw: GitHubRepoResponse): RepoInfo {
 export async function fetchOrgRepos(
   org: string,
   token?: string,
-  onRateLimit?: (info: RateLimitInfo) => void
+  onRateLimit?: (info: RateLimitInfo) => void,
 ): Promise<RepoInfo[]> {
   const raw = await githubFetch<GitHubRepoResponse[]>(
     `/orgs/${encodeURIComponent(org)}/repos?per_page=100&sort=updated`,
     token,
-    onRateLimit
+    onRateLimit,
   );
   return raw.map(mapToRepoInfo);
 }
@@ -37,12 +37,67 @@ export async function fetchOrgRepos(
 export async function fetchUserRepos(
   username: string,
   token?: string,
-  onRateLimit?: (info: RateLimitInfo) => void
+  onRateLimit?: (info: RateLimitInfo) => void,
 ): Promise<RepoInfo[]> {
   const raw = await githubFetch<GitHubRepoResponse[]>(
     `/users/${encodeURIComponent(username)}/repos?per_page=30&sort=updated&type=owner`,
     token,
-    onRateLimit
+    onRateLimit,
   );
   return raw.map(mapToRepoInfo);
+}
+
+export async function fetchMyRepos(
+  token: string,
+  onRateLimit?: (info: RateLimitInfo) => void,
+): Promise<RepoInfo[]> {
+  // Fetch all repos the token can access — works with both classic and fine-grained tokens.
+  // Paginate to get everything (GitHub caps at 100 per page).
+  const allRaw: GitHubRepoResponse[] = [];
+  let page = 1;
+  const maxPages = 5; // Cap at 500 repos
+
+  while (page <= maxPages) {
+    const batch = await githubFetch<GitHubRepoResponse[]>(
+      `/user/repos?per_page=100&sort=updated&page=${page}`,
+      token,
+      onRateLimit,
+    );
+    allRaw.push(...batch);
+    if (batch.length < 100) break;
+    page++;
+  }
+
+  // Discover orgs from returned repos and backfill full org listings
+  const orgs = new Set<string>();
+  for (const r of allRaw) {
+    if (r.owner.type === 'Organization') {
+      orgs.add(r.owner.login);
+    }
+  }
+
+  if (orgs.size > 0) {
+    const orgResults = await Promise.all(
+      [...orgs].map((org) =>
+        githubFetch<GitHubRepoResponse[]>(
+          `/orgs/${encodeURIComponent(org)}/repos?per_page=100&sort=updated`,
+          token,
+          onRateLimit,
+        ).catch(() => [] as GitHubRepoResponse[]),
+      ),
+    );
+    allRaw.push(...orgResults.flat());
+  }
+
+  // Deduplicate by full_name
+  const seen = new Set<string>();
+  const unique: GitHubRepoResponse[] = [];
+  for (const r of allRaw) {
+    if (!seen.has(r.full_name)) {
+      seen.add(r.full_name);
+      unique.push(r);
+    }
+  }
+
+  return unique.map(mapToRepoInfo);
 }
