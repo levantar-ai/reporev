@@ -49,7 +49,7 @@ export function analyzeSecurity(files: FileContent[], tree: TreeEntry[]): Catego
   const suspiciousFiles = tree.some(
     (e) =>
       e.type === 'blob' &&
-      (/\.env$/.test(e.path) || /credentials/i.test(e.path) || /secret/i.test(e.path)),
+      (e.path.endsWith('.env') || /credentials/i.test(e.path) || /secret/i.test(e.path)),
   );
   signals.push({ name: 'No exposed secret files', found: !suspiciousFiles });
 

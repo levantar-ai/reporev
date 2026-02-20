@@ -5,7 +5,7 @@ import { withAppContext } from '../../stories/decorators';
 const meta = {
   title: 'Settings/SettingsPanel',
   component: SettingsPanel,
-  decorators: [withAppContext({ settingsOpen: true })],
+  decorators: [withAppContext()],
   parameters: { layout: 'fullscreen' },
 } satisfies Meta<typeof SettingsPanel>;
 

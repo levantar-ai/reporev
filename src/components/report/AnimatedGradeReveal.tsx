@@ -20,7 +20,9 @@ export function AnimatedGradeReveal({ grade, score, onComplete }: Props) {
 
   // Check for reduced motion preference
   const prefersReducedMotion =
-    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    typeof globalThis !== 'undefined' &&
+    'matchMedia' in globalThis &&
+    globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* eslint-disable react-hooks/set-state-in-effect -- animation driven by requestAnimationFrame */
   useEffect(() => {

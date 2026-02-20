@@ -22,10 +22,10 @@ function CategoryDoc({
   description,
   signals,
 }: {
-  name: string;
-  weight: string;
-  description: string;
-  signals: string[];
+  readonly name: string;
+  readonly weight: string;
+  readonly description: string;
+  readonly signals: string[];
 }) {
   return (
     <div className="p-5 rounded-xl bg-surface-alt border border-border">

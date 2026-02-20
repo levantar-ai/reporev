@@ -4,6 +4,7 @@ import {
   useReducer,
   useEffect,
   useCallback,
+  useMemo,
   type ReactNode,
 } from 'react';
 import type { AppSettings, RateLimitInfo, RecentRepo } from '../types';
@@ -144,9 +145,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     saveRecentRepo(repo).catch(() => {});
   }, []);
 
-  return (
-    <AppContext.Provider value={{ state, dispatch, addRecentRepo }}>{children}</AppContext.Provider>
+  const contextValue = useMemo(
+    () => ({ state, dispatch, addRecentRepo }),
+    [state, dispatch, addRecentRepo],
   );
+
+  return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

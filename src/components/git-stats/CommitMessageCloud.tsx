@@ -57,7 +57,7 @@ export function CommitMessageCloud({ wordFrequency }: Props) {
         )
         .padding(4)
         .rotate(() => (Math.random() > 0.7 ? 90 : 0))
-        .fontSize((d) => d.size!)
+        .fontSize((d) => d.size ?? 0)
         .on('end', (placedWords) => {
           const g = sel.append('g').attr('transform', `translate(${width / 2},${height / 2})`);
 
@@ -72,7 +72,7 @@ export function CommitMessageCloud({ wordFrequency }: Props) {
             .style('opacity', '0.85')
             .attr('text-anchor', 'middle')
             .attr('transform', (d) => `translate(${d.x},${d.y})rotate(${d.rotate})`)
-            .text((d) => d.text!);
+            .text((d) => d.text ?? '');
         });
 
       layout.start();

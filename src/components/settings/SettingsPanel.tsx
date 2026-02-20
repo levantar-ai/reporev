@@ -261,9 +261,8 @@ export function SettingsPanel() {
 
           {/* Rate limit info */}
           {state.rateLimit && (
-            <div
-              className="p-5 rounded-xl bg-surface-alt border border-border"
-              role="status"
+            <output
+              className="block p-5 rounded-xl bg-surface-alt border border-border"
               aria-label="API rate limit information"
             >
               <h3 className="text-sm font-semibold text-text mb-2">API Rate Limit</h3>
@@ -291,7 +290,7 @@ export function SettingsPanel() {
                   req/hr.
                 </p>
               )}
-            </div>
+            </output>
           )}
         </div>
       </div>

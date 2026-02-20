@@ -56,7 +56,7 @@ export const Analyzing: Story = {
   },
 };
 
-export const Error: Story = {
+export const ErrorState: Story = {
   args: {
     state: {
       step: 'error',

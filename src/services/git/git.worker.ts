@@ -11,6 +11,7 @@ import {
   computeLanguages,
   computeWeeklyAggregates,
   sampleIndices,
+  countLinesOfCode,
 } from './extractors';
 
 export interface CloneMessage {
@@ -169,29 +170,14 @@ self.onmessage = async (e: MessageEvent<CloneMessage>) => {
 
         fileList.push(filepath);
 
-        // Count lines of code (skip binary files)
         try {
           const content = await entry.content();
           if (content) {
-            const bytes = content as Uint8Array;
-            // Quick binary check: look for null bytes in first 8KB
-            const limit = Math.min(bytes.length, 8192);
-            let isBin = false;
-            for (let j = 0; j < limit; j++) {
-              if (bytes[j] === 0) {
-                isBin = true;
-                break;
-              }
-            }
-            if (isBin) {
+            const result = countLinesOfCode(content);
+            if (result.binary) {
               binaryFileCount++;
             } else {
-              let lines = 0;
-              for (let j = 0; j < bytes.length; j++) {
-                if (bytes[j] === 10) lines++;
-              }
-              if (bytes.length > 0 && bytes[bytes.length - 1] !== 10) lines++;
-              totalLinesOfCode += lines;
+              totalLinesOfCode += result.lines;
             }
           }
         } catch {

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { Spinner } from '../common/Spinner';
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
 export function RepoInput({ onSubmit, isLoading }: Props) {
   const [value, setValue] = useState('');
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (value.trim() && !isLoading) {
       onSubmit(value.trim());

@@ -73,7 +73,7 @@ function evaluateScoreRule(rule: PolicyRule, score: number, label: string): Poli
       passed = score === threshold;
       break;
     default:
-      passed = false;
+      break;
   }
 
   return {

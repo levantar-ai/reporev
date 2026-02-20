@@ -237,11 +237,9 @@ export function PolicyPage({ onNavigate }: Props) {
   const abortRef = useRef<AbortController | null>(null);
 
   // ── Load saved policies from localStorage on mount ─────────────────────
-  /* eslint-disable react-hooks/set-state-in-effect -- load from localStorage on mount */
   useEffect(() => {
     setSavedPolicies(loadPolicySets());
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   // ── All available policies (saved + presets + defaults from engine) ─────
   const allPolicies = useMemo(() => {
@@ -392,14 +390,14 @@ export function PolicyPage({ onNavigate }: Props) {
               if (updated.operator === 'exists' || updated.operator === 'not-exists') {
                 updated.operator = '>=';
               }
-              if (updated.value === undefined) updated.value = 60;
+              updated.value ??= 60;
             } else if (updates.type === 'category-score') {
               delete updated.signal;
               if (!updated.category) updated.category = 'documentation';
               if (updated.operator === 'exists' || updated.operator === 'not-exists') {
                 updated.operator = '>=';
               }
-              if (updated.value === undefined) updated.value = 60;
+              updated.value ??= 60;
             } else if (updates.type === 'signal') {
               delete updated.category;
               delete updated.value;
@@ -684,10 +682,14 @@ export function PolicyPage({ onNavigate }: Props) {
             {/* Policy name & description */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                <label
+                  htmlFor="policy-name"
+                  className="block text-sm font-medium text-text-secondary mb-1.5"
+                >
                   Policy Name
                 </label>
                 <input
+                  id="policy-name"
                   type="text"
                   value={editingPolicy.name}
                   onChange={(e) => updatePolicyField('name', e.target.value)}
@@ -696,10 +698,14 @@ export function PolicyPage({ onNavigate }: Props) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                <label
+                  htmlFor="policy-description"
+                  className="block text-sm font-medium text-text-secondary mb-1.5"
+                >
                   Description
                 </label>
                 <input
+                  id="policy-description"
                   type="text"
                   value={editingPolicy.description}
                   onChange={(e) => updatePolicyField('description', e.target.value)}
@@ -869,17 +875,24 @@ export function PolicyPage({ onNavigate }: Props) {
                       {/* Value (if score-based) */}
                       {(rule.type === 'overall-score' || rule.type === 'category-score') && (
                         <div>
-                          <label className="block text-xs text-text-muted mb-1">
+                          <label
+                            htmlFor={`rule-value-${rule.id}`}
+                            className="block text-xs text-text-muted mb-1"
+                          >
                             Value (0-100)
                           </label>
                           <input
+                            id={`rule-value-${rule.id}`}
                             type="number"
                             min={0}
                             max={100}
                             value={rule.value ?? 60}
                             onChange={(e) =>
                               updateRule(rule.id, {
-                                value: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)),
+                                value: Math.min(
+                                  100,
+                                  Math.max(0, Number.parseInt(e.target.value) || 0),
+                                ),
                               })
                             }
                             className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface-alt text-text focus:outline-none focus:ring-2 focus:ring-neon/50 focus:border-neon/50 transition-all"
@@ -1091,7 +1104,10 @@ export function PolicyPage({ onNavigate }: Props) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               {/* Repo URL input */}
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                <label
+                  htmlFor="eval-repo-url"
+                  className="block text-sm font-medium text-text-secondary mb-1.5"
+                >
                   GitHub Repository
                 </label>
                 <div className="relative">
@@ -1111,6 +1127,7 @@ export function PolicyPage({ onNavigate }: Props) {
                     </svg>
                   </div>
                   <input
+                    id="eval-repo-url"
                     type="text"
                     value={repoUrl}
                     onChange={(e) => setRepoUrl(e.target.value)}
@@ -1123,10 +1140,14 @@ export function PolicyPage({ onNavigate }: Props) {
 
               {/* Policy selector */}
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                <label
+                  htmlFor="eval-policy-select"
+                  className="block text-sm font-medium text-text-secondary mb-1.5"
+                >
                   Policy to Evaluate
                 </label>
                 <select
+                  id="eval-policy-select"
                   value={selectedPolicyId}
                   onChange={(e) => setSelectedPolicyId(e.target.value)}
                   className="w-full px-4 py-2.5 text-sm rounded-xl border border-border bg-surface text-text focus:outline-none focus:ring-2 focus:ring-neon/50 focus:border-neon/50 transition-all"

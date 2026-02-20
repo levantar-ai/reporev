@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import type { FileChurnEntry } from '../../types/gitStats';
 
 interface Props {
-  fileChurn: FileChurnEntry[];
+  readonly fileChurn: FileChurnEntry[];
 }
 
 type SortKey = 'filename' | 'changeCount' | 'additions' | 'deletions' | 'contributors';

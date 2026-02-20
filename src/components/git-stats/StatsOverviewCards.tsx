@@ -79,12 +79,13 @@ export function StatsOverviewCards({ analysis }: Props) {
       ? [
           {
             label: 'Repo Age',
-            value:
-              analysis.repoAgeDays >= 365
-                ? `${Math.floor(analysis.repoAgeDays / 365)}y ${Math.floor((analysis.repoAgeDays % 365) / 30)}m`
-                : analysis.repoAgeDays >= 30
-                  ? `${Math.floor(analysis.repoAgeDays / 30)} months`
-                  : `${analysis.repoAgeDays} days`,
+            value: (() => {
+              if (analysis.repoAgeDays >= 365)
+                return `${Math.floor(analysis.repoAgeDays / 365)}y ${Math.floor((analysis.repoAgeDays % 365) / 30)}m`;
+              if (analysis.repoAgeDays >= 30)
+                return `${Math.floor(analysis.repoAgeDays / 30)} months`;
+              return `${analysis.repoAgeDays} days`;
+            })(),
             accent: false,
           },
         ]

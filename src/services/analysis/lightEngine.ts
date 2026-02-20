@@ -181,7 +181,7 @@ function analyzeSecurityLight(
   const suspiciousFiles = tree.some(
     (e) =>
       e.type === 'blob' &&
-      (/\.env$/.test(e.path) || /credentials/i.test(e.path) || /secret/i.test(e.path)),
+      (e.path.endsWith('.env') || /credentials/i.test(e.path) || /secret/i.test(e.path)),
   );
   signals.push({ name: 'No exposed secret files', found: !suspiciousFiles });
 
@@ -421,12 +421,11 @@ function analyzeCodeQualityLight(
   signals.push({
     name: 'Tests present',
     found: hasTests,
-    details:
-      testFileCount > 0
-        ? `${testFileCount} test files`
-        : testDirs.length > 0
-          ? testDirs.join(', ')
-          : undefined,
+    details: (() => {
+      if (testFileCount > 0) return `${testFileCount} test files`;
+      if (testDirs.length > 0) return testDirs.join(', ');
+      return undefined;
+    })(),
   });
 
   const hasEditorConfig = treePaths.has('.editorconfig');
@@ -451,7 +450,7 @@ function analyzeCodeQualityLight(
 
 // ── License (tree-only) ──
 
-const PERMISSIVE_LICENSES = [
+const PERMISSIVE_LICENSES = new Set([
   'MIT',
   'Apache-2.0',
   'BSD-2-Clause',
@@ -459,7 +458,7 @@ const PERMISSIVE_LICENSES = [
   'ISC',
   'Unlicense',
   'CC0-1.0',
-];
+]);
 const COPYLEFT_LICENSES = ['GPL-2.0', 'GPL-3.0', 'AGPL-3.0', 'LGPL-2.1', 'LGPL-3.0', 'MPL-2.0'];
 
 function analyzeLicenseLight(
@@ -483,18 +482,18 @@ function analyzeLicenseLight(
   const hasDetected = !!spdxId && spdxId !== 'NOASSERTION';
   signals.push({ name: 'SPDX license detected', found: hasDetected, details: spdxId || undefined });
 
-  const isPermissive = !!spdxId && PERMISSIVE_LICENSES.includes(spdxId);
+  const isPermissive = !!spdxId && PERMISSIVE_LICENSES.has(spdxId);
   signals.push({
     name: 'Permissive license',
     found: isPermissive,
-    details: isPermissive ? spdxId! : undefined,
+    details: isPermissive ? spdxId : undefined,
   });
 
   const isCopyleft = !!spdxId && COPYLEFT_LICENSES.includes(spdxId);
   signals.push({
     name: 'Copyleft license',
     found: isCopyleft,
-    details: isCopyleft ? spdxId! : undefined,
+    details: isCopyleft ? spdxId : undefined,
   });
 
   let score = 0;

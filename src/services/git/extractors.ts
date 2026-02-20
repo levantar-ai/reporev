@@ -159,21 +159,21 @@ export async function diffCommit(
           status = 'added';
           const content = currentEntry ? await currentEntry.content() : null;
           if (content) {
-            additions = countLines(content as Uint8Array);
+            additions = countLines(content);
           }
         } else if (!currentEntry || currentOidVal === null) {
           // Deleted file
           status = 'removed';
           const content = parentEntry ? await parentEntry.content() : null;
           if (content) {
-            deletions = countLines(content as Uint8Array);
+            deletions = countLines(content);
           }
         } else {
           // Modified file - count line differences
           const oldContent = await parentEntry.content();
           const newContent = await currentEntry.content();
           if (oldContent && newContent) {
-            const diff = countLineDiff(oldContent as Uint8Array, newContent as Uint8Array);
+            const diff = countLineDiff(oldContent, newContent);
             additions = diff.additions;
             deletions = diff.deletions;
           }
@@ -195,7 +195,7 @@ export async function diffCommit(
         if (type === 'tree') return;
 
         const content = await entry.content();
-        const additions = content ? countLines(content as Uint8Array) : 0;
+        const additions = content ? countLines(content) : 0;
         const entryOid = await entry.oid();
 
         files.push({
@@ -226,6 +226,71 @@ export async function diffCommit(
 // Returns file list with status but estimates additions/deletions as 1 per changed file.
 // ~10x faster than full diffCommit since it never reads blob content.
 
+interface DiffFile {
+  sha: string;
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  changes: number;
+}
+
+async function diffTwoTreesFast(
+  entries: (WalkerEntry | null)[],
+  filepath: string,
+): Promise<DiffFile | null> {
+  const [parentEntry, currentEntry] = entries;
+  const parentOidVal = parentEntry ? await parentEntry.oid() : null;
+  const currentOidVal = currentEntry ? await currentEntry.oid() : null;
+
+  if (parentOidVal === currentOidVal) return null;
+
+  const parentType = parentEntry ? await parentEntry.type() : null;
+  const currentType = currentEntry ? await currentEntry.type() : null;
+  if (parentType === 'tree' || currentType === 'tree') return null;
+
+  let status = 'modified';
+  let additions = 1;
+  let deletions = 1;
+
+  if (!parentEntry || parentOidVal === null) {
+    status = 'added';
+    deletions = 0;
+  } else if (!currentEntry || currentOidVal === null) {
+    status = 'removed';
+    additions = 0;
+  }
+
+  return {
+    sha: currentOidVal || parentOidVal || '',
+    filename: filepath,
+    status,
+    additions,
+    deletions,
+    changes: additions + deletions,
+  };
+}
+
+async function diffSingleTreeFast(
+  entries: (WalkerEntry | null)[],
+  filepath: string,
+): Promise<DiffFile | null> {
+  const [entry] = entries;
+  if (!entry) return null;
+  const type = await entry.type();
+  if (type === 'tree') return null;
+  const entryOid = await entry.oid();
+
+  return {
+    sha: entryOid || '',
+    filename: filepath,
+    status: 'added',
+    additions: 1,
+    deletions: 0,
+    changes: 1,
+  };
+}
+
 export async function diffCommitFast(
   fs: FsClient,
   dir: string,
@@ -236,18 +301,13 @@ export async function diffCommitFast(
     stats: { additions: number; deletions: number; total: number };
   }
 > {
-  const files: {
-    sha: string;
-    filename: string;
-    status: string;
-    additions: number;
-    deletions: number;
-    changes: number;
-  }[] = [];
+  const files: DiffFile[] = [];
 
   const trees = parentOid
     ? [git.TREE({ ref: parentOid }), git.TREE({ ref: oid })]
     : [git.TREE({ ref: oid })];
+
+  const diffFn = parentOid ? diffTwoTreesFast : diffSingleTreeFast;
 
   await git.walk({
     fs,
@@ -255,54 +315,8 @@ export async function diffCommitFast(
     trees,
     map: async (filepath: string, entries: (WalkerEntry | null)[] | null) => {
       if (!entries || filepath === '.') return;
-
-      if (parentOid) {
-        const [parentEntry, currentEntry] = entries;
-        const parentOidVal = parentEntry ? await parentEntry.oid() : null;
-        const currentOidVal = currentEntry ? await currentEntry.oid() : null;
-
-        if (parentOidVal === currentOidVal) return;
-
-        const parentType = parentEntry ? await parentEntry.type() : null;
-        const currentType = currentEntry ? await currentEntry.type() : null;
-        if (parentType === 'tree' || currentType === 'tree') return;
-
-        let status = 'modified';
-        let additions = 1;
-        let deletions = 1;
-
-        if (!parentEntry || parentOidVal === null) {
-          status = 'added';
-          deletions = 0;
-        } else if (!currentEntry || currentOidVal === null) {
-          status = 'removed';
-          additions = 0;
-        }
-
-        files.push({
-          sha: currentOidVal || parentOidVal || '',
-          filename: filepath,
-          status,
-          additions,
-          deletions,
-          changes: additions + deletions,
-        });
-      } else {
-        const [entry] = entries;
-        if (!entry) return;
-        const type = await entry.type();
-        if (type === 'tree') return;
-        const entryOid = await entry.oid();
-
-        files.push({
-          sha: entryOid || '',
-          filename: filepath,
-          status: 'added',
-          additions: 1,
-          deletions: 0,
-          changes: 1,
-        });
-      }
+      const result = await diffFn(entries, filepath);
+      if (result) files.push(result);
     },
   });
 
@@ -330,13 +344,27 @@ function countLines(content: Uint8Array): number {
   return count;
 }
 
-function isBinary(content: Uint8Array): boolean {
+export function isBinary(content: Uint8Array): boolean {
   // Check first 8KB for null bytes
   const limit = Math.min(content.length, 8192);
   for (let i = 0; i < limit; i++) {
     if (content[i] === 0) return true;
   }
   return false;
+}
+
+/**
+ * Count lines of code in a Uint8Array, returning 0 for binary content.
+ * Exported for use in git.worker.ts to reduce cognitive complexity.
+ */
+export function countLinesOfCode(content: Uint8Array): { lines: number; binary: boolean } {
+  if (isBinary(content)) return { lines: 0, binary: true };
+  let lines = 0;
+  for (const byte of content) {
+    if (byte === 10) lines++;
+  }
+  if (content.length > 0 && content.at(-1) !== 10) lines++;
+  return { lines, binary: false };
 }
 
 function countLineDiff(

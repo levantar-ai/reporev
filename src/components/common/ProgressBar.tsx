@@ -29,7 +29,7 @@ export function ProgressBar({ step, progress, filesFetched, filesTotal }: Props)
   const roundedProgress = Math.round(progress);
 
   return (
-    <div className="w-full max-w-2xl mx-auto mt-8" role="status" aria-live="polite">
+    <output className="block w-full max-w-2xl mx-auto mt-8" aria-live="polite">
       <div className="flex justify-between text-sm text-text-secondary mb-2">
         <span>
           {label}
@@ -50,6 +50,6 @@ export function ProgressBar({ step, progress, filesFetched, filesTotal }: Props)
           aria-label={`${label}${fileProgress} ${roundedProgress}% complete`}
         />
       </div>
-    </div>
+    </output>
   );
 }

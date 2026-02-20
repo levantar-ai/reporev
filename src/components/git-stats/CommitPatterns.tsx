@@ -59,6 +59,13 @@ export function CommitPatterns({ commitMessages }: Props) {
 
   const stats = commitMessages;
 
+  const conventionalColor =
+    stats.conventionalPercentage >= 50
+      ? 'text-grade-a'
+      : stats.conventionalPercentage >= 20
+        ? 'text-grade-c'
+        : 'text-text-muted';
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Stat cards */}
@@ -94,9 +101,7 @@ export function CommitPatterns({ commitMessages }: Props) {
             <div className="text-xs text-text-muted uppercase tracking-wider mb-1">
               Conventional
             </div>
-            <div
-              className={`text-xl font-bold ${stats.conventionalPercentage >= 50 ? 'text-grade-a' : stats.conventionalPercentage >= 20 ? 'text-grade-c' : 'text-text-muted'}`}
-            >
+            <div className={`text-xl font-bold ${conventionalColor}`}>
               {stats.conventionalPercentage}%
             </div>
             <div className="text-xs text-text-muted mt-0.5">of commits</div>

@@ -521,7 +521,7 @@ function buildFileCoupling(
 
   for (const detail of raw.commitDetails) {
     if (!detail.files || detail.files.length < 2 || detail.files.length > 50) continue;
-    const filenames = detail.files.map((f) => f.filename).sort();
+    const filenames = detail.files.map((f) => f.filename).sort((a, b) => a.localeCompare(b));
     // Only look at first 20 files per commit to limit computation
     const limited = filenames.slice(0, 20);
     for (let i = 0; i < limited.length; i++) {

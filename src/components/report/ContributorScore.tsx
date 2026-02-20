@@ -18,14 +18,16 @@ export function ContributorScore({ data }: Props) {
 
   const passedCount = data.readinessChecklist.filter((c) => c.passed).length;
   const totalCount = data.readinessChecklist.length;
-  const ratingLabel =
-    data.score >= 80
-      ? 'Excellent'
-      : data.score >= 60
-        ? 'Good'
-        : data.score >= 40
-          ? 'Fair'
-          : 'Needs Work';
+  let ratingLabel: string;
+  if (data.score >= 80) {
+    ratingLabel = 'Excellent';
+  } else if (data.score >= 60) {
+    ratingLabel = 'Good';
+  } else if (data.score >= 40) {
+    ratingLabel = 'Fair';
+  } else {
+    ratingLabel = 'Needs Work';
+  }
 
   return (
     <div className="rounded-xl border border-border bg-surface-alt p-6">

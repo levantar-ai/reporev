@@ -19,7 +19,7 @@ export async function saveRecentRepo(repo: RecentRepo): Promise<void> {
 
   // Trim to 10 most recent
   const all = await db.getAll(STORE_RECENT);
-  const sorted = all.sort(
+  const sorted = [...all].sort(
     (a, b) => new Date(b.analyzedAt).getTime() - new Date(a.analyzedAt).getTime(),
   );
   for (const old of sorted.slice(10)) {
@@ -30,7 +30,7 @@ export async function saveRecentRepo(repo: RecentRepo): Promise<void> {
 export async function loadRecentRepos(): Promise<RecentRepo[]> {
   const db = await getDb();
   const all = await db.getAll(STORE_RECENT);
-  return all
+  return [...all]
     .sort((a, b) => new Date(b.analyzedAt).getTime() - new Date(a.analyzedAt).getTime())
     .map(({ key: _key, ...rest }) => rest); // eslint-disable-line @typescript-eslint/no-unused-vars
 }

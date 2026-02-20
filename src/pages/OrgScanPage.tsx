@@ -528,6 +528,54 @@ const initialScanState: ScanState = {
   error: null,
 };
 
+// ── Sort header helper component (extracted outside parent to avoid re-creation) ──
+
+function SortHeader({
+  field,
+  label,
+  className = '',
+  sortField,
+  sortDir,
+  onToggleSort,
+}: {
+  field: SortField;
+  label: string;
+  className?: string;
+  sortField: SortField;
+  sortDir: SortDir;
+  onToggleSort: (field: SortField) => void;
+}) {
+  return (
+    <th
+      className={`py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-text-secondary cursor-pointer select-none hover:text-neon transition-colors whitespace-nowrap ${className}`}
+      onClick={() => onToggleSort(field)}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {sortField === field && (
+          <svg className="h-3 w-3 text-neon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {sortDir === 'desc' ? (
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M19 9l-7 7-7-7"
+              />
+            ) : (
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M5 15l7-7 7 7"
+              />
+            )}
+          </svg>
+        )}
+      </span>
+    </th>
+  );
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
@@ -825,46 +873,6 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
     URL.revokeObjectURL(url);
   }, [scan.repos, scan.orgName, sortedRepos]);
 
-  // ── Render: Sort header helper ───────────────────────────────────────────
-
-  const SortHeader = ({
-    field,
-    label,
-    className = '',
-  }: {
-    field: SortField;
-    label: string;
-    className?: string;
-  }) => (
-    <th
-      className={`py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-text-secondary cursor-pointer select-none hover:text-neon transition-colors whitespace-nowrap ${className}`}
-      onClick={() => toggleSort(field)}
-    >
-      <span className="inline-flex items-center gap-1">
-        {label}
-        {sortField === field && (
-          <svg className="h-3 w-3 text-neon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            {sortDir === 'desc' ? (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2.5}
-                d="M19 9l-7 7-7-7"
-              />
-            ) : (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2.5}
-                d="M5 15l7-7 7 7"
-              />
-            )}
-          </svg>
-        )}
-      </span>
-    </th>
-  );
-
   // ── Progress percentage ──────────────────────────────────────────────────
 
   const progress =
@@ -1066,20 +1074,18 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
                     const count = summaryStats.distribution[g];
                     const maxCount = Math.max(1, ...Object.values(summaryStats.distribution));
                     const pct = (count / maxCount) * 100;
+                    const gradeBarBgMap: Record<LetterGrade, string> = {
+                      A: 'bg-grade-a',
+                      B: 'bg-grade-b',
+                      C: 'bg-grade-c',
+                      D: 'bg-grade-d',
+                      F: 'bg-grade-f',
+                    };
+                    const gradeBarBg = gradeBarBgMap[g];
                     return (
                       <div key={g} className="flex-1 flex flex-col items-center gap-1">
                         <div
-                          className={`w-full rounded-t-sm transition-all duration-500 ${
-                            g === 'A'
-                              ? 'bg-grade-a'
-                              : g === 'B'
-                                ? 'bg-grade-b'
-                                : g === 'C'
-                                  ? 'bg-grade-c'
-                                  : g === 'D'
-                                    ? 'bg-grade-d'
-                                    : 'bg-grade-f'
-                          }`}
+                          className={`w-full rounded-t-sm transition-all duration-500 ${gradeBarBg}`}
                           style={{ height: `${Math.max(4, pct)}%`, opacity: count > 0 ? 1 : 0.2 }}
                         />
                         <div className="flex flex-col items-center">
@@ -1099,17 +1105,15 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
                 Category Averages Across Organization
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
-                {(Object.entries(summaryStats.catAverages) as [string, number][]).map(
-                  ([key, avg]) => {
-                    const label = CATEGORY_LABELS[key as CategoryKey] || key;
-                    return (
-                      <div key={key} className="text-center">
-                        <div className={`text-2xl font-bold ${scoreColorClass(avg)}`}>{avg}</div>
-                        <div className="text-xs text-text-muted mt-1 leading-tight">{label}</div>
-                      </div>
-                    );
-                  },
-                )}
+                {Object.entries(summaryStats.catAverages).map(([key, avg]) => {
+                  const label = CATEGORY_LABELS[key as CategoryKey] || key;
+                  return (
+                    <div key={key} className="text-center">
+                      <div className={`text-2xl font-bold ${scoreColorClass(avg)}`}>{avg}</div>
+                      <div className="text-xs text-text-muted mt-1 leading-tight">{label}</div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -1123,16 +1127,73 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
                         field="name"
                         label="Repository"
                         className="min-w-[180px] sticky left-0 bg-surface-alt z-10"
+                        sortField={sortField}
+                        sortDir={sortDir}
+                        onToggleSort={toggleSort}
                       />
-                      <SortHeader field="grade" label="Grade" />
-                      <SortHeader field="overall" label="Score" />
-                      <SortHeader field="documentation" label="Docs" />
-                      <SortHeader field="security" label="Security" />
-                      <SortHeader field="cicd" label="CI/CD" />
-                      <SortHeader field="dependencies" label="Deps" />
-                      <SortHeader field="codeQuality" label="Quality" />
-                      <SortHeader field="license" label="License" />
-                      <SortHeader field="community" label="Community" />
+                      <SortHeader
+                        field="grade"
+                        label="Grade"
+                        sortField={sortField}
+                        sortDir={sortDir}
+                        onToggleSort={toggleSort}
+                      />
+                      <SortHeader
+                        field="overall"
+                        label="Score"
+                        sortField={sortField}
+                        sortDir={sortDir}
+                        onToggleSort={toggleSort}
+                      />
+                      <SortHeader
+                        field="documentation"
+                        label="Docs"
+                        sortField={sortField}
+                        sortDir={sortDir}
+                        onToggleSort={toggleSort}
+                      />
+                      <SortHeader
+                        field="security"
+                        label="Security"
+                        sortField={sortField}
+                        sortDir={sortDir}
+                        onToggleSort={toggleSort}
+                      />
+                      <SortHeader
+                        field="cicd"
+                        label="CI/CD"
+                        sortField={sortField}
+                        sortDir={sortDir}
+                        onToggleSort={toggleSort}
+                      />
+                      <SortHeader
+                        field="dependencies"
+                        label="Deps"
+                        sortField={sortField}
+                        sortDir={sortDir}
+                        onToggleSort={toggleSort}
+                      />
+                      <SortHeader
+                        field="codeQuality"
+                        label="Quality"
+                        sortField={sortField}
+                        sortDir={sortDir}
+                        onToggleSort={toggleSort}
+                      />
+                      <SortHeader
+                        field="license"
+                        label="License"
+                        sortField={sortField}
+                        sortDir={sortDir}
+                        onToggleSort={toggleSort}
+                      />
+                      <SortHeader
+                        field="community"
+                        label="Community"
+                        sortField={sortField}
+                        sortDir={sortDir}
+                        onToggleSort={toggleSort}
+                      />
                     </tr>
                   </thead>
                   <tbody>

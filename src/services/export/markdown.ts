@@ -27,16 +27,12 @@ export function reportToMarkdown(report: AnalysisReport): string {
   lines.push('| Category | Score | Grade |');
   lines.push('|---|---|---|');
   for (const cat of report.categories) {
-    const catGrade =
-      cat.score >= 85
-        ? 'A'
-        : cat.score >= 70
-          ? 'B'
-          : cat.score >= 55
-            ? 'C'
-            : cat.score >= 40
-              ? 'D'
-              : 'F';
+    let catGrade: string;
+    if (cat.score >= 85) catGrade = 'A';
+    else if (cat.score >= 70) catGrade = 'B';
+    else if (cat.score >= 55) catGrade = 'C';
+    else if (cat.score >= 40) catGrade = 'D';
+    else catGrade = 'F';
     lines.push(`| ${cat.label} | ${cat.score}/100 | ${catGrade} |`);
   }
   lines.push('');

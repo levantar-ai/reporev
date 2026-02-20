@@ -143,13 +143,7 @@ export function BadgeGenerator({ owner, repo, grade, score }: Props) {
           className="absolute top-2 right-2 px-2.5 py-1 text-xs font-medium rounded-md border border-border bg-surface-alt hover:bg-surface-hover hover:border-neon/30 text-text-secondary transition-all"
           aria-label={`Copy ${activeTab} badge code`}
         >
-          {copied ? (
-            <span className="text-grade-a" role="status">
-              Copied!
-            </span>
-          ) : (
-            'Copy'
-          )}
+          {copied ? <output className="text-grade-a">Copied!</output> : 'Copy'}
         </button>
       </div>
     </div>

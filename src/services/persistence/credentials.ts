@@ -9,7 +9,9 @@ const IDB_KEY = 'github-token';
 
 function isCredentialApiSupported(): boolean {
   return (
-    typeof window !== 'undefined' && 'credentials' in navigator && 'PasswordCredential' in window
+    typeof globalThis !== 'undefined' &&
+    'credentials' in navigator &&
+    'PasswordCredential' in globalThis
   );
 }
 

@@ -559,22 +559,20 @@ export function DiscoverPage({ onNavigate }: Props) {
                 {report && (
                   <div className="mt-4 pt-3 border-t border-border">
                     <div className="grid grid-cols-4 gap-2 text-center">
-                      {report.categories.slice(0, 4).map((cat) => (
-                        <div key={cat.key}>
-                          <div
-                            className={`text-xs font-bold ${
-                              cat.score >= 70
-                                ? 'text-grade-a'
-                                : cat.score >= 50
-                                  ? 'text-grade-c'
-                                  : 'text-grade-f'
-                            }`}
-                          >
-                            {cat.score}
+                      {report.categories.slice(0, 4).map((cat) => {
+                        const catScoreColor =
+                          cat.score >= 70
+                            ? 'text-grade-a'
+                            : cat.score >= 50
+                              ? 'text-grade-c'
+                              : 'text-grade-f';
+                        return (
+                          <div key={cat.key}>
+                            <div className={`text-xs font-bold ${catScoreColor}`}>{cat.score}</div>
+                            <div className="text-[10px] text-text-muted truncate">{cat.label}</div>
                           </div>
-                          <div className="text-[10px] text-text-muted truncate">{cat.label}</div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}

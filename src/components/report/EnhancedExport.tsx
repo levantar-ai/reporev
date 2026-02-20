@@ -47,7 +47,9 @@ export function EnhancedExport({ report }: Props) {
           />
         </svg>
       ),
-      action: () => copy(reportToMarkdown(report)),
+      action: () => {
+        copy(reportToMarkdown(report));
+      },
       actionLabel: 'Copy',
     },
     {
@@ -64,7 +66,9 @@ export function EnhancedExport({ report }: Props) {
           />
         </svg>
       ),
-      action: () => copy(reportToCsv(report)),
+      action: () => {
+        copy(reportToCsv(report));
+      },
       actionLabel: 'Copy',
     },
     {
@@ -81,7 +85,9 @@ export function EnhancedExport({ report }: Props) {
           />
         </svg>
       ),
-      action: () => copy(JSON.stringify(report, null, 2)),
+      action: () => {
+        copy(JSON.stringify(report, null, 2));
+      },
       actionLabel: 'Copy',
     },
     {
@@ -149,9 +155,7 @@ export function EnhancedExport({ report }: Props) {
               aria-label={`${opt.actionLabel} ${opt.title} export`}
             >
               {copied && (opt.id === 'markdown' || opt.id === 'csv' || opt.id === 'json') ? (
-                <span className="text-grade-a" role="status">
-                  Copied!
-                </span>
+                <output className="text-grade-a">Copied!</output>
               ) : (
                 opt.actionLabel
               )}
