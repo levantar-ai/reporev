@@ -6,6 +6,7 @@ import { analyzeDependencies } from './dependenciesAnalyzer';
 import { analyzeCodeQuality } from './codeQualityAnalyzer';
 import { analyzeLicense } from './licenseAnalyzer';
 import { analyzeCommunity } from './communityAnalyzer';
+import { analyzeOpenssf } from './openssfAnalyzer';
 import { analyzeContributorFriendliness } from './contributorAnalyzer';
 import {
   computeOverallScore,
@@ -22,7 +23,7 @@ export function runAnalysis(
   tree: TreeEntry[],
   files: FileContent[],
 ): AnalysisReport {
-  // Run all 7 analyzers
+  // Run all 8 analyzers
   const documentation = analyzeDocumentation(files, tree);
   const security = analyzeSecurity(files, tree);
   const cicd = analyzeCicd(files, tree);
@@ -30,8 +31,18 @@ export function runAnalysis(
   const codeQuality = analyzeCodeQuality(files, tree);
   const license = analyzeLicense(files, tree, repoInfo);
   const community = analyzeCommunity(files, tree);
+  const openssf = analyzeOpenssf(files, tree);
 
-  const categories = [documentation, security, cicd, dependencies, codeQuality, license, community];
+  const categories = [
+    documentation,
+    security,
+    cicd,
+    dependencies,
+    codeQuality,
+    license,
+    community,
+    openssf,
+  ];
 
   const overallScore = computeOverallScore(categories);
   const grade = computeGrade(overallScore);

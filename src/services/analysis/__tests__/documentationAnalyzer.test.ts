@@ -24,7 +24,7 @@ describe('analyzeDocumentation', () => {
     expect(result.key).toBe('documentation');
     expect(result.label).toBe('Documentation');
     expect(result.score).toBe(0);
-    expect(result.weight).toBe(0.2);
+    expect(result.weight).toBe(0.15);
     expect(result.signals.length).toBeGreaterThan(0);
     // Every signal should be found=false
     for (const s of result.signals) {

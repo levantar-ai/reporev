@@ -3,13 +3,14 @@ import type { CategoryKey } from '../types';
 export const GITHUB_API_BASE = 'https://api.github.com';
 
 export const CATEGORY_WEIGHTS: Record<CategoryKey, number> = {
-  documentation: 0.2,
-  security: 0.15,
+  documentation: 0.15,
+  security: 0.1,
   cicd: 0.15,
   dependencies: 0.15,
   codeQuality: 0.15,
   license: 0.1,
   community: 0.1,
+  openssf: 0.1,
 };
 
 export const CATEGORY_LABELS: Record<CategoryKey, string> = {
@@ -20,6 +21,7 @@ export const CATEGORY_LABELS: Record<CategoryKey, string> = {
   codeQuality: 'Code Quality',
   license: 'License',
   community: 'Community',
+  openssf: 'OpenSSF',
 };
 
 export const GRADE_THRESHOLDS = {
@@ -58,6 +60,9 @@ export const TARGET_FILES: string[] = [
   '.github/SUPPORT.md',
   '.github/dependabot.yml',
   '.github/dependabot.yaml',
+  '.renovaterc',
+  '.renovaterc.json',
+  'renovate.json',
   'package.json',
   'package-lock.json',
   'yarn.lock',

@@ -1,7 +1,7 @@
 import type { SignalEducation } from '../../types';
 
 /**
- * Educational content for every signal across all 7 categories.
+ * Educational content for every signal across all 8 categories.
  * Keyed by signal name (matching the `Signal.name` field from analyzers).
  */
 export const SIGNAL_EDUCATION: Record<string, SignalEducation> = {
@@ -341,6 +341,92 @@ export const SIGNAL_EDUCATION: Record<string, SignalEducation> = {
     howToFix:
       'Create a SUPPORT.md (or .github/SUPPORT.md) listing where users can get help: forums, Discord, Stack Overflow, etc.',
     fixUrl: 'https://github.com/{owner}/{repo}/new/{branch}?filename=.github/SUPPORT.md',
+  },
+
+  // ── OpenSSF ──
+  'Token permissions': {
+    name: 'Token permissions',
+    category: 'openssf',
+    why: 'Restricting workflow token permissions limits the blast radius if a workflow is compromised. The default GITHUB_TOKEN has broad write access.',
+    howToFix:
+      'Add a top-level `permissions: read-all` block to each workflow file and grant write scopes only to jobs that need them.',
+    learnMoreUrl:
+      'https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token',
+  },
+  'Pinned dependencies': {
+    name: 'Pinned dependencies',
+    category: 'openssf',
+    why: 'Pinning GitHub Actions to a full SHA prevents a compromised tag from injecting malicious code into your CI pipeline.',
+    howToFix:
+      'Replace tag references like `actions/checkout@v4` with the full commit SHA, e.g. `actions/checkout@<sha>`.',
+    learnMoreUrl:
+      'https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions',
+  },
+  'No dangerous workflow patterns': {
+    name: 'No dangerous workflow patterns',
+    category: 'openssf',
+    why: 'Using `pull_request_target` with a checkout of the PR head allows untrusted code to run with write permissions, enabling supply-chain attacks.',
+    howToFix:
+      'Avoid checking out PR head code in `pull_request_target` workflows. Use `pull_request` trigger instead, or limit operations to metadata-only.',
+    learnMoreUrl: 'https://securitylab.github.com/research/github-actions-preventing-pwn-requests/',
+  },
+  'No binary artifacts': {
+    name: 'No binary artifacts',
+    category: 'openssf',
+    why: 'Checked-in binaries cannot be code-reviewed and may contain backdoors. They also bloat the repository.',
+    howToFix:
+      'Remove binary files (.exe, .dll, .jar, .so, .class, .pyc) from the repository. Use a package registry or release artifacts instead.',
+  },
+  'SLSA / signed releases': {
+    name: 'SLSA / signed releases',
+    category: 'openssf',
+    why: 'SLSA provenance and signed releases let consumers verify that artifacts were built from the expected source code through a trusted build process.',
+    howToFix: 'Add a SLSA provenance generator or Sigstore cosign step to your release workflow.',
+    learnMoreUrl: 'https://slsa.dev/get-started',
+  },
+  Fuzzing: {
+    name: 'Fuzzing',
+    category: 'openssf',
+    why: 'Fuzz testing discovers edge-case bugs and security vulnerabilities by feeding random inputs to your code.',
+    howToFix:
+      'Add fuzz tests using a framework like go-fuzz, cargo-fuzz, or AFL. Consider enrolling in Google OSS-Fuzz for continuous fuzzing.',
+    learnMoreUrl: 'https://google.github.io/oss-fuzz/',
+  },
+  'SBOM generation': {
+    name: 'SBOM generation',
+    category: 'openssf',
+    why: 'A Software Bill of Materials (SBOM) lists all components in your software, enabling consumers to track vulnerabilities in their supply chain.',
+    howToFix:
+      'Add a CI step that generates an SBOM using Syft, CycloneDX, or the SPDX tools and attach it to releases.',
+    learnMoreUrl: 'https://www.cisa.gov/sbom',
+  },
+  'Dependency update tool': {
+    name: 'Dependency update tool',
+    category: 'openssf',
+    why: 'Automated dependency updates (Dependabot, Renovate) ensure you promptly receive patches for known vulnerabilities.',
+    howToFix:
+      'Enable Dependabot by adding .github/dependabot.yml, or add a renovate.json for Renovate.',
+    fixUrl: 'https://github.com/{owner}/{repo}/new/{branch}?filename=.github/dependabot.yml',
+    learnMoreUrl: 'https://docs.github.com/en/code-security/dependabot/dependabot-version-updates',
+  },
+  'Security policy': {
+    name: 'Security policy',
+    category: 'openssf',
+    why: 'A security policy tells researchers how to responsibly disclose vulnerabilities instead of opening public issues.',
+    howToFix:
+      'Create a SECURITY.md with your vulnerability reporting process and supported versions.',
+    fixUrl: 'https://github.com/{owner}/{repo}/new/{branch}?filename=SECURITY.md',
+    learnMoreUrl:
+      'https://docs.github.com/en/code-security/getting-started/adding-a-security-policy-to-your-repository',
+  },
+  'License detected': {
+    name: 'License detected',
+    category: 'openssf',
+    why: 'Without a license file, the code is under exclusive copyright by default and cannot be legally reused.',
+    howToFix:
+      'Add a LICENSE file using a standard open source license. Use choosealicense.com to pick one.',
+    fixUrl: 'https://github.com/{owner}/{repo}/new/{branch}?filename=LICENSE',
+    learnMoreUrl: 'https://choosealicense.com/',
   },
 
   // ── Additional cross-category signals ──

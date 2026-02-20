@@ -398,6 +398,63 @@ function analyzeCommunity(paths: Set<string>): { score: number; signals: Signal[
   return { score: cap100(score), signals };
 }
 
+function analyzeOpenssf(paths: Set<string>): { score: number; signals: Signal[] } {
+  let score = 0;
+  const signals: Signal[] = [];
+
+  // No binary artifacts
+  const binaryExts = ['.exe', '.dll', '.jar', '.so', '.class', '.pyc'];
+  const hasBinary = [...paths].some((p) => binaryExts.some((ext) => p.toLowerCase().endsWith(ext)));
+  if (!hasBinary) score += 10;
+  signals.push({ name: 'No binary artifacts', found: !hasBinary });
+
+  // No dangerous patterns (assumed safe — can't read content)
+  score += 10;
+  signals.push({ name: 'No dangerous workflow patterns', found: true });
+
+  // SLSA / signed releases — check workflow filenames
+  const hasSlsa = [...paths].some(
+    (p) =>
+      p.startsWith('.github/workflows/') &&
+      (p.toLowerCase().includes('slsa') ||
+        p.toLowerCase().includes('provenance') ||
+        p.toLowerCase().includes('scorecard')),
+  );
+  if (hasSlsa) score += 10;
+  signals.push({ name: 'SLSA / signed releases', found: hasSlsa });
+
+  // Fuzzing
+  const hasFuzzing = [...paths].some(
+    (p) => p.toLowerCase().includes('fuzz') || p.toLowerCase().includes('oss-fuzz'),
+  );
+  if (hasFuzzing) score += 10;
+  signals.push({ name: 'Fuzzing', found: hasFuzzing });
+
+  // Dependency update tool
+  const hasDependabot = hasAnyPath(paths, ['.github/dependabot.yml', '.github/dependabot.yaml']);
+  const hasRenovate = hasAnyPath(paths, ['.renovaterc', '.renovaterc.json', 'renovate.json']);
+  if (hasDependabot || hasRenovate) score += 10;
+  signals.push({ name: 'Dependency update tool', found: hasDependabot || hasRenovate });
+
+  // Security policy
+  const hasSecurityPolicy = hasPath(paths, 'SECURITY.md');
+  if (hasSecurityPolicy) score += 5;
+  signals.push({ name: 'Security policy', found: hasSecurityPolicy });
+
+  // License detected
+  const hasLicense = hasAnyPath(paths, [
+    'LICENSE',
+    'LICENSE.md',
+    'LICENSE.txt',
+    'LICENCE',
+    'COPYING',
+  ]);
+  if (hasLicense) score += 5;
+  signals.push({ name: 'License detected', found: hasLicense });
+
+  return { score: cap100(score), signals };
+}
+
 function runLightAnalysis(
   repoInfo: RepoInfo,
   treePaths: Set<string>,
@@ -410,6 +467,7 @@ function runLightAnalysis(
   const quality = analyzeCodeQuality(treePaths);
   const lic = analyzeLicense(treePaths, repoInfo.license);
   const comm = analyzeCommunity(treePaths);
+  const ossf = analyzeOpenssf(treePaths);
 
   const categories: CategoryResult[] = [
     {
@@ -460,6 +518,13 @@ function runLightAnalysis(
       score: comm.score,
       weight: CATEGORY_WEIGHTS.community,
       signals: comm.signals,
+    },
+    {
+      key: 'openssf',
+      label: CATEGORY_LABELS.openssf,
+      score: ossf.score,
+      weight: CATEGORY_WEIGHTS.openssf,
+      signals: ossf.signals,
     },
   ];
 
@@ -862,6 +927,7 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
       'codeQuality',
       'license',
       'community',
+      'openssf',
     ];
     for (const key of catKeys) {
       const sum = scan.repos.reduce((s, r) => {
@@ -890,6 +956,7 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
       'Code Quality',
       'License',
       'Community',
+      'OpenSSF',
       'Language',
       'Stars',
       'Forks',
@@ -907,6 +974,7 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
         getCategoryScore(r.categories, 'codeQuality'),
         getCategoryScore(r.categories, 'license'),
         getCategoryScore(r.categories, 'community'),
+        getCategoryScore(r.categories, 'openssf'),
         r.repoInfo.language ?? '',
         r.repoInfo.stars,
         r.repoInfo.forks,
@@ -1147,7 +1215,7 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
               <div className="text-sm font-semibold text-text mb-4">
                 Category Averages Across Organization
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
                 {Object.entries(summaryStats.catAverages).map(([key, avg]) => {
                   const label = CATEGORY_LABELS[key as CategoryKey] || key;
                   return (
@@ -1237,6 +1305,13 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
                         sortDir={sortDir}
                         onToggleSort={toggleSort}
                       />
+                      <SortHeader
+                        field="openssf"
+                        label="OpenSSF"
+                        sortField={sortField}
+                        sortDir={sortDir}
+                        onToggleSort={toggleSort}
+                      />
                     </tr>
                   </thead>
                   <tbody>
@@ -1279,6 +1354,7 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
                           <ScoreCell score={getCategoryScore(r.categories, 'codeQuality')} />
                           <ScoreCell score={getCategoryScore(r.categories, 'license')} />
                           <ScoreCell score={getCategoryScore(r.categories, 'community')} />
+                          <ScoreCell score={getCategoryScore(r.categories, 'openssf')} />
                         </tr>
                       );
                     })}
@@ -1326,6 +1402,7 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
                           ['codeQuality', 'Qual'],
                           ['license', 'Lic'],
                           ['community', 'Comm'],
+                          ['openssf', 'OSSF'],
                         ] as [CategoryKey, string][]
                       ).map(([key, label]) => {
                         const s = getCategoryScore(r.categories, key);

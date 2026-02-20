@@ -21,7 +21,7 @@ describe('analyzeSecurity', () => {
     expect(result.label).toBe('Security');
     // Empty tree has no suspicious files, so "No exposed secret files" is true => +10
     expect(result.score).toBe(10);
-    expect(result.weight).toBe(0.15);
+    expect(result.weight).toBe(0.1);
     const noSecrets = result.signals.find((s) => s.name === 'No exposed secret files');
     expect(noSecrets?.found).toBe(true);
     // All other signals should be false

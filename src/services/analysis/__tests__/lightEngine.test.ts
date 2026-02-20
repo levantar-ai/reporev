@@ -69,9 +69,9 @@ describe('runLightAnalysis', () => {
       expect(report.repoInfo).toBe(info);
     });
 
-    it('has exactly 7 category results', () => {
+    it('has exactly 8 category results', () => {
       const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), []);
-      expect(report.categories).toHaveLength(7);
+      expect(report.categories).toHaveLength(8);
       const keys = report.categories.map((c) => c.key);
       expect(keys).toEqual([
         'documentation',
@@ -81,14 +81,17 @@ describe('runLightAnalysis', () => {
         'codeQuality',
         'license',
         'community',
+        'openssf',
       ]);
     });
 
     it('computes overall score as weighted average of category scores', () => {
-      // On empty tree, security scores 15 ("No exposed secret files" is found=true)
-      // Weighted: 15 * 0.15 = 2.25, total weight = 1.0 => round(2.25) = 2
+      // On empty tree:
+      // security scores 15 ("No exposed secret files" is found=true), weight=0.1
+      // openssf scores 20 (no dangerous patterns + no binary artifacts), weight=0.1
+      // Weighted: 15 * 0.1 + 20 * 0.1 = 3.5, total weight = 1.0 => round(3.5) = 4
       const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), []);
-      expect(report.overallScore).toBe(2);
+      expect(report.overallScore).toBe(4);
     });
 
     it('assigns grade F for score 0', () => {
@@ -166,10 +169,11 @@ describe('runLightAnalysis', () => {
       // Give documentation a high score (README = 35) and everything else 0
       const entries: TreeEntry[] = [blob('README.md')];
       const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), entries);
-      // documentation score = 35, weight = 0.2
-      // security: no gitignore, no suspicious => score = 15, weight = 0.15
+      // documentation score = 35, weight = 0.15
+      // security: no suspicious => score = 15, weight = 0.1
+      // openssf: no binary + no dangerous = 20, weight = 0.1
       // All others = 0
-      // Expected: Math.round((35*0.2 + 15*0.15) / 1.0) = Math.round(7 + 2.25) = Math.round(9.25) = 9
+      // Expected: Math.round((35*0.15 + 15*0.1 + 20*0.1) / 1.0) = Math.round(5.25 + 1.5 + 2.0) = Math.round(8.75) = 9
       expect(report.overallScore).toBe(9);
     });
   });
@@ -1194,12 +1198,13 @@ describe('runLightAnalysis', () => {
   describe('edge cases', () => {
     it('handles empty tree array', () => {
       const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), []);
-      // Security scores 15 because "No exposed secret files" is true on empty tree
-      // Weighted: 15 * 0.15 / 1.0 = 2.25, rounded = 2
-      expect(report.overallScore).toBe(2);
+      // Security scores 15 ("No exposed secret files"), weight=0.1
+      // OpenSSF scores 20 (no binary + no dangerous patterns), weight=0.1
+      // Weighted: (15*0.1 + 20*0.1) / 1.0 = 3.5, rounded = 4
+      expect(report.overallScore).toBe(4);
       expect(report.grade).toBe('F');
       expect(report.treeEntryCount).toBe(0);
-      expect(report.categories).toHaveLength(7);
+      expect(report.categories).toHaveLength(8);
     });
 
     it('handles tree with only directory entries', () => {
@@ -1264,13 +1269,14 @@ describe('runLightAnalysis', () => {
     it('each category has the correct weight from CATEGORY_WEIGHTS', () => {
       const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), []);
       const expectedWeights: Record<string, number> = {
-        documentation: 0.2,
-        security: 0.15,
+        documentation: 0.15,
+        security: 0.1,
         cicd: 0.15,
         dependencies: 0.15,
         codeQuality: 0.15,
         license: 0.1,
         community: 0.1,
+        openssf: 0.1,
       };
       for (const cat of report.categories) {
         expect(cat.weight).toBe(expectedWeights[cat.key]);
@@ -1287,6 +1293,7 @@ describe('runLightAnalysis', () => {
         codeQuality: 'Code Quality',
         license: 'License',
         community: 'Community',
+        openssf: 'OpenSSF',
       };
       for (const cat of report.categories) {
         expect(cat.label).toBe(expectedLabels[cat.key]);
@@ -1373,6 +1380,139 @@ describe('runLightAnalysis', () => {
       // analyzeDependenciesLight only pushes Python once (single if block)
       // plus repoInfo.language won't duplicate since it already exists
       expect(pythonItems).toHaveLength(1);
+    });
+  });
+
+  // ── 11. OpenSSF light analysis branch coverage ──
+
+  describe('analyzeOpenssfLight', () => {
+    it('detects Dependabot config and sets details', () => {
+      const entries = [blob('.github/dependabot.yml')];
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), entries);
+      const sig = findSignal(report, 'openssf', 'Dependency update tool');
+      expect(sig.found).toBe(true);
+      expect(sig.details).toBe('Dependabot');
+    });
+
+    it('detects Renovate config (.renovaterc) and sets details', () => {
+      const entries = [blob('.renovaterc')];
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), entries);
+      const sig = findSignal(report, 'openssf', 'Dependency update tool');
+      expect(sig.found).toBe(true);
+      expect(sig.details).toBe('Renovate');
+    });
+
+    it('detects Renovate config (renovate.json)', () => {
+      const entries = [blob('renovate.json')];
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), entries);
+      const sig = findSignal(report, 'openssf', 'Dependency update tool');
+      expect(sig.found).toBe(true);
+      expect(sig.details).toBe('Renovate');
+    });
+
+    it('does not detect dep update tool without config', () => {
+      const entries = [blob('src/index.ts')];
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), entries);
+      const sig = findSignal(report, 'openssf', 'Dependency update tool');
+      expect(sig.found).toBe(false);
+      expect(sig.details).toBeUndefined();
+    });
+
+    it('detects binary artifacts (.exe)', () => {
+      const entries = [blob('build/app.exe')];
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), entries);
+      const sig = findSignal(report, 'openssf', 'No binary artifacts');
+      expect(sig.found).toBe(false);
+    });
+
+    it('passes when no binary artifacts exist', () => {
+      const entries = [blob('src/index.ts'), blob('README.md')];
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), entries);
+      const sig = findSignal(report, 'openssf', 'No binary artifacts');
+      expect(sig.found).toBe(true);
+    });
+
+    it('detects SLSA workflow file', () => {
+      const entries = [blob('.github/workflows/slsa.yml')];
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), entries);
+      const sig = findSignal(report, 'openssf', 'SLSA / signed releases');
+      expect(sig.found).toBe(true);
+    });
+
+    it('detects scorecard workflow file', () => {
+      const entries = [blob('.github/workflows/scorecard.yml')];
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), entries);
+      const sig = findSignal(report, 'openssf', 'SLSA / signed releases');
+      expect(sig.found).toBe(true);
+    });
+
+    it('detects fuzz directory', () => {
+      const entries = [blob('fuzz/fuzz_target.go')];
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), entries);
+      const sig = findSignal(report, 'openssf', 'Fuzzing');
+      expect(sig.found).toBe(true);
+    });
+
+    it('does not detect fuzzing without fuzz directory', () => {
+      const entries = [blob('src/index.ts')];
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), entries);
+      const sig = findSignal(report, 'openssf', 'Fuzzing');
+      expect(sig.found).toBe(false);
+    });
+
+    it('detects SECURITY.md for security policy signal', () => {
+      const entries = [blob('SECURITY.md')];
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), entries);
+      const sig = findSignal(report, 'openssf', 'Security policy');
+      expect(sig.found).toBe(true);
+    });
+
+    it('detects LICENSE for license signal', () => {
+      const entries = [blob('LICENSE')];
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), entries);
+      const sig = findSignal(report, 'openssf', 'License detected');
+      expect(sig.found).toBe(true);
+    });
+
+    it('scores correctly with multiple openssf signals present', () => {
+      const entries = [
+        blob('.github/dependabot.yml'),
+        blob('SECURITY.md'),
+        blob('LICENSE'),
+        blob('fuzz/target.go'),
+        blob('.github/workflows/slsa.yml'),
+      ];
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), entries);
+      const cat = findCategory(report, 'openssf');
+      // no dangerous (10) + no binary (10) + SLSA (10) + fuzz (10) + dep tool (10) + security (5) + license (5) = 60
+      expect(cat.score).toBe(60);
+    });
+
+    it('token permissions signal is always not found in light mode', () => {
+      const entries = [blob('.github/workflows/ci.yml')];
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), entries);
+      const sig = findSignal(report, 'openssf', 'Token permissions');
+      expect(sig.found).toBe(false);
+    });
+
+    it('pinned deps signal is always not found in light mode', () => {
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), []);
+      const sig = findSignal(report, 'openssf', 'Pinned dependencies');
+      expect(sig.found).toBe(false);
+    });
+
+    it('SBOM signal is always not found in light mode', () => {
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), []);
+      const sig = findSignal(report, 'openssf', 'SBOM generation');
+      expect(sig.found).toBe(false);
+    });
+
+    it('prefers Dependabot over Renovate when both present', () => {
+      const entries = [blob('.github/dependabot.yml'), blob('.renovaterc')];
+      const report = runLightAnalysis(defaultParsedRepo, makeRepoInfo(), entries);
+      const sig = findSignal(report, 'openssf', 'Dependency update tool');
+      expect(sig.found).toBe(true);
+      expect(sig.details).toBe('Dependabot');
     });
   });
 });

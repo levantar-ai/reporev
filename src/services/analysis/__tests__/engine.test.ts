@@ -48,6 +48,7 @@ const EXPECTED_CATEGORY_KEYS: CategoryKey[] = [
   'codeQuality',
   'license',
   'community',
+  'openssf',
 ];
 
 // ── Empty repo ──
@@ -58,7 +59,7 @@ describe('runAnalysis – empty repo', () => {
 
     expect(report.overallScore).toBeGreaterThanOrEqual(0);
     expect(report.overallScore).toBeLessThanOrEqual(100);
-    expect(report.categories).toHaveLength(7);
+    expect(report.categories).toHaveLength(8);
     expect(report.fileCount).toBe(0);
     expect(report.treeEntryCount).toBe(0);
   });
@@ -95,11 +96,11 @@ describe('runAnalysis – report structure', () => {
     expect(report.repoInfo).toEqual(makeRepoInfo());
   });
 
-  it('has exactly 7 categories', () => {
-    expect(report.categories).toHaveLength(7);
+  it('has exactly 8 categories', () => {
+    expect(report.categories).toHaveLength(8);
   });
 
-  it('has all 7 expected category keys', () => {
+  it('has all 8 expected category keys', () => {
     const keys = report.categories.map((c) => c.key);
     expect(keys).toEqual(EXPECTED_CATEGORY_KEYS);
   });
@@ -192,7 +193,7 @@ describe('runAnalysis – fileCount and treeEntryCount', () => {
 // ── Categories array ──
 
 describe('runAnalysis – categories', () => {
-  it('returns categories in the order: documentation, security, cicd, dependencies, codeQuality, license, community', () => {
+  it('returns categories in the order: documentation, security, cicd, dependencies, codeQuality, license, community, openssf', () => {
     const report = runAnalysis(makeRepo(), makeRepoInfo(), [], []);
     const keys = report.categories.map((c) => c.key);
     expect(keys).toEqual(EXPECTED_CATEGORY_KEYS);
@@ -542,7 +543,7 @@ describe('runAnalysis – partial and edge cases', () => {
     const files = [file('README.md', '# Hello\n\nA short readme.')];
     const report = runAnalysis(makeRepo(), makeRepoInfo(), tree, files);
 
-    expect(report.categories).toHaveLength(7);
+    expect(report.categories).toHaveLength(8);
     const docCat = report.categories.find((c) => c.key === 'documentation');
     expect(docCat!.score).toBeGreaterThan(0);
   });

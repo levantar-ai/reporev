@@ -68,6 +68,7 @@ const CATEGORY_KEYS: CategoryKey[] = [
   'codeQuality',
   'license',
   'community',
+  'openssf',
 ];
 
 const LANGUAGE_COLORS: Record<string, string> = {
@@ -279,6 +280,40 @@ function scoreCommunity(paths: Set<string>): number {
   return clamp(comm, 0, 100);
 }
 
+function scoreOpenssf(paths: Set<string>): number {
+  let score = 0;
+  const binaryExts = ['.exe', '.dll', '.jar', '.so', '.class', '.pyc'];
+  const hasBinary = [...paths].some((p) => binaryExts.some((ext) => p.toLowerCase().endsWith(ext)));
+  if (!hasBinary) score += 10;
+  score += 10; // No dangerous patterns assumed safe
+  const hasSlsa = [...paths].some(
+    (p) =>
+      p.startsWith('.github/workflows/') &&
+      (p.toLowerCase().includes('slsa') ||
+        p.toLowerCase().includes('provenance') ||
+        p.toLowerCase().includes('scorecard')),
+  );
+  if (hasSlsa) score += 10;
+  const hasFuzzing = [...paths].some(
+    (p) => p.toLowerCase().includes('fuzz') || p.toLowerCase().includes('oss-fuzz'),
+  );
+  if (hasFuzzing) score += 10;
+  if (
+    has(
+      paths,
+      '.github/dependabot.yml',
+      '.github/dependabot.yaml',
+      '.renovaterc',
+      '.renovaterc.json',
+      'renovate.json',
+    )
+  )
+    score += 10;
+  if (has(paths, 'SECURITY.md', '.github/SECURITY.md')) score += 5;
+  if (has(paths, 'LICENSE', 'LICENSE.md', 'LICENSE.txt', 'LICENCE', 'COPYING')) score += 5;
+  return clamp(score, 0, 100);
+}
+
 function detectTech(paths: Set<string>): string[] {
   const tech: string[] = [];
   for (const [file, techName] of Object.entries(TECH_DETECT_MAP)) {
@@ -304,6 +339,7 @@ function analyzeTree(
       codeQuality: scoreCodeQuality(paths),
       license: scoreLicense(paths, repoInfo.license),
       community: scoreCommunity(paths),
+      openssf: scoreOpenssf(paths),
     },
     tech: detectTech(paths),
   };

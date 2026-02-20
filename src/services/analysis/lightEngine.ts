@@ -55,6 +55,7 @@ export function runLightAnalysis(
   const codeQuality = analyzeCodeQualityLight(treePaths, tree, treeDirs);
   const license = analyzeLicenseLight(treePaths, repoInfo, lowerToOriginal);
   const community = analyzeCommunityLight(treePaths, tree, lowerToOriginal);
+  const openssf = analyzeOpenssfLight(treePaths, tree, lowerToOriginal);
 
   const categories = [
     documentation,
@@ -64,6 +65,7 @@ export function runLightAnalysis(
     codeQuality,
     license,
     community,
+    openssf,
   ];
 
   // Compute overall score
@@ -559,6 +561,114 @@ function analyzeCommunityLight(
     label: CATEGORY_LABELS.community,
     score: Math.min(100, score),
     weight: CATEGORY_WEIGHTS.community,
+    signals,
+  };
+}
+
+// ── OpenSSF (tree-only) ──
+
+const BINARY_EXTENSIONS_LIGHT = new Set(['.exe', '.dll', '.jar', '.so', '.class', '.pyc']);
+
+function analyzeOpenssfLight(
+  treePaths: Set<string>,
+  tree: TreeEntry[],
+  lowerMap: Map<string, string>,
+): CategoryResult {
+  const signals: Signal[] = [];
+
+  // Token permissions — cannot detect without file content in light mode
+  signals.push({
+    name: 'Token permissions',
+    found: false,
+    details: 'Requires file content (full analysis)',
+  });
+
+  // Pinned dependencies — cannot detect without file content in light mode
+  signals.push({
+    name: 'Pinned dependencies',
+    found: false,
+    details: 'Requires file content (full analysis)',
+  });
+
+  // Dangerous workflow patterns — cannot detect without file content
+  signals.push({
+    name: 'No dangerous workflow patterns',
+    found: true,
+    details: 'Cannot verify without file content; assumed safe',
+  });
+
+  // No binary artifacts — CAN detect from tree
+  const hasBinaryArtifacts = tree.some(
+    (e) =>
+      e.type === 'blob' &&
+      BINARY_EXTENSIONS_LIGHT.has(e.path.slice(e.path.lastIndexOf('.')).toLowerCase()),
+  );
+  signals.push({ name: 'No binary artifacts', found: !hasBinaryArtifacts });
+
+  // SLSA / signed releases — check workflow filenames for scorecard/slsa patterns
+  const hasSlsaWorkflow = tree.some(
+    (e) =>
+      e.type === 'blob' &&
+      e.path.startsWith(WORKFLOW_DIR) &&
+      (e.path.toLowerCase().includes('slsa') ||
+        e.path.toLowerCase().includes('provenance') ||
+        e.path.toLowerCase().includes('scorecard')),
+  );
+  signals.push({ name: 'SLSA / signed releases', found: hasSlsaWorkflow });
+
+  // Fuzzing — detect fuzz dirs/files from tree
+  const hasFuzzing = tree.some(
+    (e) => e.path.toLowerCase().includes('fuzz') || e.path.toLowerCase().includes('oss-fuzz'),
+  );
+  signals.push({ name: 'Fuzzing', found: hasFuzzing });
+
+  // SBOM generation — cannot fully detect without content
+  signals.push({
+    name: 'SBOM generation',
+    found: false,
+    details: 'Requires file content (full analysis)',
+  });
+
+  // Dependency update tool — Dependabot or Renovate config
+  const hasDependabot =
+    treePaths.has('.github/dependabot.yml') || treePaths.has('.github/dependabot.yaml');
+  const hasRenovate =
+    treePaths.has('.renovaterc') ||
+    treePaths.has('.renovaterc.json') ||
+    treePaths.has('renovate.json');
+  const hasDepUpdateTool = hasDependabot || hasRenovate;
+  signals.push({
+    name: 'Dependency update tool',
+    found: hasDepUpdateTool,
+    details: hasDependabot ? 'Dependabot' : hasRenovate ? 'Renovate' : undefined,
+  });
+
+  // Security policy
+  const hasSecurityPolicy = ciHas(lowerMap, 'SECURITY.md');
+  signals.push({ name: 'Security policy', found: hasSecurityPolicy });
+
+  // License detected
+  const hasLicense = ciHas(lowerMap, 'LICENSE', 'LICENSE.md', 'LICENSE.txt', 'LICENCE', 'COPYING');
+  signals.push({ name: 'License detected', found: hasLicense });
+
+  // Scoring — only count what we can actually detect
+  let score = 0;
+  // Token permissions: 0 (can't detect)
+  // Pinned deps: 0 (can't detect)
+  score += 10; // No dangerous patterns assumed safe in light mode
+  if (!hasBinaryArtifacts) score += 10; // No binary artifacts
+  if (hasSlsaWorkflow) score += 10;
+  if (hasFuzzing) score += 10;
+  // SBOM: 0 (can't detect)
+  if (hasDepUpdateTool) score += 10;
+  if (hasSecurityPolicy) score += 5;
+  if (hasLicense) score += 5;
+
+  return {
+    key: 'openssf',
+    label: CATEGORY_LABELS.openssf,
+    score: Math.min(100, score),
+    weight: CATEGORY_WEIGHTS.openssf,
     signals,
   };
 }

@@ -1,4 +1,5 @@
 import type { CategoryResult, FileContent, TreeEntry, Signal } from '../../types';
+import { CATEGORY_WEIGHTS } from '../../utils/constants';
 
 /** Case-insensitive lookup in a file map. Returns the file content if found. */
 function ciGet(
@@ -115,7 +116,7 @@ export function analyzeDocumentation(files: FileContent[], tree: TreeEntry[]): C
     key: 'documentation',
     label: 'Documentation',
     score: Math.min(100, score),
-    weight: 0.2,
+    weight: CATEGORY_WEIGHTS.documentation,
     signals,
   };
 }

@@ -188,6 +188,7 @@ const CATEGORY_OPTIONS: { value: CategoryKey; label: string }[] = [
   { value: 'codeQuality', label: 'Code Quality' },
   { value: 'license', label: 'License' },
   { value: 'community', label: 'Community' },
+  { value: 'openssf', label: 'OpenSSF' },
 ];
 
 const OPERATOR_OPTIONS: { value: PolicyOperator; label: string }[] = [

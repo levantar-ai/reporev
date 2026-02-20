@@ -44,6 +44,7 @@ const CATEGORY_ORDER: CategoryKey[] = [
   'codeQuality',
   'license',
   'community',
+  'openssf',
 ];
 
 function mapGitHubRepoToRepoInfo(raw: GitHubRepoResponse): RepoInfo {

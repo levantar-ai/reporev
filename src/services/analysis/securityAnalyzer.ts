@@ -1,4 +1,5 @@
 import type { CategoryResult, FileContent, TreeEntry, Signal } from '../../types';
+import { CATEGORY_WEIGHTS } from '../../utils/constants';
 
 export function analyzeSecurity(files: FileContent[], tree: TreeEntry[]): CategoryResult {
   const signals: Signal[] = [];
@@ -66,7 +67,7 @@ export function analyzeSecurity(files: FileContent[], tree: TreeEntry[]): Catego
     key: 'security',
     label: 'Security',
     score: Math.min(100, score),
-    weight: 0.15,
+    weight: CATEGORY_WEIGHTS.security,
     signals,
   };
 }

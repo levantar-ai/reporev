@@ -53,7 +53,8 @@ export type CategoryKey =
   | 'dependencies'
   | 'codeQuality'
   | 'license'
-  | 'community';
+  | 'community'
+  | 'openssf';
 
 export interface CategoryResult {
   key: CategoryKey;

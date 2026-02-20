@@ -236,6 +236,16 @@ export const DEFAULT_POLICIES: PolicySet[] = [
         severity: 'warning',
       },
       {
+        id: 'pr-openssf',
+        name: 'OpenSSF >= 40',
+        description: 'OpenSSF Scorecard score must be at least 40',
+        type: 'category-score',
+        category: 'openssf',
+        operator: '>=',
+        value: 40,
+        severity: 'warning',
+      },
+      {
         id: 'pr-ci',
         name: 'Has CI workflows',
         description: 'Repository must have GitHub Actions workflows',

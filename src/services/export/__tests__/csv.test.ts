@@ -62,6 +62,7 @@ function makeReport(overrides: Partial<AnalysisReport> = {}): AnalysisReport {
       makeCategory('codeQuality', 'Code Quality', 75, []),
       makeCategory('license', 'License', 90, [{ name: 'License file exists', found: true }]),
       makeCategory('community', 'Community', 50, [{ name: 'Code of conduct', found: false }]),
+      makeCategory('openssf', 'OpenSSF', 40, [{ name: 'Token permissions', found: false }]),
     ],
     overallScore: 72,
     grade: 'B',
@@ -97,6 +98,7 @@ function makeLightReport(
       makeCategory('codeQuality', 'Code Quality', 75),
       makeCategory('license', 'License', 90),
       makeCategory('community', 'Community', 55),
+      makeCategory('openssf', 'OpenSSF', 35),
     ],
     techStack: [],
     treeEntryCount: 100,
@@ -115,7 +117,7 @@ describe('reportToCsv', () => {
     const report = makeReport();
     const csv = reportToCsv(report);
     const lines = csv.split('\n');
-    // Lines: 1 header + 7 categories + 1 empty + 1 summary = 10
+    // Lines: 1 header + 8 categories + 1 empty + 1 summary = 11
     const dataLines = lines.slice(1, 1 + report.categories.length);
     expect(dataLines).toHaveLength(report.categories.length);
   });
@@ -200,6 +202,7 @@ describe('orgScanToCsv', () => {
         codeQuality: 75,
         license: 90,
         community: 55,
+        openssf: 35,
       },
     };
   }
@@ -272,6 +275,7 @@ describe('orgScanToCsv', () => {
         codeQuality: 0,
         license: 0,
         community: 0,
+        openssf: 0,
       },
     };
     const csv = orgScanToCsv(result);

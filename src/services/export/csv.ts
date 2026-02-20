@@ -68,6 +68,7 @@ export function orgScanToCsv(result: OrgScanResult): string {
     'codeQuality',
     'license',
     'community',
+    'openssf',
   ];
   const categoryHeaders = categoryKeys.map((k) => CATEGORY_LABELS[k]);
 

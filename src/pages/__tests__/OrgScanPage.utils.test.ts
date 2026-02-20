@@ -55,7 +55,7 @@ describe('getCategoryScore', () => {
     expect(getCategoryScore(categories, 'dependencies')).toBe(100);
   });
 
-  it('works for all 7 category keys', () => {
+  it('works for all 8 category keys', () => {
     const allKeys: CategoryKey[] = [
       'documentation',
       'security',
@@ -64,6 +64,7 @@ describe('getCategoryScore', () => {
       'codeQuality',
       'license',
       'community',
+      'openssf',
     ];
     const categories: CategoryResult[] = allKeys.map((key, i) =>
       makeCategoryResult(key, (i + 1) * 10),

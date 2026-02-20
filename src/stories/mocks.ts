@@ -81,13 +81,14 @@ export function makeRateLimit(overrides?: Partial<RateLimitInfo>): RateLimitInfo
 // ── Categories ────────────────────────────────────────────
 
 const categoryDefaults: Record<CategoryKey, { label: string; weight: number }> = {
-  documentation: { label: 'Documentation', weight: 20 },
-  security: { label: 'Security', weight: 15 },
+  documentation: { label: 'Documentation', weight: 15 },
+  security: { label: 'Security', weight: 10 },
   cicd: { label: 'CI/CD', weight: 15 },
   dependencies: { label: 'Dependencies', weight: 15 },
   codeQuality: { label: 'Code Quality', weight: 15 },
   license: { label: 'License', weight: 10 },
   community: { label: 'Community', weight: 10 },
+  openssf: { label: 'OpenSSF', weight: 10 },
 };
 
 export function makeCategoryResult(
@@ -120,6 +121,7 @@ export function makeCategories(grade?: LetterGrade): CategoryResult[] {
     'codeQuality',
     'license',
     'community',
+    'openssf',
   ];
   return keys.map((k, i) =>
     makeCategoryResult(k, { score: Math.max(0, Math.min(100, base + (i % 2 === 0 ? 5 : -8))) }),
