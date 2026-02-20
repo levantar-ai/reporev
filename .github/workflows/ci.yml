@@ -19,10 +19,25 @@ permissions:
   actions: read
   id-token: write
 
+# ┌─────────────────────────────────────────────────────────────────┐
+# │  Pipeline: Quality → Build → Security → Release                │
+# │                                                                 │
+# │  Stage 1 ─ Quality Gate (parallel)                              │
+# │    lint ─┐                                                      │
+# │    typecheck ─┼──► Stage 2 ─ Build                              │
+# │    test ──┘          │                                          │
+# │                      ▼                                          │
+# │              Stage 3 ─ Security (parallel)                      │
+# │                codeql ─┐                                        │
+# │                semgrep ─┤                                       │
+# │                sonarcloud ─┼──► Stage 4 ─ Release (tags only)   │
+# │                dep-review ─┘      build-release → provenance    │
+# └─────────────────────────────────────────────────────────────────┘
+
 jobs:
-  # ── Code Quality ───────────────────────────────────────────────
+  # ── Stage 1: Quality Gate ──────────────────────────────────────
   lint:
-    name: Lint
+    name: '1·Lint'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +50,7 @@ jobs:
       - run: npx prettier --check .
 
   typecheck:
-    name: Type Check
+    name: '1·Type Check'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,7 +62,7 @@ jobs:
       - run: npx tsc -b --noEmit
 
   test:
-    name: Test
+    name: '1·Test'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,8 +77,9 @@ jobs:
           name: coverage
           path: coverage/
 
+  # ── Stage 2: Build ────────────────────────────────────────────
   build:
-    name: Build
+    name: '2·Build'
     needs: [lint, typecheck, test]
     runs-on: ubuntu-latest
     steps:
@@ -75,9 +91,10 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-  # ── Security Scanning ──────────────────────────────────────────
+  # ── Stage 3: Security ─────────────────────────────────────────
   codeql:
-    name: CodeQL
+    name: '3·CodeQL'
+    needs: [build]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -91,7 +108,8 @@ jobs:
       - uses: github/codeql-action/analyze@v3
 
   semgrep:
-    name: Semgrep SAST
+    name: '3·Semgrep'
+    needs: [build]
     runs-on: ubuntu-latest
     container:
       image: semgrep/semgrep
@@ -104,7 +122,8 @@ jobs:
         if: always()
 
   sonarcloud:
-    name: SonarCloud
+    name: '3·SonarCloud'
+    needs: [build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -122,16 +141,18 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   dependency-review:
-    name: Dependency Review
+    name: '3·Dependency Review'
+    needs: [build]
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/dependency-review-action@v4
 
-  # ── Supply Chain ────────────────────────────────────────────────
+  # ── Stage 4: Release (tags only) ──────────────────────────────
   build-release:
-    name: Build Release
+    name: '4·Build Release'
+    needs: [codeql, semgrep, sonarcloud]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     outputs:
@@ -157,9 +178,9 @@ jobs:
           path: dist/
 
   provenance:
-    name: SLSA Provenance
+    name: '4·SLSA Provenance'
+    needs: [build-release]
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build-release
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
       base64-subjects: ${{ needs.build-release.outputs.digest }}
