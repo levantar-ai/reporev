@@ -86,34 +86,29 @@ self.onmessage = async (e: MessageEvent<CloneMessage>) => {
 
     postProgress('extracting-commits', 50, `Found ${logEntries.length} commits`);
 
-    // 3. Diff sampled commits in parallel batches
-    //    - Fast OID-only diff for all sampled commits (file lists + status)
-    //    - Full content diff for a subset (accurate line counts for charts)
+    // 3. Diff ALL commits in parallel batches
+    //    - Fast OID-only diff for most commits (file lists + status, no blob reads)
+    //    - Full content diff for an evenly-spaced subset (accurate line counts for charts)
     postProgress('extracting-details', 52, 'Computing file diffs...');
 
-    const maxDetails = 100;
-    const BATCH_SIZE = 8;
-    const FULL_DIFF_COUNT = 25;
-    const indices = sampleIndices(logEntries.length, maxDetails);
+    const BATCH_SIZE = 10;
+    const FULL_DIFF_COUNT = 30;
+    const totalCommits = logEntries.length;
     const commitDetails: GitStatsRawData['commitDetails'] = [];
     const diffStatsMap = new Map<string, { additions: number; deletions: number }>();
 
-    // Pick which indices get full content diffs (evenly spaced subset)
-    const fullDiffIndices = new Set(
-      sampleIndices(indices.length, FULL_DIFF_COUNT).map((i) => indices[i]),
-    );
+    // Pick which commits get full content diffs (evenly spaced for chart accuracy)
+    const fullDiffIndices = new Set(sampleIndices(totalCommits, FULL_DIFF_COUNT));
 
     let completed = 0;
 
-    // Process in parallel batches
-    for (let batchStart = 0; batchStart < indices.length; batchStart += BATCH_SIZE) {
-      const batch = indices.slice(batchStart, batchStart + BATCH_SIZE);
+    for (let batchStart = 0; batchStart < totalCommits; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, totalCommits);
 
       const results = await Promise.allSettled(
-        batch.map(async (idx) => {
-          const entry = logEntries[idx];
+        logEntries.slice(batchStart, batchEnd).map(async (entry, offset) => {
           const parentOid = entry.commit.parent.length > 0 ? entry.commit.parent[0] : null;
-          const useFull = fullDiffIndices.has(idx);
+          const useFull = fullDiffIndices.has(batchStart + offset);
           const result = useFull
             ? await diffCommit(fs, DIR, entry.oid, parentOid)
             : await diffCommitFast(fs, DIR, entry.oid, parentOid);
@@ -161,12 +156,12 @@ self.onmessage = async (e: MessageEvent<CloneMessage>) => {
         });
       }
 
-      completed += batch.length;
-      const percent = 52 + Math.round((completed / indices.length) * 25);
+      completed += batchEnd - batchStart;
+      const percent = 52 + Math.round((completed / totalCommits) * 25);
       postProgress(
         'extracting-details',
         percent,
-        `Diffing commits... ${completed}/${indices.length}`,
+        `Diffing commits... ${completed}/${totalCommits}`,
       );
     }
 
