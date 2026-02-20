@@ -23,12 +23,14 @@ export function RepoGrowthTimeline({ repoGrowth }: Props) {
         ) => {
           let html = `<b>${params[0].axisValueLabel}</b>`;
           for (const p of params) {
-            const val =
-              p.value >= 1000000
-                ? `${(p.value / 1000000).toFixed(1)}M`
-                : p.value >= 1000
-                  ? `${(p.value / 1000).toFixed(0)}K`
-                  : p.value.toLocaleString();
+            let val: string;
+            if (p.value >= 1000000) {
+              val = `${(p.value / 1000000).toFixed(1)}M`;
+            } else if (p.value >= 1000) {
+              val = `${(p.value / 1000).toFixed(0)}K`;
+            } else {
+              val = p.value.toLocaleString();
+            }
             html += `<br/>${p.seriesName}: ${val}`;
           }
           return html;

@@ -33,13 +33,14 @@ export function SignalTooltip({ signal, education, children }: Props) {
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="relative inline-block"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
-      <button type="button" onClick={() => setOpen((prev) => !prev)} className="cursor-help">
+    <div ref={containerRef} className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        className="cursor-help"
+      >
         {children}
       </button>
 

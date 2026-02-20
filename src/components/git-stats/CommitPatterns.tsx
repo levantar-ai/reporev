@@ -59,12 +59,14 @@ export function CommitPatterns({ commitMessages }: Props) {
 
   const stats = commitMessages;
 
-  const conventionalColor =
-    stats.conventionalPercentage >= 50
-      ? 'text-grade-a'
-      : stats.conventionalPercentage >= 20
-        ? 'text-grade-c'
-        : 'text-text-muted';
+  let conventionalColor: string;
+  if (stats.conventionalPercentage >= 50) {
+    conventionalColor = 'text-grade-a';
+  } else if (stats.conventionalPercentage >= 20) {
+    conventionalColor = 'text-grade-c';
+  } else {
+    conventionalColor = 'text-text-muted';
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

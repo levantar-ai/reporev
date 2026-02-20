@@ -14,7 +14,7 @@ export function AnimatedGradeReveal({ grade, score, onComplete }: Props) {
   const [pulse, setPulse] = useState(false);
   const frameRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDialogElement>(null);
 
   const color = GRADE_COLORS[grade];
 
@@ -88,19 +88,17 @@ export function AnimatedGradeReveal({ grade, score, onComplete }: Props) {
   };
 
   return (
-    <div
+    <dialog
       ref={containerRef}
-      className="fixed inset-0 z-[100] flex items-center justify-center cursor-pointer"
+      className="fixed inset-0 z-[100] flex items-center justify-center cursor-pointer w-full h-full max-w-none max-h-none border-none p-0 m-0"
       onClick={handleDismiss}
       onKeyDown={handleKeyDown}
       style={{
         backgroundColor: 'rgba(15, 23, 42, 0.95)',
         backdropFilter: 'blur(8px)',
       }}
-      role="dialog"
-      aria-modal="true"
       aria-label={`Analysis complete. Score: ${score} out of 100. Grade: ${grade}. Press Enter or Escape to continue.`}
-      tabIndex={0}
+      open
     >
       <div className="flex flex-col items-center gap-6">
         {/* Score counter */}
@@ -157,6 +155,6 @@ export function AnimatedGradeReveal({ grade, score, onComplete }: Props) {
           }
         }
       `}</style>
-    </div>
+    </dialog>
   );
 }

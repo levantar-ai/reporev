@@ -22,7 +22,6 @@ export function LetterGrade({ grade, score, size = 'lg' }: Props) {
   return (
     <div
       className={`relative ${dimensions} flex items-center justify-center`}
-      role="img"
       aria-label={`Overall grade: ${grade}, score ${score} out of 100`}
     >
       <svg

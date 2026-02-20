@@ -199,7 +199,7 @@ export function ReportCard({ report, onNewAnalysis }: Props) {
           id="structure-heading"
           className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4"
         >
-          Repository Structure
+          {'Repository Structure'}
           <span className="text-text-muted font-normal ml-2 normal-case tracking-normal">
             {report.treeEntryCount} entries
           </span>

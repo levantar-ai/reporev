@@ -66,8 +66,8 @@ export function InsightsList({ title, items, icon, color }: Props) {
         {title}
       </h3>
       <ul className="space-y-2.5" aria-label={title}>
-        {items.map((item, i) => (
-          <li key={i} className="flex items-start gap-2.5 text-sm text-text leading-relaxed">
+        {items.map((item) => (
+          <li key={item} className="flex items-start gap-2.5 text-sm text-text leading-relaxed">
             <span className={`mt-0.5 ${colorClasses[color]}`}>{icons[icon]}</span>
             <span>{item}</span>
           </li>

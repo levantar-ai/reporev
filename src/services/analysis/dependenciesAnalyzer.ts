@@ -25,6 +25,103 @@ const LOCKFILES = [
   'Gemfile.lock',
 ];
 
+interface FrameworkDetection {
+  keys: string[];
+  name: string;
+  category: TechStackItem['category'];
+}
+
+const FRAMEWORK_DETECTIONS: FrameworkDetection[] = [
+  { keys: ['react', 'react-dom'], name: 'React', category: 'framework' },
+  { keys: ['vue'], name: 'Vue', category: 'framework' },
+  { keys: ['@angular/core'], name: 'Angular', category: 'framework' },
+  { keys: ['svelte'], name: 'Svelte', category: 'framework' },
+  { keys: ['next'], name: 'Next.js', category: 'framework' },
+  { keys: ['express'], name: 'Express', category: 'framework' },
+  { keys: ['fastify'], name: 'Fastify', category: 'framework' },
+  { keys: ['nestjs', '@nestjs/core'], name: 'NestJS', category: 'framework' },
+  { keys: ['typescript'], name: 'TypeScript', category: 'language' },
+  { keys: ['tailwindcss'], name: 'Tailwind CSS', category: 'tool' },
+  { keys: ['webpack'], name: 'Webpack', category: 'tool' },
+  { keys: ['vite'], name: 'Vite', category: 'tool' },
+  { keys: ['jest', 'vitest', 'mocha'], name: 'Test Framework', category: 'tool' },
+];
+
+interface ManifestDetection {
+  files: string[];
+  name: string;
+  category: TechStackItem['category'];
+}
+
+const MANIFEST_DETECTIONS: ManifestDetection[] = [
+  { files: ['Cargo.toml'], name: 'Rust', category: 'language' },
+  { files: ['go.mod'], name: 'Go', category: 'language' },
+  {
+    files: ['requirements.txt', 'pyproject.toml', 'Pipfile'],
+    name: 'Python',
+    category: 'language',
+  },
+  { files: ['Gemfile'], name: 'Ruby', category: 'language' },
+  { files: ['composer.json'], name: 'PHP', category: 'language' },
+  {
+    files: ['pom.xml', 'build.gradle', 'build.gradle.kts'],
+    name: 'Java/JVM',
+    category: 'language',
+  },
+  { files: ['Dockerfile'], name: 'Docker', category: 'platform' },
+];
+
+function detectPackageJsonTechStack(
+  deps: Record<string, unknown>,
+  techStack: TechStackItem[],
+): void {
+  for (const detection of FRAMEWORK_DETECTIONS) {
+    if (detection.keys.some((key) => key in deps)) {
+      techStack.push({ name: detection.name, category: detection.category });
+    }
+  }
+}
+
+function parsePackageJson(pkg: FileContent, techStack: TechStackItem[]): number {
+  try {
+    const parsed = JSON.parse(pkg.content);
+    const deps = { ...parsed.dependencies, ...parsed.devDependencies };
+    const depCount = Object.keys(deps).length;
+    detectPackageJsonTechStack(deps, techStack);
+    return depCount;
+  } catch {
+    return 0;
+  }
+}
+
+function detectManifestTechStack(treePaths: Set<string>, techStack: TechStackItem[]): void {
+  for (const detection of MANIFEST_DETECTIONS) {
+    if (detection.files.some((f) => treePaths.has(f))) {
+      techStack.push({ name: detection.name, category: detection.category });
+    }
+  }
+
+  if (treePaths.has('tsconfig.json') && !techStack.some((t) => t.name === 'TypeScript')) {
+    techStack.push({ name: 'TypeScript', category: 'language' });
+  }
+}
+
+function computeScore(
+  manifests: string[],
+  lockfiles: string[],
+  depCount: number,
+  reasonable: boolean,
+  techStack: TechStackItem[],
+): number {
+  let score = 0;
+  if (manifests.length > 0) score += 30;
+  if (lockfiles.length > 0) score += 25;
+  if (depCount > 0) score += 20;
+  if (reasonable) score += 15;
+  if (techStack.length > 0) score += 10;
+  return Math.min(100, score);
+}
+
 export function analyzeDependencies(
   files: FileContent[],
   tree: TreeEntry[],
@@ -52,60 +149,10 @@ export function analyzeDependencies(
 
   // Detect tech stack from package.json
   const pkg = fileMap.get('package.json');
-  let depCount = 0;
-  if (pkg) {
-    try {
-      const parsed = JSON.parse(pkg.content);
-      const deps = { ...parsed.dependencies, ...parsed.devDependencies };
-      depCount = Object.keys(deps).length;
-
-      // Detect frameworks
-      if (deps['react'] || deps['react-dom'])
-        techStack.push({ name: 'React', category: 'framework' });
-      if (deps['vue']) techStack.push({ name: 'Vue', category: 'framework' });
-      if (deps['@angular/core']) techStack.push({ name: 'Angular', category: 'framework' });
-      if (deps['svelte']) techStack.push({ name: 'Svelte', category: 'framework' });
-      if (deps['next']) techStack.push({ name: 'Next.js', category: 'framework' });
-      if (deps['express']) techStack.push({ name: 'Express', category: 'framework' });
-      if (deps['fastify']) techStack.push({ name: 'Fastify', category: 'framework' });
-      if (deps['nestjs'] || deps['@nestjs/core'])
-        techStack.push({ name: 'NestJS', category: 'framework' });
-
-      // Tools
-      if (deps['typescript']) techStack.push({ name: 'TypeScript', category: 'language' });
-      if (deps['tailwindcss']) techStack.push({ name: 'Tailwind CSS', category: 'tool' });
-      if (deps['webpack']) techStack.push({ name: 'Webpack', category: 'tool' });
-      if (deps['vite']) techStack.push({ name: 'Vite', category: 'tool' });
-      if (deps['jest'] || deps['vitest'] || deps['mocha'])
-        techStack.push({ name: 'Test Framework', category: 'tool' });
-    } catch {
-      // Invalid JSON
-    }
-  }
+  const depCount = pkg ? parsePackageJson(pkg, techStack) : 0;
 
   // Detect from other manifests
-  if (treePaths.has('Cargo.toml')) techStack.push({ name: 'Rust', category: 'language' });
-  if (treePaths.has('go.mod')) techStack.push({ name: 'Go', category: 'language' });
-  if (
-    treePaths.has('requirements.txt') ||
-    treePaths.has('pyproject.toml') ||
-    treePaths.has('Pipfile')
-  ) {
-    techStack.push({ name: 'Python', category: 'language' });
-  }
-  if (treePaths.has('Gemfile')) techStack.push({ name: 'Ruby', category: 'language' });
-  if (treePaths.has('composer.json')) techStack.push({ name: 'PHP', category: 'language' });
-  if (
-    treePaths.has('pom.xml') ||
-    treePaths.has('build.gradle') ||
-    treePaths.has('build.gradle.kts')
-  ) {
-    techStack.push({ name: 'Java/JVM', category: 'language' });
-  }
-  if (treePaths.has('Dockerfile')) techStack.push({ name: 'Docker', category: 'platform' });
-  if (treePaths.has('tsconfig.json') && !techStack.some((t) => t.name === 'TypeScript')) {
-    techStack.push({ name: 'TypeScript', category: 'language' });
-  }
+  detectManifestTechStack(treePaths, techStack);
 
   signals.push({
     name: 'Dependencies tracked',
@@ -121,18 +168,13 @@ export function analyzeDependencies(
     details: depCount > 0 ? `${depCount} total` : undefined,
   });
 
-  let score = 0;
-  if (manifests.length > 0) score += 30;
-  if (lockfiles.length > 0) score += 25;
-  if (depCount > 0) score += 20;
-  if (reasonable) score += 15;
-  if (techStack.length > 0) score += 10;
+  const score = computeScore(manifests, lockfiles, depCount, reasonable, techStack);
 
   return {
     result: {
       key: 'dependencies',
       label: 'Dependencies',
-      score: Math.min(100, score),
+      score,
       weight: 0.15,
       signals,
     },

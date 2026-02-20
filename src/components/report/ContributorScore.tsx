@@ -40,7 +40,6 @@ export function ContributorScore({ data }: Props) {
         <div
           className="shrink-0 relative flex items-center justify-center"
           style={{ width: viewBox, height: viewBox }}
-          role="img"
           aria-label={`Contributor friendliness score: ${data.score} out of 100, rated ${ratingLabel}`}
         >
           <svg

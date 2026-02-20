@@ -49,7 +49,7 @@ function savePolicySets(policies: PolicySet[]): void {
 // ─── Unique ID helper ────────────────────────────────────────────────────────
 
 function uid(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  return `${Date.now()}-${crypto.randomUUID().slice(0, 7)}`;
 }
 
 // ─── Preset Policies ─────────────────────────────────────────────────────────
@@ -373,6 +373,33 @@ export function PolicyPage({ onNavigate }: Props) {
     });
   }, []);
 
+  // ── Clean up rule fields when type changes ─────────────────────────────
+  function cleanRuleForTypeChange(updated: PolicyRule, newType: PolicyRule['type']): PolicyRule {
+    if (newType === 'overall-score') {
+      delete updated.category;
+      delete updated.signal;
+      if (updated.operator === 'exists' || updated.operator === 'not-exists') {
+        updated.operator = '>=';
+      }
+      updated.value ??= 60;
+    } else if (newType === 'category-score') {
+      delete updated.signal;
+      if (!updated.category) updated.category = 'documentation';
+      if (updated.operator === 'exists' || updated.operator === 'not-exists') {
+        updated.operator = '>=';
+      }
+      updated.value ??= 60;
+    } else if (newType === 'signal') {
+      delete updated.category;
+      delete updated.value;
+      if (updated.operator !== 'exists' && updated.operator !== 'not-exists') {
+        updated.operator = 'exists';
+      }
+      if (!updated.signal) updated.signal = '';
+    }
+    return updated;
+  }
+
   // ── Update a rule field ────────────────────────────────────────────────
   const updateRule = useCallback((ruleId: string, updates: Partial<PolicyRule>) => {
     setEditingPolicy((prev) => {
@@ -382,30 +409,8 @@ export function PolicyPage({ onNavigate }: Props) {
         rules: prev.rules.map((r) => {
           if (r.id !== ruleId) return r;
           const updated = { ...r, ...updates };
-          // Clear irrelevant fields when type changes
           if (updates.type) {
-            if (updates.type === 'overall-score') {
-              delete updated.category;
-              delete updated.signal;
-              if (updated.operator === 'exists' || updated.operator === 'not-exists') {
-                updated.operator = '>=';
-              }
-              updated.value ??= 60;
-            } else if (updates.type === 'category-score') {
-              delete updated.signal;
-              if (!updated.category) updated.category = 'documentation';
-              if (updated.operator === 'exists' || updated.operator === 'not-exists') {
-                updated.operator = '>=';
-              }
-              updated.value ??= 60;
-            } else if (updates.type === 'signal') {
-              delete updated.category;
-              delete updated.value;
-              if (updated.operator !== 'exists' && updated.operator !== 'not-exists') {
-                updated.operator = 'exists';
-              }
-              if (!updated.signal) updated.signal = '';
-            }
+            return cleanRuleForTypeChange(updated, updates.type);
           }
           return updated;
         }),
@@ -778,8 +783,14 @@ export function PolicyPage({ onNavigate }: Props) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {/* Rule name */}
                       <div>
-                        <label className="block text-xs text-text-muted mb-1">Name</label>
+                        <label
+                          htmlFor={`rule-name-${rule.id}`}
+                          className="block text-xs text-text-muted mb-1"
+                        >
+                          Name
+                        </label>
                         <input
+                          id={`rule-name-${rule.id}`}
                           type="text"
                           value={rule.name}
                           onChange={(e) => updateRule(rule.id, { name: e.target.value })}
@@ -790,8 +801,14 @@ export function PolicyPage({ onNavigate }: Props) {
 
                       {/* Rule description */}
                       <div>
-                        <label className="block text-xs text-text-muted mb-1">Description</label>
+                        <label
+                          htmlFor={`rule-desc-${rule.id}`}
+                          className="block text-xs text-text-muted mb-1"
+                        >
+                          Description
+                        </label>
                         <input
+                          id={`rule-desc-${rule.id}`}
                           type="text"
                           value={rule.description}
                           onChange={(e) => updateRule(rule.id, { description: e.target.value })}
@@ -802,8 +819,14 @@ export function PolicyPage({ onNavigate }: Props) {
 
                       {/* Rule type */}
                       <div>
-                        <label className="block text-xs text-text-muted mb-1">Type</label>
+                        <label
+                          htmlFor={`rule-type-${rule.id}`}
+                          className="block text-xs text-text-muted mb-1"
+                        >
+                          Type
+                        </label>
                         <select
+                          id={`rule-type-${rule.id}`}
                           value={rule.type}
                           onChange={(e) =>
                             updateRule(rule.id, { type: e.target.value as PolicyRule['type'] })
@@ -819,8 +842,14 @@ export function PolicyPage({ onNavigate }: Props) {
                       {/* Category (if category-score) */}
                       {rule.type === 'category-score' && (
                         <div>
-                          <label className="block text-xs text-text-muted mb-1">Category</label>
+                          <label
+                            htmlFor={`rule-category-${rule.id}`}
+                            className="block text-xs text-text-muted mb-1"
+                          >
+                            Category
+                          </label>
                           <select
+                            id={`rule-category-${rule.id}`}
                             value={rule.category || 'documentation'}
                             onChange={(e) =>
                               updateRule(rule.id, { category: e.target.value as CategoryKey })
@@ -839,8 +868,14 @@ export function PolicyPage({ onNavigate }: Props) {
                       {/* Signal name (if signal) */}
                       {rule.type === 'signal' && (
                         <div>
-                          <label className="block text-xs text-text-muted mb-1">Signal Name</label>
+                          <label
+                            htmlFor={`rule-signal-${rule.id}`}
+                            className="block text-xs text-text-muted mb-1"
+                          >
+                            Signal Name
+                          </label>
                           <input
+                            id={`rule-signal-${rule.id}`}
                             type="text"
                             value={rule.signal || ''}
                             onChange={(e) => updateRule(rule.id, { signal: e.target.value })}
@@ -852,8 +887,14 @@ export function PolicyPage({ onNavigate }: Props) {
 
                       {/* Operator */}
                       <div>
-                        <label className="block text-xs text-text-muted mb-1">Operator</label>
+                        <label
+                          htmlFor={`rule-operator-${rule.id}`}
+                          className="block text-xs text-text-muted mb-1"
+                        >
+                          Operator
+                        </label>
                         <select
+                          id={`rule-operator-${rule.id}`}
                           value={rule.operator}
                           onChange={(e) =>
                             updateRule(rule.id, { operator: e.target.value as PolicyOperator })
@@ -902,8 +943,14 @@ export function PolicyPage({ onNavigate }: Props) {
 
                       {/* Severity */}
                       <div>
-                        <label className="block text-xs text-text-muted mb-1">Severity</label>
+                        <label
+                          htmlFor={`rule-severity-${rule.id}`}
+                          className="block text-xs text-text-muted mb-1"
+                        >
+                          Severity
+                        </label>
                         <select
+                          id={`rule-severity-${rule.id}`}
                           value={rule.severity}
                           onChange={(e) =>
                             updateRule(rule.id, {
@@ -1334,57 +1381,65 @@ export function PolicyPage({ onNavigate }: Props) {
               </div>
 
               <div className="divide-y divide-border">
-                {evaluation.results.map((result, idx) => (
-                  <div
-                    key={`${result.rule.id}-${idx}`}
-                    className={`px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 ${
-                      result.passed
-                        ? 'bg-grade-a/[0.02]'
-                        : result.rule.severity === 'error'
-                          ? 'bg-grade-f/[0.03]'
-                          : result.rule.severity === 'warning'
-                            ? 'bg-grade-c/[0.03]'
-                            : 'bg-neon/[0.02]'
-                    }`}
-                  >
-                    {/* Result badge */}
-                    <div className="shrink-0">{resultBadge(result)}</div>
+                {evaluation.results.map((result, idx) => {
+                  const rowBg = result.passed
+                    ? 'bg-grade-a/[0.02]'
+                    : result.rule.severity === 'error'
+                      ? 'bg-grade-f/[0.03]'
+                      : result.rule.severity === 'warning'
+                        ? 'bg-grade-c/[0.03]'
+                        : 'bg-neon/[0.02]';
 
-                    {/* Rule details */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-text">{result.rule.name}</span>
-                        {severityBadge(result.rule.severity)}
-                        <span className="text-xs text-text-muted px-1.5 py-0.5 rounded bg-surface border border-border">
-                          {result.rule.type === 'overall-score'
-                            ? 'Overall Score'
-                            : result.rule.type === 'category-score'
-                              ? CATEGORY_LABELS[result.rule.category as CategoryKey] ||
-                                result.rule.category
-                              : 'Signal'}
-                        </span>
-                      </div>
-                      {result.rule.description && (
-                        <p className="text-xs text-text-muted mt-1">{result.rule.description}</p>
-                      )}
-                    </div>
+                  const ruleTypeLabel =
+                    result.rule.type === 'overall-score'
+                      ? 'Overall Score'
+                      : result.rule.type === 'category-score'
+                        ? CATEGORY_LABELS[result.rule.category as CategoryKey] ||
+                          result.rule.category
+                        : 'Signal';
 
-                    {/* Actual vs Expected */}
-                    <div className="shrink-0 text-right sm:min-w-[200px]">
-                      <div className="text-xs text-text-muted">
-                        Actual:{' '}
-                        <span
-                          className={`font-semibold ${result.passed ? 'text-grade-a' : 'text-grade-f'}`}
-                        >
-                          {result.actual}
-                        </span>
+                  return (
+                    <div
+                      key={`${result.rule.id}-${idx}`}
+                      className={`px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 ${rowBg}`}
+                    >
+                      {/* Result badge */}
+                      <div className="shrink-0">{resultBadge(result)}</div>
+
+                      {/* Rule details */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-text">
+                            {result.rule.name}
+                          </span>
+                          {severityBadge(result.rule.severity)}
+                          <span className="text-xs text-text-muted px-1.5 py-0.5 rounded bg-surface border border-border">
+                            {ruleTypeLabel}
+                          </span>
+                        </div>
+                        {result.rule.description && (
+                          <p className="text-xs text-text-muted mt-1">{result.rule.description}</p>
+                        )}
                       </div>
-                      <div className="text-xs text-text-muted">
-                        Expected: <span className="font-semibold text-text">{result.expected}</span>
+
+                      {/* Actual vs Expected */}
+                      <div className="shrink-0 text-right sm:min-w-[200px]">
+                        <div className="text-xs text-text-muted">
+                          Actual:{' '}
+                          <span
+                            className={`font-semibold ${result.passed ? 'text-grade-a' : 'text-grade-f'}`}
+                          >
+                            {result.actual}
+                          </span>
+                        </div>
+                        <div className="text-xs text-text-muted">
+                          Expected:{' '}
+                          <span className="font-semibold text-text">{result.expected}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

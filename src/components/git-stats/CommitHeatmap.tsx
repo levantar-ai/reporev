@@ -23,7 +23,7 @@ export function CommitHeatmap({ commitActivity }: Props) {
     }
 
     // Get the date range
-    const dates = data.map((d) => d[0]).sort();
+    const dates = data.map((d) => d[0]).sort((a, b) => a.localeCompare(b));
     const rangeStart = dates[0];
     const rangeEnd = dates[dates.length - 1];
 

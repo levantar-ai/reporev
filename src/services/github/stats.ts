@@ -70,6 +70,24 @@ async function fetchWithRetry<T>(
   return null;
 }
 
+// ── Helpers for response handling ──
+
+function emitRateLimit(res: Response, onRateLimit?: (info: RateLimitInfo) => void): RateLimitInfo {
+  const rateLimit = extractRateLimit(res.headers);
+  if (onRateLimit) onRateLimit(rateLimit);
+  return rateLimit;
+}
+
+function throwIfRateLimited(res: Response, rateLimit: RateLimitInfo): void {
+  if (res.status === 403 && rateLimit.remaining === 0) {
+    throw new Error('GitHub API rate limit exceeded.');
+  }
+}
+
+function repoPrefix(owner: string, repo: string): string {
+  return `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+}
+
 // ── Fetch paginated commit list (up to 1000) ──
 
 export async function fetchCommitList(
@@ -83,24 +101,19 @@ export async function fetchCommitList(
   const allCommits: GitHubCommitResponse[] = [];
   const maxPages = 10;
   const perPage = 100;
+  const prefix = repoPrefix(owner, repo);
 
   for (let page = 1; page <= maxPages; page++) {
     const res = await fetch(
-      `${GITHUB_API_BASE}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits?per_page=${perPage}&page=${page}`,
+      `${GITHUB_API_BASE}${prefix}/commits?per_page=${perPage}&page=${page}`,
       { headers },
     );
 
-    const rateLimit = extractRateLimit(res.headers);
-    if (onRateLimit) onRateLimit(rateLimit);
+    const rateLimit = emitRateLimit(res, onRateLimit);
 
     if (!res.ok) {
-      if (res.status === 403 && rateLimit.remaining === 0) {
-        throw new Error('GitHub API rate limit exceeded.');
-      }
-      if (res.status === 409) {
-        // Empty repository
-        return [];
-      }
+      throwIfRateLimited(res, rateLimit);
+      if (res.status === 409) return []; // Empty repository
       throw new Error(`Failed to fetch commits: ${res.status} ${res.statusText}`);
     }
 
@@ -143,22 +156,19 @@ export async function fetchCommitDetails(
   }
 
   const details: GitHubCommitDetailResponse[] = [];
+  const prefix = repoPrefix(owner, repo);
 
   for (let i = 0; i < sampled.length; i++) {
     const sha = sampled[i];
-    const res = await fetch(
-      `${GITHUB_API_BASE}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits/${sha}`,
-      { headers },
-    );
+    const res = await fetch(`${GITHUB_API_BASE}${prefix}/commits/${sha}`, { headers });
 
-    const rateLimit = extractRateLimit(res.headers);
-    if (onRateLimit) onRateLimit(rateLimit);
+    const rateLimit = emitRateLimit(res, onRateLimit);
 
     if (res.ok) {
       const detail: GitHubCommitDetailResponse = await res.json();
       details.push(detail);
-    } else if (res.status === 403 && rateLimit.remaining === 0) {
-      throw new Error('GitHub API rate limit exceeded.');
+    } else {
+      throwIfRateLimited(res, rateLimit);
     }
     // Skip individual failures silently
 
@@ -185,7 +195,7 @@ export async function fetchAllStats(
   punchCard: GitHubPunchCard[] | null;
   languages: GitHubLanguages | null;
 }> {
-  const prefix = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+  const prefix = repoPrefix(owner, repo);
 
   const [contributorStats, codeFrequency, commitActivity, participation, punchCard, languages] =
     await Promise.all([

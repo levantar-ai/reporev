@@ -43,13 +43,15 @@ export function ProgressBar({ step, progress, filesFetched, filesTotal }: Props)
         <div
           className="h-full bg-gradient-to-r from-primary-500 to-neon rounded-full transition-all duration-300 ease-out"
           style={{ width: `${progress}%`, boxShadow: '0 0 10px rgba(34, 211, 238, 0.3)' }}
-          role="progressbar"
-          aria-valuenow={roundedProgress}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={`${label}${fileProgress} ${roundedProgress}% complete`}
+          aria-hidden="true"
         />
       </div>
+      <progress
+        className="sr-only"
+        value={roundedProgress}
+        max={100}
+        aria-label={`${label}${fileProgress} ${roundedProgress}% complete`}
+      />
     </output>
   );
 }

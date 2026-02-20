@@ -10,9 +10,8 @@ const DOT_STYLES = Array.from({ length: 20 }).map((_, i) => ({
 
 export function LoadingScreen() {
   return (
-    <div
+    <output
       className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0f172a]"
-      role="status"
       aria-label="Loading RepoRev"
     >
       {/* Background animated dots — decorative */}
@@ -58,7 +57,7 @@ export function LoadingScreen() {
 
       {/* Brand name */}
       <h1 className="text-4xl font-bold tracking-tight text-text mb-3">
-        Repo
+        {'Repo'}
         <span className="text-neon" style={{ textShadow: '0 0 20px rgba(0, 212, 255, 0.5)' }}>
           Rev
         </span>
@@ -90,6 +89,6 @@ export function LoadingScreen() {
           50% { transform: translateY(-20px) scale(1.5); opacity: 0.8; }
         }
       `}</style>
-    </div>
+    </output>
   );
 }

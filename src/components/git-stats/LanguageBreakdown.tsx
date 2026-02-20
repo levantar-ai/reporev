@@ -21,12 +21,14 @@ export function LanguageBreakdown({ languages }: Props) {
         trigger: 'item' as const,
         formatter: (params: { name: string; value: number; percent: number }) => {
           const bytes = params.value;
-          const size =
-            bytes > 1024 * 1024
-              ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-              : bytes > 1024
-                ? `${(bytes / 1024).toFixed(1)} KB`
-                : `${bytes} B`;
+          let size: string;
+          if (bytes > 1024 * 1024) {
+            size = `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+          } else if (bytes > 1024) {
+            size = `${(bytes / 1024).toFixed(1)} KB`;
+          } else {
+            size = `${bytes} B`;
+          }
           return `<b>${params.name}</b><br/>${size} (${params.percent}%)`;
         },
       },

@@ -11,7 +11,11 @@ export function ContributorBreakdown({ contributors }: Props) {
   const barOption = useMemo(() => {
     const top15 = contributors.slice(0, 15);
     const logins = top15.map((c) => c.login);
+    const reversedLogins = [...logins];
+    reversedLogins.reverse();
     const commits = top15.map((c) => c.totalCommits);
+    const reversedCommits = [...commits];
+    reversedCommits.reverse();
 
     return {
       tooltip: {
@@ -40,7 +44,7 @@ export function ContributorBreakdown({ contributors }: Props) {
       },
       yAxis: {
         type: 'category' as const,
-        data: logins.reverse(),
+        data: reversedLogins,
         axisLabel: {
           color: '#94a3b8',
           fontSize: 11,
@@ -51,7 +55,7 @@ export function ContributorBreakdown({ contributors }: Props) {
       series: [
         {
           type: 'bar',
-          data: commits.reverse(),
+          data: reversedCommits,
           barMaxWidth: 24,
           itemStyle: {
             color: (params: { dataIndex: number }) => {

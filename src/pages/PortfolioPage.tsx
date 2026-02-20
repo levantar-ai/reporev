@@ -151,40 +151,39 @@ function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
 }
 
-// ── Light analysis (tree-only) ──
+// ── Light analysis (tree-only) — category helpers ──
 
-function analyzeTree(
-  paths: Set<string>,
-  repoInfo: { license: { spdx_id: string } | null; language: string | null },
-): { categories: Record<CategoryKey, number>; tech: string[] } {
-  // Documentation (max 100)
+function scoreDocumentation(paths: Set<string>): number {
   let doc = 0;
   if (has(paths, 'README.md', 'readme.md', 'README.rst', 'README')) doc += 30;
   if (has(paths, 'CONTRIBUTING.md', '.github/CONTRIBUTING.md')) doc += 20;
   if (has(paths, 'CHANGELOG.md', 'CHANGES.md', 'HISTORY.md')) doc += 15;
   if (hasPrefix(paths, 'docs/') || hasPrefix(paths, 'doc/')) doc += 15;
   if (has(paths, 'LICENSE', 'LICENSE.md', 'LICENSE.txt', 'LICENCE', 'LICENCE.md')) doc += 20;
-  doc = clamp(doc, 0, 100);
+  return clamp(doc, 0, 100);
+}
 
-  // Security (max 100)
+function scoreSecurity(paths: Set<string>): number {
   let sec = 0;
   if (has(paths, 'SECURITY.md', '.github/SECURITY.md')) sec += 25;
   if (has(paths, 'CODEOWNERS', '.github/CODEOWNERS')) sec += 20;
   if (has(paths, '.github/dependabot.yml', '.github/dependabot.yaml')) sec += 25;
   if (has(paths, '.gitignore')) sec += 15;
   if (hasPrefix(paths, '.github/workflows/')) sec += 15;
-  sec = clamp(sec, 0, 100);
+  return clamp(sec, 0, 100);
+}
 
-  // CI/CD (max 100)
+function scoreCicd(paths: Set<string>): number {
   let ci = 0;
   if (hasPrefix(paths, '.github/workflows/')) ci += 35;
   if (has(paths, 'Dockerfile')) ci += 20;
   if (has(paths, 'Makefile')) ci += 15;
   if (has(paths, 'docker-compose.yml', 'docker-compose.yaml')) ci += 15;
   if (countPrefix(paths, '.github/workflows/') > 1) ci += 15;
-  ci = clamp(ci, 0, 100);
+  return clamp(ci, 0, 100);
+}
 
-  // Dependencies (max 100)
+function scoreDependencies(paths: Set<string>): number {
   let deps = 0;
   const manifests = [
     'package.json',
@@ -216,9 +215,10 @@ function analyzeTree(
   if (lockfiles.some((l) => paths.has(l))) deps += 25;
   if (manifestCount > 0) deps += 20; // reasonable assumed
   if (manifestCount > 1) deps += 25;
-  deps = clamp(deps, 0, 100);
+  return clamp(deps, 0, 100);
+}
 
-  // Code Quality (max 100)
+function scoreCodeQuality(paths: Set<string>): number {
   let quality = 0;
   const linters = [
     '.eslintrc.json',
@@ -252,9 +252,10 @@ function analyzeTree(
   )
     quality += 25;
   if (has(paths, '.editorconfig')) quality += 15;
-  quality = clamp(quality, 0, 100);
+  return clamp(quality, 0, 100);
+}
 
-  // License (max 100)
+function scoreLicense(paths: Set<string>, repoLicense: { spdx_id: string } | null): number {
   let lic = 0;
   if (has(paths, 'LICENSE', 'LICENSE.md', 'LICENSE.txt', 'LICENCE', 'LICENCE.md')) lic += 50;
   if (has(paths, 'LICENSE.md', 'LICENSE.txt', 'LICENCE.md') && has(paths, 'LICENSE', 'LICENCE')) {
@@ -262,10 +263,11 @@ function analyzeTree(
   } else if (has(paths, 'LICENSE.md', 'LICENSE.txt', 'LICENCE.md')) {
     lic += 10;
   }
-  if (repoInfo.license?.spdx_id && repoInfo.license.spdx_id !== 'NOASSERTION') lic += 40;
-  lic = clamp(lic, 0, 100);
+  if (repoLicense?.spdx_id && repoLicense.spdx_id !== 'NOASSERTION') lic += 40;
+  return clamp(lic, 0, 100);
+}
 
-  // Community (max 100)
+function scoreCommunity(paths: Set<string>): number {
   let comm = 0;
   if (hasPrefix(paths, '.github/ISSUE_TEMPLATE/') || has(paths, '.github/ISSUE_TEMPLATE.md'))
     comm += 25;
@@ -274,27 +276,36 @@ function analyzeTree(
   if (has(paths, 'CODE_OF_CONDUCT.md', '.github/CODE_OF_CONDUCT.md')) comm += 20;
   if (has(paths, 'CONTRIBUTING.md', '.github/CONTRIBUTING.md')) comm += 20;
   if (has(paths, '.github/FUNDING.yml')) comm += 15;
-  comm = clamp(comm, 0, 100);
+  return clamp(comm, 0, 100);
+}
 
-  // Detect tech
+function detectTech(paths: Set<string>): string[] {
   const tech: string[] = [];
   for (const [file, techName] of Object.entries(TECH_DETECT_MAP)) {
     if (paths.has(file) && !tech.includes(techName)) {
       tech.push(techName);
     }
   }
+  return tech;
+}
 
+// ── Light analysis (tree-only) ──
+
+function analyzeTree(
+  paths: Set<string>,
+  repoInfo: { license: { spdx_id: string } | null; language: string | null },
+): { categories: Record<CategoryKey, number>; tech: string[] } {
   return {
     categories: {
-      documentation: doc,
-      security: sec,
-      cicd: ci,
-      dependencies: deps,
-      codeQuality: quality,
-      license: lic,
-      community: comm,
+      documentation: scoreDocumentation(paths),
+      security: scoreSecurity(paths),
+      cicd: scoreCicd(paths),
+      dependencies: scoreDependencies(paths),
+      codeQuality: scoreCodeQuality(paths),
+      license: scoreLicense(paths, repoInfo.license),
+      community: scoreCommunity(paths),
     },
-    tech,
+    tech: detectTech(paths),
   };
 }
 
@@ -304,6 +315,111 @@ function computeOverallScore(cats: Record<CategoryKey, number>): number {
     total += cats[key] * CATEGORY_WEIGHTS[key];
   }
   return Math.round(total);
+}
+
+// ── Helpers for analyze callback (reduce cognitive complexity) ──
+
+async function fetchUserRepos(
+  trimmed: string,
+  headers: Record<string, string>,
+  signal: AbortSignal,
+): Promise<GitHubRepoResponse[]> {
+  const reposRes = await fetch(
+    `${GITHUB_API_BASE}/users/${encodeURIComponent(trimmed)}/repos?sort=updated&per_page=30&type=owner`,
+    { headers, signal },
+  );
+
+  if (!reposRes.ok) {
+    if (reposRes.status === 404) throw new Error(`User "${trimmed}" not found on GitHub.`);
+    if (reposRes.status === 403)
+      throw new Error('GitHub API rate limit exceeded. Add a token in Settings.');
+    throw new Error(`GitHub API error: ${reposRes.status} ${reposRes.statusText}`);
+  }
+
+  return reposRes.json();
+}
+
+async function analyzeSingleRepo(
+  repo: GitHubRepoResponse,
+  headers: Record<string, string>,
+  signal: AbortSignal,
+): Promise<RepoAnalysis | null> {
+  const treeRes = await fetch(
+    `${GITHUB_API_BASE}/repos/${repo.full_name}/git/trees/${repo.default_branch}?recursive=1`,
+    { headers, signal },
+  );
+
+  if (!treeRes.ok) return null;
+
+  const treeData: { tree: TreeEntry[] } = await treeRes.json();
+  const pathSet = new Set(treeData.tree.filter((e) => e.type === 'blob').map((e) => e.path));
+
+  const { categories, tech } = analyzeTree(pathSet, {
+    license: repo.license,
+    language: repo.language,
+  });
+  const score = computeOverallScore(categories);
+
+  return {
+    name: repo.name,
+    fullName: repo.full_name,
+    grade: scoreToGrade(score),
+    score,
+    language: repo.language,
+    stars: repo.stargazers_count,
+    categories,
+    techDetected: tech,
+  };
+}
+
+function buildPortfolioData(trimmed: string, analyses: RepoAnalysis[]): PortfolioData {
+  const avgScore = Math.round(analyses.reduce((sum, r) => sum + r.score, 0) / analyses.length);
+
+  const categoryAverages = {} as Record<CategoryKey, number>;
+  for (const key of CATEGORY_KEYS) {
+    categoryAverages[key] = Math.round(
+      analyses.reduce((sum, r) => sum + r.categories[key], 0) / analyses.length,
+    );
+  }
+
+  const langCounts: Record<string, number> = {};
+  for (const r of analyses) {
+    if (r.language) {
+      langCounts[r.language] = (langCounts[r.language] || 0) + 1;
+    }
+  }
+  const topLanguages = Object.entries(langCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, count]) => ({
+      name,
+      count,
+      color: LANGUAGE_COLORS[name] || '#8b949e',
+    }));
+
+  const strengths: string[] = [];
+  for (const key of CATEGORY_KEYS) {
+    if (categoryAverages[key] >= 70) {
+      strengths.push(`Strong ${CATEGORY_LABELS[key]}`);
+    }
+  }
+
+  const techSet = new Set<string>();
+  for (const r of analyses) {
+    for (const t of r.techDetected) techSet.add(t);
+  }
+
+  return {
+    username: trimmed,
+    avatarUrl: `https://github.com/${encodeURIComponent(trimmed)}.png?size=80`,
+    repoCount: analyses.length,
+    repos: [...analyses].sort((a, b) => b.score - a.score),
+    overallScore: avgScore,
+    overallGrade: scoreToGrade(avgScore),
+    topLanguages,
+    categoryAverages,
+    strengths,
+    allTech: Array.from(techSet).sort((a, b) => a.localeCompare(b)),
+  };
 }
 
 // ── Component ──
@@ -333,22 +449,7 @@ export function PortfolioPage({ onBack, onAnalyze, githubToken }: Props) {
     const headers = authHeaders(githubToken);
 
     try {
-      // 1. Fetch user repos
-      const reposRes = await fetch(
-        `${GITHUB_API_BASE}/users/${encodeURIComponent(trimmed)}/repos?sort=updated&per_page=30&type=owner`,
-        { headers, signal },
-      );
-
-      if (!reposRes.ok) {
-        if (reposRes.status === 404) throw new Error(`User "${trimmed}" not found on GitHub.`);
-        if (reposRes.status === 403)
-          throw new Error('GitHub API rate limit exceeded. Add a token in Settings.');
-        throw new Error(`GitHub API error: ${reposRes.status} ${reposRes.statusText}`);
-      }
-
-      const reposData: GitHubRepoResponse[] = await reposRes.json();
-
-      // 2. Filter out forks, limit to MAX_REPOS
+      const reposData = await fetchUserRepos(trimmed, headers, signal);
       const nonForkRepos = reposData.filter((r) => !r.fork).slice(0, MAX_REPOS);
 
       if (nonForkRepos.length === 0) {
@@ -358,7 +459,6 @@ export function PortfolioPage({ onBack, onAnalyze, githubToken }: Props) {
       setProgress(10);
       setProgressLabel(`Analyzing ${nonForkRepos.length} repositories...`);
 
-      // 3. Analyze each repo
       const analyses: RepoAnalysis[] = [];
       for (let i = 0; i < nonForkRepos.length; i++) {
         if (signal.aborted) break;
@@ -369,40 +469,9 @@ export function PortfolioPage({ onBack, onAnalyze, githubToken }: Props) {
         setProgressLabel(`Analyzing ${repo.name} (${i + 1}/${nonForkRepos.length})...`);
 
         try {
-          // Fetch tree
-          const treeRes = await fetch(
-            `${GITHUB_API_BASE}/repos/${repo.full_name}/git/trees/${repo.default_branch}?recursive=1`,
-            { headers, signal },
-          );
-
-          if (!treeRes.ok) {
-            // Skip repos where tree fetch fails (empty repos, etc.)
-            continue;
-          }
-
-          const treeData: { tree: TreeEntry[] } = await treeRes.json();
-          const pathSet = new Set(
-            treeData.tree.filter((e) => e.type === 'blob').map((e) => e.path),
-          );
-
-          const { categories, tech } = analyzeTree(pathSet, {
-            license: repo.license,
-            language: repo.language,
-          });
-          const score = computeOverallScore(categories);
-
-          analyses.push({
-            name: repo.name,
-            fullName: repo.full_name,
-            grade: scoreToGrade(score),
-            score,
-            language: repo.language,
-            stars: repo.stargazers_count,
-            categories,
-            techDetected: tech,
-          });
+          const result = await analyzeSingleRepo(repo, headers, signal);
+          if (result) analyses.push(result);
         } catch {
-          // Skip individual repo errors; continue with the rest
           if (signal.aborted) break;
         }
       }
@@ -411,61 +480,9 @@ export function PortfolioPage({ onBack, onAnalyze, githubToken }: Props) {
         throw new Error('Could not analyze any repositories. They may be empty or inaccessible.');
       }
 
-      // 4. Compute aggregates
-      const avgScore = Math.round(analyses.reduce((sum, r) => sum + r.score, 0) / analyses.length);
-
-      // Category averages
-      const categoryAverages = {} as Record<CategoryKey, number>;
-      for (const key of CATEGORY_KEYS) {
-        categoryAverages[key] = Math.round(
-          analyses.reduce((sum, r) => sum + r.categories[key], 0) / analyses.length,
-        );
-      }
-
-      // Top languages
-      const langCounts: Record<string, number> = {};
-      for (const r of analyses) {
-        if (r.language) {
-          langCounts[r.language] = (langCounts[r.language] || 0) + 1;
-        }
-      }
-      const topLanguages = Object.entries(langCounts)
-        .sort((a, b) => b[1] - a[1])
-        .map(([name, count]) => ({
-          name,
-          count,
-          color: LANGUAGE_COLORS[name] || '#8b949e',
-        }));
-
-      // Strengths
-      const strengths: string[] = [];
-      for (const key of CATEGORY_KEYS) {
-        if (categoryAverages[key] >= 70) {
-          strengths.push(`Strong ${CATEGORY_LABELS[key]}`);
-        }
-      }
-
-      // All unique tech
-      const techSet = new Set<string>();
-      for (const r of analyses) {
-        for (const t of r.techDetected) techSet.add(t);
-      }
-
       setProgress(100);
       setProgressLabel('Complete!');
-
-      setPortfolio({
-        username: trimmed,
-        avatarUrl: `https://github.com/${encodeURIComponent(trimmed)}.png?size=80`,
-        repoCount: analyses.length,
-        repos: analyses.sort((a, b) => b.score - a.score),
-        overallScore: avgScore,
-        overallGrade: scoreToGrade(avgScore),
-        topLanguages,
-        categoryAverages,
-        strengths,
-        allTech: Array.from(techSet).sort(),
-      });
+      setPortfolio(buildPortfolioData(trimmed, analyses));
     } catch (err: unknown) {
       if (!signal.aborted) {
         setError(err instanceof Error ? err.message : 'An unexpected error occurred.');

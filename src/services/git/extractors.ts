@@ -103,6 +103,99 @@ export function logToCommits(entries: ReadCommitResult[]): GitHubCommitResponse[
   }));
 }
 
+// ── Shared DiffFile interface ──
+
+interface DiffFile {
+  sha: string;
+  filename: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  changes: number;
+}
+
+// ── Two-tree diff helper (parent vs current) for full content diff ──
+
+async function diffTwoTrees(
+  entries: (WalkerEntry | null)[],
+  filepath: string,
+): Promise<DiffFile | null> {
+  const [parentEntry, currentEntry] = entries;
+  const parentOidVal = parentEntry ? await parentEntry.oid() : null;
+  const currentOidVal = currentEntry ? await currentEntry.oid() : null;
+
+  if (parentOidVal === currentOidVal) return null; // unchanged
+
+  const parentType = parentEntry ? await parentEntry.type() : null;
+  const currentType = currentEntry ? await currentEntry.type() : null;
+
+  // Only diff blobs (files), not trees
+  if (parentType === 'tree' || currentType === 'tree') return null;
+
+  let additions = 0;
+  let deletions = 0;
+  let status = 'modified';
+
+  if (!parentEntry || parentOidVal === null) {
+    // Added file
+    status = 'added';
+    const content = currentEntry ? await currentEntry.content() : null;
+    if (content) {
+      additions = countLines(content);
+    }
+  } else if (!currentEntry || currentOidVal === null) {
+    // Deleted file
+    status = 'removed';
+    const content = parentEntry ? await parentEntry.content() : null;
+    if (content) {
+      deletions = countLines(content);
+    }
+  } else {
+    // Modified file - count line differences
+    const oldContent = await parentEntry.content();
+    const newContent = await currentEntry.content();
+    if (oldContent && newContent) {
+      const diff = countLineDiff(oldContent, newContent);
+      additions = diff.additions;
+      deletions = diff.deletions;
+    }
+  }
+
+  return {
+    sha: currentOidVal || parentOidVal || '',
+    filename: filepath,
+    status,
+    additions,
+    deletions,
+    changes: additions + deletions,
+  };
+}
+
+// ── Single-tree diff helper (initial commit) for full content diff ──
+
+async function diffSingleTree(
+  entries: (WalkerEntry | null)[],
+  filepath: string,
+): Promise<DiffFile | null> {
+  const [entry] = entries;
+  if (!entry) return null;
+  const type = await entry.type();
+  if (type === 'tree') return null;
+
+  const content = await entry.content();
+  const additions = content ? countLines(content) : 0;
+  const entryOid = await entry.oid();
+
+  return {
+    sha: entryOid || '',
+    filename: filepath,
+    status: 'added',
+    additions,
+    deletions: 0,
+    changes: additions,
+  };
+}
+
 // ── Diff a single commit against its parent ──
 
 export async function diffCommit(
@@ -115,98 +208,22 @@ export async function diffCommit(
     stats: { additions: number; deletions: number; total: number };
   }
 > {
-  const files: {
-    sha: string;
-    filename: string;
-    status: string;
-    additions: number;
-    deletions: number;
-    changes: number;
-  }[] = [];
+  const files: DiffFile[] = [];
 
   const trees = parentOid
     ? [git.TREE({ ref: parentOid }), git.TREE({ ref: oid })]
     : [git.TREE({ ref: oid })];
+
+  const diffFn = parentOid ? diffTwoTrees : diffSingleTree;
 
   await git.walk({
     fs,
     dir,
     trees,
     map: async (filepath: string, entries: (WalkerEntry | null)[] | null) => {
-      if (!entries) return;
-      if (filepath === '.') return;
-
-      if (parentOid) {
-        // Two-tree walk: [parent, current]
-        const [parentEntry, currentEntry] = entries;
-        const parentOidVal = parentEntry ? await parentEntry.oid() : null;
-        const currentOidVal = currentEntry ? await currentEntry.oid() : null;
-
-        if (parentOidVal === currentOidVal) return; // unchanged
-
-        const parentType = parentEntry ? await parentEntry.type() : null;
-        const currentType = currentEntry ? await currentEntry.type() : null;
-
-        // Only diff blobs (files), not trees
-        if (parentType === 'tree' || currentType === 'tree') return;
-
-        let additions = 0;
-        let deletions = 0;
-        let status = 'modified';
-
-        if (!parentEntry || parentOidVal === null) {
-          // Added file
-          status = 'added';
-          const content = currentEntry ? await currentEntry.content() : null;
-          if (content) {
-            additions = countLines(content);
-          }
-        } else if (!currentEntry || currentOidVal === null) {
-          // Deleted file
-          status = 'removed';
-          const content = parentEntry ? await parentEntry.content() : null;
-          if (content) {
-            deletions = countLines(content);
-          }
-        } else {
-          // Modified file - count line differences
-          const oldContent = await parentEntry.content();
-          const newContent = await currentEntry.content();
-          if (oldContent && newContent) {
-            const diff = countLineDiff(oldContent, newContent);
-            additions = diff.additions;
-            deletions = diff.deletions;
-          }
-        }
-
-        files.push({
-          sha: currentOidVal || parentOidVal || '',
-          filename: filepath,
-          status,
-          additions,
-          deletions,
-          changes: additions + deletions,
-        });
-      } else {
-        // Single-tree walk (initial commit): everything is added
-        const [entry] = entries;
-        if (!entry) return;
-        const type = await entry.type();
-        if (type === 'tree') return;
-
-        const content = await entry.content();
-        const additions = content ? countLines(content) : 0;
-        const entryOid = await entry.oid();
-
-        files.push({
-          sha: entryOid || '',
-          filename: filepath,
-          status: 'added',
-          additions,
-          deletions: 0,
-          changes: additions,
-        });
-      }
+      if (!entries || filepath === '.') return;
+      const result = await diffFn(entries, filepath);
+      if (result) files.push(result);
     },
   });
 
@@ -225,15 +242,6 @@ export async function diffCommit(
 // ── Fast diff: OID-only comparison, no content reading ──
 // Returns file list with status but estimates additions/deletions as 1 per changed file.
 // ~10x faster than full diffCommit since it never reads blob content.
-
-interface DiffFile {
-  sha: string;
-  filename: string;
-  status: string;
-  additions: number;
-  deletions: number;
-  changes: number;
-}
 
 async function diffTwoTreesFast(
   entries: (WalkerEntry | null)[],

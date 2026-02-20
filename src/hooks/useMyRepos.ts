@@ -39,11 +39,11 @@ function writeStorage(data: StoredCache) {
 }
 
 function getCache(token: string): RepoInfo[] | null {
-  if (memCache && memCache.token === token && Date.now() - memCache.timestamp < CACHE_TTL_MS) {
+  if (memCache?.token === token && Date.now() - memCache.timestamp < CACHE_TTL_MS) {
     return memCache.repos;
   }
   const stored = readStorage();
-  if (stored && stored.token === token) {
+  if (stored?.token === token) {
     memCache = stored;
     return stored.repos;
   }

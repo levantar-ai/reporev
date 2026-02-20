@@ -7,9 +7,12 @@ interface Props {
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const HOUR_LABELS = Array.from({ length: 24 }, (_, i) =>
-  i === 0 ? '12a' : i < 12 ? `${i}a` : i === 12 ? '12p' : `${i - 12}p`,
-);
+const HOUR_LABELS = Array.from({ length: 24 }, (_, i) => {
+  if (i === 0) return '12a';
+  if (i < 12) return `${i}a`;
+  if (i === 12) return '12p';
+  return `${i - 12}p`;
+});
 
 export function PunchCard({ punchCard }: Props) {
   const option = useMemo(() => {

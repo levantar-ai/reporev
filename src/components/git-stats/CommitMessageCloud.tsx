@@ -56,7 +56,7 @@ export function CommitMessageCloud({ wordFrequency }: Props) {
           })),
         )
         .padding(4)
-        .rotate(() => (Math.random() > 0.7 ? 90 : 0))
+        .rotate(() => (crypto.getRandomValues(new Uint32Array(1))[0] / 0xffffffff > 0.7 ? 90 : 0))
         .fontSize((d) => d.size ?? 0)
         .on('end', (placedWords) => {
           const g = sel.append('g').attr('transform', `translate(${width / 2},${height / 2})`);

@@ -260,10 +260,14 @@ export function DiscoverPage({ onNavigate }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Language dropdown */}
             <div>
-              <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
+              <label
+                htmlFor="discover-language"
+                className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2"
+              >
                 Language
               </label>
               <select
+                id="discover-language"
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
                 className="w-full px-4 py-3 text-sm rounded-xl border border-border bg-surface text-text focus:outline-none focus:ring-2 focus:ring-neon/50 focus:border-neon/50 transition-all appearance-none cursor-pointer"
@@ -279,10 +283,14 @@ export function DiscoverPage({ onNavigate }: Props) {
 
             {/* Min Stars input */}
             <div>
-              <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
+              <label
+                htmlFor="discover-min-stars"
+                className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2"
+              >
                 Min Stars
               </label>
               <input
+                id="discover-min-stars"
                 type="number"
                 min={0}
                 value={minStars}
@@ -294,10 +302,14 @@ export function DiscoverPage({ onNavigate }: Props) {
 
             {/* Topic input */}
             <div>
-              <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
+              <label
+                htmlFor="discover-topic"
+                className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2"
+              >
                 Topic
               </label>
               <input
+                id="discover-topic"
                 type="text"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
@@ -309,10 +321,14 @@ export function DiscoverPage({ onNavigate }: Props) {
 
             {/* Sort dropdown */}
             <div>
-              <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
+              <label
+                htmlFor="discover-sort"
+                className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2"
+              >
                 Sort By
               </label>
               <select
+                id="discover-sort"
                 value={sort}
                 onChange={(e) => setSort(e.target.value as DiscoveryFilters['sort'])}
                 className="w-full px-4 py-3 text-sm rounded-xl border border-border bg-surface text-text focus:outline-none focus:ring-2 focus:ring-neon/50 focus:border-neon/50 transition-all appearance-none cursor-pointer"
@@ -428,7 +444,7 @@ export function DiscoverPage({ onNavigate }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-7xl mx-auto">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
-              key={i}
+              key={`skeleton-${i}`}
               className="p-5 rounded-2xl bg-surface-alt border border-border animate-pulse"
             >
               <div className="h-5 bg-border/50 rounded w-3/4 mb-3" />
@@ -560,12 +576,10 @@ export function DiscoverPage({ onNavigate }: Props) {
                   <div className="mt-4 pt-3 border-t border-border">
                     <div className="grid grid-cols-4 gap-2 text-center">
                       {report.categories.slice(0, 4).map((cat) => {
-                        const catScoreColor =
-                          cat.score >= 70
-                            ? 'text-grade-a'
-                            : cat.score >= 50
-                              ? 'text-grade-c'
-                              : 'text-grade-f';
+                        let catScoreColor = 'text-grade-f';
+                        if (cat.score >= 70) catScoreColor = 'text-grade-a';
+                        else if (cat.score >= 50) catScoreColor = 'text-grade-c';
+
                         return (
                           <div key={cat.key}>
                             <div className={`text-xs font-bold ${catScoreColor}`}>{cat.score}</div>

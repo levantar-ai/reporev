@@ -58,7 +58,6 @@ export function TrendChart({ entries, height = 200 }: Props) {
         viewBox={`0 0 ${width} ${height}`}
         className="w-full select-none"
         preserveAspectRatio="xMidYMid meet"
-        role="img"
         aria-label={`Score history chart: ${description}`}
       >
         <title>Score History</title>
@@ -124,7 +123,6 @@ export function TrendChart({ entries, height = 200 }: Props) {
       viewBox={`0 0 ${width} ${height}`}
       className="w-full select-none"
       preserveAspectRatio="xMidYMid meet"
-      role="img"
       aria-label={`Score history chart showing ${entries.length} data points: ${description}`}
     >
       <title>Score History</title>
@@ -201,7 +199,7 @@ export function TrendChart({ entries, height = 200 }: Props) {
       {/* Data dots */}
       {entries.map((e, i) => (
         <circle
-          key={i}
+          key={`dot-${e.date}`}
           cx={indexToX(i)}
           cy={scoreToY(e.score)}
           r={3.5}
@@ -220,7 +218,7 @@ export function TrendChart({ entries, height = 200 }: Props) {
         });
         return (
           <text
-            key={`date-${i}`}
+            key={`date-${e.date}`}
             x={indexToX(i)}
             y={height - 8}
             textAnchor="middle"

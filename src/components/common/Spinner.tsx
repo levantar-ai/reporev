@@ -8,7 +8,7 @@ export function Spinner({
   const sizeClass = { sm: 'h-5 w-5', md: 'h-8 w-8', lg: 'h-12 w-12' }[size];
 
   return (
-    <span role="status" aria-label={label}>
+    <output aria-label={label}>
       <svg
         className={`animate-spin ${sizeClass} text-neon`}
         xmlns="http://www.w3.org/2000/svg"
@@ -31,6 +31,6 @@ export function Spinner({
         />
       </svg>
       <span className="sr-only">{label}</span>
-    </span>
+    </output>
   );
 }

@@ -67,9 +67,8 @@ export function HeatmapGrid({ repos, categoryKeys, categoryLabels, onRepoClick }
   };
 
   return (
-    <div
+    <section
       className="overflow-x-auto rounded-xl border border-border"
-      role="region"
       aria-label="Repository scores heatmap"
     >
       <table className="w-full text-sm" aria-label="Repository category scores">
@@ -78,9 +77,10 @@ export function HeatmapGrid({ repos, categoryKeys, categoryLabels, onRepoClick }
             <th
               className="text-left px-4 py-3 text-text-secondary font-semibold cursor-pointer hover:text-neon transition-colors select-none"
               onClick={() => handleSort('name')}
-              aria-sort={
-                sortKey !== 'name' ? 'none' : sortDir === 'asc' ? 'ascending' : 'descending'
-              }
+              aria-sort={(() => {
+                if (sortKey !== 'name') return 'none';
+                return sortDir === 'asc' ? 'ascending' : 'descending';
+              })()}
               scope="col"
             >
               Repository{sortIndicator('name')}
@@ -104,9 +104,10 @@ export function HeatmapGrid({ repos, categoryKeys, categoryLabels, onRepoClick }
             <th
               className="text-center px-4 py-3 text-text-secondary font-semibold cursor-pointer hover:text-neon transition-colors select-none"
               onClick={() => handleSort('overall')}
-              aria-sort={
-                sortKey !== 'overall' ? 'none' : sortDir === 'asc' ? 'ascending' : 'descending'
-              }
+              aria-sort={(() => {
+                if (sortKey !== 'overall') return 'none';
+                return sortDir === 'asc' ? 'ascending' : 'descending';
+              })()}
               scope="col"
             >
               Grade{sortIndicator('overall')}
@@ -158,6 +159,6 @@ export function HeatmapGrid({ repos, categoryKeys, categoryLabels, onRepoClick }
           ))}
         </tbody>
       </table>
-    </div>
+    </section>
   );
 }

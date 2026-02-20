@@ -18,7 +18,7 @@ export function RecentReposList({ repos, onSelect, disabled }: Props) {
       >
         Recent analyses
       </h2>
-      <ul className="space-y-2" role="list">
+      <ul className="space-y-2">
         {repos.map((repo) => (
           <li key={`${repo.owner}/${repo.repo}`}>
             <button

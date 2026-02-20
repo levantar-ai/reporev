@@ -388,7 +388,7 @@ function detectCloudFormation(files: FileInput[]): DetectedAWSService[] {
 
 function detectTerraform(files: FileInput[]): DetectedAWSService[] {
   const results: DetectedAWSService[] = [];
-  const pattern = /(?:resource|data)\s+"aws_(\w+?)(?:_\w+)*"/g;
+  const pattern = /(?:resource|data)\s+"aws_([a-z0-9]+)(?:_[a-z0-9]+)*"/g;
 
   for (const file of files) {
     if (!file.path.endsWith('.tf')) continue;
@@ -453,7 +453,7 @@ function parseRequirementsTxt(path: string, content: string): DetectedPythonPack
     if (!line || line.startsWith('#') || line.startsWith('-') || line.startsWith('--')) continue;
 
     // Handle extras: package[extra]>=1.0
-    const match = line.match(/^([a-zA-Z0-9_][a-zA-Z0-9._-]*)(?:\[[^\]]*\])?\s*(.*)?$/);
+    const match = line.match(/^([a-zA-Z0-9_][a-zA-Z0-9._-]*)(?:\[[^\]]*\])?\s*(.*)$/);
     if (match) {
       const name = match[1].toLowerCase();
       const version = match[2]?.trim() || undefined;
@@ -464,66 +464,68 @@ function parseRequirementsTxt(path: string, content: string): DetectedPythonPack
   return results;
 }
 
-function parsePyprojectToml(path: string, content: string): DetectedPythonPackage[] {
+function parsePep621Deps(path: string, content: string): DetectedPythonPackage[] {
   const results: DetectedPythonPackage[] = [];
+  const depsArrayMatch = content.match(/\[project\]\n[^[]*dependencies\s*=\s*\[([\s\S]*?)\]/);
+  if (!depsArrayMatch) return results;
 
-  // Match dependencies in [project.dependencies] array or [tool.poetry.dependencies]
-  // Simple TOML parsing via regex (not full parser, but handles common cases)
-
-  // PEP 621 [project] dependencies array
-  const depsArrayMatch = content.match(/\[project\]\s[\s\S]*?dependencies\s*=\s*\[([\s\S]*?)\]/);
-  if (depsArrayMatch) {
-    const lines = depsArrayMatch[1].split('\n');
-    for (const line of lines) {
-      const m = line.match(/["']([a-zA-Z0-9_][a-zA-Z0-9._-]*)(?:\[[^\]]*\])?\s*([^"']*?)["']/);
-      if (m) {
-        results.push({ name: m[1].toLowerCase(), version: m[2].trim() || undefined, source: path });
-      }
+  for (const line of depsArrayMatch[1].split('\n')) {
+    const m = line.match(/["']([a-zA-Z0-9_][a-zA-Z0-9._-]*)(?:\[[^\]]*\])?\s*([^"']*)["']/);
+    if (m) {
+      results.push({ name: m[1].toLowerCase(), version: m[2].trim() || undefined, source: path });
     }
   }
+  return results;
+}
 
-  // Poetry [tool.poetry.dependencies]
+function parsePoetryDeps(path: string, content: string): DetectedPythonPackage[] {
+  const results: DetectedPythonPackage[] = [];
   const poetryMatch = content.match(/\[tool\.poetry\.dependencies\]([\s\S]*?)(?:\n\[|$)/);
-  if (poetryMatch) {
-    const lines = poetryMatch[1].split('\n');
-    for (const line of lines) {
-      const m = line.match(/^([a-zA-Z0-9_][a-zA-Z0-9._-]*)\s*=\s*["']?([^"'\n]*)["']?/);
-      if (m && m[1] !== 'python') {
-        results.push({ name: m[1].toLowerCase(), version: m[2].trim() || undefined, source: path });
-      }
+  if (!poetryMatch) return results;
+
+  for (const line of poetryMatch[1].split('\n')) {
+    const m = line.match(/^([a-zA-Z0-9_][a-zA-Z0-9._-]*)\s*=\s*(?:["']([^"'\n]*)["']|(\S+))/);
+    if (m && m[1] !== 'python') {
+      const version = (m[2] ?? m[3])?.trim() || undefined;
+      results.push({ name: m[1].toLowerCase(), version, source: path });
     }
   }
+  return results;
+}
 
-  // Optional dependencies
+function parseOptionalDepsLine(path: string, line: string): DetectedPythonPackage | null {
+  const arrM = line.match(/["']([a-zA-Z0-9_][a-zA-Z0-9._-]*)(?:\[[^\]]*\])?\s*([^"']*)["']/);
+  if (arrM) {
+    return { name: arrM[1].toLowerCase(), version: arrM[2].trim() || undefined, source: path };
+  }
+  const kvM = line.match(/^([a-zA-Z0-9_][a-zA-Z0-9._-]*)\s*=\s*(?:["']([^"'\n]*)["']|(\S+))/);
+  if (kvM && kvM[1] !== 'python') {
+    const version = (kvM[2] ?? kvM[3])?.trim() || undefined;
+    return { name: kvM[1].toLowerCase(), version, source: path };
+  }
+  return null;
+}
+
+function parseOptionalDeps(path: string, content: string): DetectedPythonPackage[] {
+  const results: DetectedPythonPackage[] = [];
   const optMatch = content.matchAll(
     /\[(?:project\.optional-dependencies|tool\.poetry\.(?:dev-)?dependencies)\]([\s\S]*?)(?:\n\[|$)/g,
   );
   for (const section of optMatch) {
-    const lines = section[1].split('\n');
-    for (const line of lines) {
-      // Array style: "package>=1.0"
-      const arrM = line.match(/["']([a-zA-Z0-9_][a-zA-Z0-9._-]*)(?:\[[^\]]*\])?\s*([^"']*?)["']/);
-      if (arrM) {
-        results.push({
-          name: arrM[1].toLowerCase(),
-          version: arrM[2].trim() || undefined,
-          source: path,
-        });
-        continue;
-      }
-      // Key-value style: package = "^1.0"
-      const kvM = line.match(/^([a-zA-Z0-9_][a-zA-Z0-9._-]*)\s*=\s*["']?([^"'\n]*)["']?/);
-      if (kvM && kvM[1] !== 'python') {
-        results.push({
-          name: kvM[1].toLowerCase(),
-          version: kvM[2].trim() || undefined,
-          source: path,
-        });
-      }
+    for (const line of section[1].split('\n')) {
+      const pkg = parseOptionalDepsLine(path, line);
+      if (pkg) results.push(pkg);
     }
   }
-
   return results;
+}
+
+function parsePyprojectToml(path: string, content: string): DetectedPythonPackage[] {
+  return [
+    ...parsePep621Deps(path, content),
+    ...parsePoetryDeps(path, content),
+    ...parseOptionalDeps(path, content),
+  ];
 }
 
 function parsePipfile(path: string, content: string): DetectedPythonPackage[] {
@@ -533,9 +535,10 @@ function parsePipfile(path: string, content: string): DetectedPythonPackage[] {
   for (const section of sections) {
     const lines = section[1].split('\n');
     for (const line of lines) {
-      const m = line.match(/^([a-zA-Z0-9_][a-zA-Z0-9._-]*)\s*=\s*["']?([^"'\n]*)["']?/);
+      const m = line.match(/^([a-zA-Z0-9_][a-zA-Z0-9._-]*)\s*=\s*(?:["']([^"'\n]*)["']|(\S+))/);
       if (m) {
-        const version = m[2].trim() === '*' ? undefined : m[2].trim() || undefined;
+        const raw = (m[2] ?? m[3])?.trim();
+        const version = raw === '*' ? undefined : raw || undefined;
         results.push({ name: m[1].toLowerCase(), version, source: path });
       }
     }
@@ -551,7 +554,7 @@ function parseSetupPy(path: string, content: string): DetectedPythonPackage[] {
   const match = content.match(/install_requires\s*=\s*\[([\s\S]*?)\]/);
   if (match) {
     const items = match[1].matchAll(
-      /["']([a-zA-Z0-9_][a-zA-Z0-9._-]*)(?:\[[^\]]*\])?\s*([^"']*?)["']/g,
+      /["']([a-zA-Z0-9_][a-zA-Z0-9._-]*)(?:\[[^\]]*\])?\s*([^"']*)["']/g,
     );
     for (const m of items) {
       results.push({ name: m[1].toLowerCase(), version: m[2].trim() || undefined, source: path });
@@ -567,12 +570,12 @@ function parseSetupCfg(path: string, content: string): DetectedPythonPackage[] {
   // Match [options] section's install_requires
   const optionsMatch = content.match(/\[options\]([\s\S]*?)(?:\n\[|$)/);
   if (optionsMatch) {
-    const irMatch = optionsMatch[1].match(/install_requires\s*=\s*([\s\S]*?)(?:\n\w|\n\[|$)/);
+    const irMatch = optionsMatch[1].match(/install_requires\s*=\s*([^\n]*(?:\n[ \t]+[^\n]*)*)/);
     if (irMatch) {
       const lines = irMatch[1].split('\n');
       for (const line of lines) {
-        const m = line.trim().match(/^([a-zA-Z0-9_][a-zA-Z0-9._-]*)(?:\[[^\]]*\])?\s*(.*)?$/);
-        if (m && m[1]) {
+        const m = line.trim().match(/^([a-zA-Z0-9_][a-zA-Z0-9._-]*)(?:\[[^\]]*\])?\s*(.*)$/);
+        if (m?.[1]) {
           results.push({
             name: m[1].toLowerCase(),
             version: m[2]?.trim() || undefined,
@@ -610,85 +613,105 @@ export function detectPython(files: FileInput[]): DetectedPythonPackage[] {
 
 // ── Azure Detection ──
 
+function detectAzureTerraform(file: FileInput): DetectedAzureService[] {
+  if (!file.path.endsWith('.tf')) return [];
+  const results: DetectedAzureService[] = [];
+  const pattern = /(?:resource|data)\s+"azurerm_([a-z0-9]+)(?:_[a-z0-9]+)*"/g;
+  let match;
+  while ((match = pattern.exec(file.content)) !== null) {
+    const prefix = match[1];
+    const service = TF_AZURERM_TO_SERVICE[prefix] || titleCase(prefix);
+    results.push({ service, source: file.path, via: 'terraform' });
+  }
+  pattern.lastIndex = 0;
+  return results;
+}
+
+function detectAzureArmTemplates(file: FileInput): DetectedAzureService[] {
+  if (!file.path.endsWith('.json')) return [];
+  const results: DetectedAzureService[] = [];
+  try {
+    if (!file.content.includes('deploymentTemplate') && !file.content.includes('Microsoft.')) {
+      return results;
+    }
+    const nsPattern = /"(Microsoft\.\w+)/g;
+    let match;
+    while ((match = nsPattern.exec(file.content)) !== null) {
+      const ns = match[1];
+      const service = ARM_NAMESPACE_TO_SERVICE[ns] || ns.replace('Microsoft.', '');
+      results.push({ service, source: file.path, via: 'arm-template' });
+    }
+    nsPattern.lastIndex = 0;
+  } catch {
+    /* skip */
+  }
+  return results;
+}
+
+function detectAzureBicep(file: FileInput): DetectedAzureService[] {
+  if (!file.path.endsWith('.bicep')) return [];
+  const results: DetectedAzureService[] = [];
+  const nsPattern = /'(Microsoft\.\w+)/g;
+  let match;
+  while ((match = nsPattern.exec(file.content)) !== null) {
+    const ns = match[1];
+    const service = ARM_NAMESPACE_TO_SERVICE[ns] || ns.replace('Microsoft.', '');
+    results.push({ service, source: file.path, via: 'bicep' });
+  }
+  nsPattern.lastIndex = 0;
+  return results;
+}
+
+function detectAzureNpmSdk(file: FileInput): DetectedAzureService[] {
+  if (!file.path.endsWith('package.json')) return [];
+  const results: DetectedAzureService[] = [];
+  try {
+    const pkg = JSON.parse(file.content);
+    const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+    for (const dep of Object.keys(allDeps)) {
+      const match = dep.match(/^@azure\/(.+)$/);
+      if (match) {
+        const suffix = match[1];
+        const service = titleCase(suffix);
+        results.push({ service, sdkPackage: dep, source: file.path, via: 'npm-sdk' });
+      }
+    }
+  } catch {
+    /* skip */
+  }
+  return results;
+}
+
+function detectAzurePythonSdk(file: FileInput): DetectedAzureService[] {
+  const isPythonManifest =
+    file.path.endsWith('requirements.txt') ||
+    file.path.endsWith('pyproject.toml') ||
+    file.path.endsWith('Pipfile');
+  if (!isPythonManifest) return [];
+
+  const results: DetectedAzureService[] = [];
+  const pattern = /azure[_-][a-zA-Z0-9_-]+/gi;
+  let match;
+  while ((match = pattern.exec(file.content)) !== null) {
+    const pkg = match[0].toLowerCase();
+    const service = titleCase(pkg.replace(/^azure[_-]/, ''));
+    results.push({ service, sdkPackage: pkg, source: file.path, via: 'python-sdk' });
+  }
+  pattern.lastIndex = 0;
+  return results;
+}
+
 export function detectAzure(files: FileInput[]): DetectedAzureService[] {
   const results: DetectedAzureService[] = [];
 
   for (const file of files) {
-    // Terraform azurerm_*
-    if (file.path.endsWith('.tf')) {
-      const pattern = /(?:resource|data)\s+"azurerm_(\w+?)(?:_\w+)*"/g;
-      let match;
-      while ((match = pattern.exec(file.content)) !== null) {
-        const prefix = match[1];
-        const service = TF_AZURERM_TO_SERVICE[prefix] || titleCase(prefix);
-        results.push({ service, source: file.path, via: 'terraform' });
-      }
-      pattern.lastIndex = 0;
-    }
-
-    // ARM templates (JSON with $schema containing deploymentTemplate)
-    if (file.path.endsWith('.json')) {
-      try {
-        if (file.content.includes('deploymentTemplate') || file.content.includes('Microsoft.')) {
-          const nsPattern = /"(Microsoft\.\w+)/g;
-          let match;
-          while ((match = nsPattern.exec(file.content)) !== null) {
-            const ns = match[1];
-            const service = ARM_NAMESPACE_TO_SERVICE[ns] || ns.replace('Microsoft.', '');
-            results.push({ service, source: file.path, via: 'arm-template' });
-          }
-          nsPattern.lastIndex = 0;
-        }
-      } catch {
-        /* skip */
-      }
-    }
-
-    // Bicep files
-    if (file.path.endsWith('.bicep')) {
-      const nsPattern = /'(Microsoft\.\w+)/g;
-      let match;
-      while ((match = nsPattern.exec(file.content)) !== null) {
-        const ns = match[1];
-        const service = ARM_NAMESPACE_TO_SERVICE[ns] || ns.replace('Microsoft.', '');
-        results.push({ service, source: file.path, via: 'bicep' });
-      }
-      nsPattern.lastIndex = 0;
-    }
-
-    // npm @azure/* packages
-    if (file.path.endsWith('package.json')) {
-      try {
-        const pkg = JSON.parse(file.content);
-        const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
-        for (const dep of Object.keys(allDeps)) {
-          const match = dep.match(/^@azure\/(.+)$/);
-          if (match) {
-            const suffix = match[1];
-            const service = titleCase(suffix);
-            results.push({ service, sdkPackage: dep, source: file.path, via: 'npm-sdk' });
-          }
-        }
-      } catch {
-        /* skip */
-      }
-    }
-
-    // Python azure-* packages
-    if (
-      file.path.endsWith('requirements.txt') ||
-      file.path.endsWith('pyproject.toml') ||
-      file.path.endsWith('Pipfile')
-    ) {
-      const pattern = /azure[_-][\w-]+/gi;
-      let match;
-      while ((match = pattern.exec(file.content)) !== null) {
-        const pkg = match[0].toLowerCase();
-        const service = titleCase(pkg.replace(/^azure[_-]/, ''));
-        results.push({ service, sdkPackage: pkg, source: file.path, via: 'python-sdk' });
-      }
-      pattern.lastIndex = 0;
-    }
+    results.push(
+      ...detectAzureTerraform(file),
+      ...detectAzureArmTemplates(file),
+      ...detectAzureBicep(file),
+      ...detectAzureNpmSdk(file),
+      ...detectAzurePythonSdk(file),
+    );
   }
 
   return dedupCloud(results);
@@ -696,55 +719,68 @@ export function detectAzure(files: FileInput[]): DetectedAzureService[] {
 
 // ── GCP Detection ──
 
+function detectGcpTerraform(file: FileInput): DetectedGCPService[] {
+  if (!file.path.endsWith('.tf')) return [];
+  const results: DetectedGCPService[] = [];
+  const pattern = /(?:resource|data)\s+"google_([a-z0-9]+)(?:_[a-z0-9]+)*"/g;
+  let match;
+  while ((match = pattern.exec(file.content)) !== null) {
+    const prefix = match[1];
+    const service = TF_GOOGLE_TO_SERVICE[prefix] || titleCase(prefix);
+    results.push({ service, source: file.path, via: 'terraform' });
+  }
+  pattern.lastIndex = 0;
+  return results;
+}
+
+function detectGcpNpmSdk(file: FileInput): DetectedGCPService[] {
+  if (!file.path.endsWith('package.json')) return [];
+  const results: DetectedGCPService[] = [];
+  try {
+    const pkg = JSON.parse(file.content);
+    const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+    for (const dep of Object.keys(allDeps)) {
+      const match = dep.match(/^@google-cloud\/(.+)$/);
+      if (match) {
+        const suffix = match[1];
+        const service = TF_GOOGLE_TO_SERVICE[suffix] || titleCase(suffix);
+        results.push({ service, sdkPackage: dep, source: file.path, via: 'npm-sdk' });
+      }
+    }
+  } catch {
+    /* skip */
+  }
+  return results;
+}
+
+function detectGcpPythonSdk(file: FileInput): DetectedGCPService[] {
+  const isPythonManifest =
+    file.path.endsWith('requirements.txt') ||
+    file.path.endsWith('pyproject.toml') ||
+    file.path.endsWith('Pipfile');
+  if (!isPythonManifest) return [];
+
+  const results: DetectedGCPService[] = [];
+  const pattern = /google-cloud-[a-zA-Z0-9_-]+/gi;
+  let match;
+  while ((match = pattern.exec(file.content)) !== null) {
+    const pkg = match[0].toLowerCase();
+    const service = titleCase(pkg.replace(/^google-cloud-/, ''));
+    results.push({ service, sdkPackage: pkg, source: file.path, via: 'python-sdk' });
+  }
+  pattern.lastIndex = 0;
+  return results;
+}
+
 export function detectGCP(files: FileInput[]): DetectedGCPService[] {
   const results: DetectedGCPService[] = [];
 
   for (const file of files) {
-    // Terraform google_*
-    if (file.path.endsWith('.tf')) {
-      const pattern = /(?:resource|data)\s+"google_(\w+?)(?:_\w+)*"/g;
-      let match;
-      while ((match = pattern.exec(file.content)) !== null) {
-        const prefix = match[1];
-        const service = TF_GOOGLE_TO_SERVICE[prefix] || titleCase(prefix);
-        results.push({ service, source: file.path, via: 'terraform' });
-      }
-      pattern.lastIndex = 0;
-    }
-
-    // npm @google-cloud/* packages
-    if (file.path.endsWith('package.json')) {
-      try {
-        const pkg = JSON.parse(file.content);
-        const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
-        for (const dep of Object.keys(allDeps)) {
-          const match = dep.match(/^@google-cloud\/(.+)$/);
-          if (match) {
-            const suffix = match[1];
-            const service = TF_GOOGLE_TO_SERVICE[suffix] || titleCase(suffix);
-            results.push({ service, sdkPackage: dep, source: file.path, via: 'npm-sdk' });
-          }
-        }
-      } catch {
-        /* skip */
-      }
-    }
-
-    // Python google-cloud-* packages
-    if (
-      file.path.endsWith('requirements.txt') ||
-      file.path.endsWith('pyproject.toml') ||
-      file.path.endsWith('Pipfile')
-    ) {
-      const pattern = /google-cloud-[\w-]+/gi;
-      let match;
-      while ((match = pattern.exec(file.content)) !== null) {
-        const pkg = match[0].toLowerCase();
-        const service = titleCase(pkg.replace(/^google-cloud-/, ''));
-        results.push({ service, sdkPackage: pkg, source: file.path, via: 'python-sdk' });
-      }
-      pattern.lastIndex = 0;
-    }
+    results.push(
+      ...detectGcpTerraform(file),
+      ...detectGcpNpmSdk(file),
+      ...detectGcpPythonSdk(file),
+    );
   }
 
   return dedupCloud(results);
@@ -796,7 +832,7 @@ export function detectJava(files: FileInput[]): DetectedPackage[] {
     // Maven pom.xml
     if (basename === 'pom.xml') {
       const depPattern =
-        /<dependency>\s*<groupId>(.*?)<\/groupId>\s*<artifactId>(.*?)<\/artifactId>(?:\s*<version>(.*?)<\/version>)?/gs;
+        /<dependency>\s*<groupId>([^<]*)<\/groupId>\s*<artifactId>([^<]*)<\/artifactId>(?:\s*<version>([^<]*)<\/version>)?/gs;
       let match;
       while ((match = depPattern.exec(file.content)) !== null) {
         results.push({
@@ -812,7 +848,7 @@ export function detectJava(files: FileInput[]): DetectedPackage[] {
     if (basename === 'build.gradle' || basename === 'build.gradle.kts') {
       // implementation 'group:artifact:version' or implementation("group:artifact:version")
       const gradlePattern =
-        /(?:implementation|api|compileOnly|runtimeOnly|testImplementation)\s*[("']([^)'"]+?)(?::([^)'"]*?))?[)"']/g;
+        /(?:implementation|api|compileOnly|runtimeOnly|testImplementation)\s*[("']([^):'"]+)(?::([^)'"]*))?[)"']/g;
       let match;
       while ((match = gradlePattern.exec(file.content)) !== null) {
         const parts = match[1].split(':');
@@ -831,34 +867,44 @@ export function detectJava(files: FileInput[]): DetectedPackage[] {
 
 // ── Node Detection ──
 
-export function detectNode(files: FileInput[]): DetectedPackage[] {
+const CLOUD_PREFIXES = [
+  '@aws-sdk/',
+  'aws-sdk',
+  '@aws-cdk/',
+  'aws-cdk-lib',
+  '@azure/',
+  '@google-cloud/',
+];
+
+function isCloudSdkPackage(name: string): boolean {
+  return CLOUD_PREFIXES.some((p) => name.startsWith(p));
+}
+
+function parseNodePackageJson(file: FileInput): DetectedPackage[] {
   const results: DetectedPackage[] = [];
-  const cloudPrefixes = [
-    '@aws-sdk/',
-    'aws-sdk',
-    '@aws-cdk/',
-    'aws-cdk-lib',
-    '@azure/',
-    '@google-cloud/',
-  ];
-
-  for (const file of files) {
-    if (!file.path.endsWith('package.json')) continue;
-
-    try {
-      const pkg = JSON.parse(file.content);
-      const sections = [pkg.dependencies, pkg.devDependencies];
-      for (const deps of sections) {
-        if (!deps) continue;
-        for (const [name, version] of Object.entries(deps)) {
-          // Skip cloud SDK packages to avoid dups with cloud detection
-          if (cloudPrefixes.some((p) => name.startsWith(p))) continue;
+  try {
+    const pkg = JSON.parse(file.content);
+    const sections = [pkg.dependencies, pkg.devDependencies];
+    for (const deps of sections) {
+      if (!deps) continue;
+      for (const [name, version] of Object.entries(deps)) {
+        if (!isCloudSdkPackage(name)) {
           results.push({ name, version: version as string, source: file.path });
         }
       }
-    } catch {
-      /* skip */
     }
+  } catch {
+    /* skip */
+  }
+  return results;
+}
+
+export function detectNode(files: FileInput[]): DetectedPackage[] {
+  const results: DetectedPackage[] = [];
+
+  for (const file of files) {
+    if (!file.path.endsWith('package.json')) continue;
+    results.push(...parseNodePackageJson(file));
   }
 
   return dedupPackages(results);
@@ -866,26 +912,31 @@ export function detectNode(files: FileInput[]): DetectedPackage[] {
 
 // ── PHP Detection ──
 
+function parseComposerJson(file: FileInput): DetectedPackage[] {
+  const results: DetectedPackage[] = [];
+  try {
+    const composer = JSON.parse(file.content);
+    const sections = [composer.require, composer['require-dev']];
+    for (const deps of sections) {
+      if (!deps) continue;
+      for (const [name, version] of Object.entries(deps)) {
+        if (name !== 'php' && !name.startsWith('ext-')) {
+          results.push({ name, version: version as string, source: file.path });
+        }
+      }
+    }
+  } catch {
+    /* skip */
+  }
+  return results;
+}
+
 export function detectPHP(files: FileInput[]): DetectedPackage[] {
   const results: DetectedPackage[] = [];
 
   for (const file of files) {
     if (!file.path.endsWith('composer.json')) continue;
-
-    try {
-      const composer = JSON.parse(file.content);
-      const sections = [composer.require, composer['require-dev']];
-      for (const deps of sections) {
-        if (!deps) continue;
-        for (const [name, version] of Object.entries(deps)) {
-          // Skip php and ext-* entries
-          if (name === 'php' || name.startsWith('ext-')) continue;
-          results.push({ name, version: version as string, source: file.path });
-        }
-      }
-    } catch {
-      /* skip */
-    }
+    results.push(...parseComposerJson(file));
   }
 
   return dedupPackages(results);
@@ -893,32 +944,38 @@ export function detectPHP(files: FileInput[]): DetectedPackage[] {
 
 // ── Rust Detection ──
 
+function parseCargoDependencyLine(line: string, source: string): DetectedPackage | null {
+  const simpleMatch = line.match(/^([a-zA-Z0-9_-]+)\s*=\s*"([^"]*)"/);
+  if (simpleMatch) {
+    return { name: simpleMatch[1], version: simpleMatch[2], source };
+  }
+  const tableMatch = line.match(/^([a-zA-Z0-9_-]+)\s*=\s*\{[^}]*version\s*=\s*"([^"]*)"/);
+  if (tableMatch) {
+    return { name: tableMatch[1], version: tableMatch[2], source };
+  }
+  return null;
+}
+
+function parseCargoToml(file: FileInput): DetectedPackage[] {
+  const results: DetectedPackage[] = [];
+  const sectionPattern = /\[(?:dev-|build-)?dependencies\]([\s\S]*?)(?=\n\[|$)/g;
+  let sectionMatch;
+  while ((sectionMatch = sectionPattern.exec(file.content)) !== null) {
+    for (const line of sectionMatch[1].split('\n')) {
+      const pkg = parseCargoDependencyLine(line, file.path);
+      if (pkg) results.push(pkg);
+    }
+  }
+  sectionPattern.lastIndex = 0;
+  return results;
+}
+
 export function detectRust(files: FileInput[]): DetectedPackage[] {
   const results: DetectedPackage[] = [];
 
   for (const file of files) {
     if (!file.path.endsWith('Cargo.toml')) continue;
-
-    // Match [dependencies], [dev-dependencies], [build-dependencies] sections
-    const sectionPattern = /\[(?:dev-|build-)?dependencies\]([\s\S]*?)(?=\n\[|$)/g;
-    let sectionMatch;
-    while ((sectionMatch = sectionPattern.exec(file.content)) !== null) {
-      const section = sectionMatch[1];
-      const lines = section.split('\n');
-      for (const line of lines) {
-        // name = "version" or name = { version = "x" }
-        const simpleMatch = line.match(/^([a-zA-Z0-9_-]+)\s*=\s*"([^"]*)"/);
-        if (simpleMatch) {
-          results.push({ name: simpleMatch[1], version: simpleMatch[2], source: file.path });
-          continue;
-        }
-        const tableMatch = line.match(/^([a-zA-Z0-9_-]+)\s*=\s*\{.*version\s*=\s*"([^"]*)"/);
-        if (tableMatch) {
-          results.push({ name: tableMatch[1], version: tableMatch[2], source: file.path });
-        }
-      }
-    }
-    sectionPattern.lastIndex = 0;
+    results.push(...parseCargoToml(file));
   }
 
   return dedupPackages(results);
@@ -932,7 +989,7 @@ export function detectRuby(files: FileInput[]): DetectedPackage[] {
   for (const file of files) {
     if (!file.path.endsWith('Gemfile')) continue;
 
-    const gemPattern = /^\s*gem\s+['"]([^'"]+)['"](?:\s*,\s*['"]([^'"]*)['"])*/gm;
+    const gemPattern = /^\s*gem\s+['"]([^'"]+)['"](?:\s*,\s*['"]([^'"]*)['"]\s*)?/gm;
     let match;
     while ((match = gemPattern.exec(file.content)) !== null) {
       results.push({ name: match[1], version: match[2] || undefined, source: file.path });
@@ -944,6 +1001,20 @@ export function detectRuby(files: FileInput[]): DetectedPackage[] {
 }
 
 // ── File Filtering ──
+
+const CFN_YAML_OR_JSON = /\.(?:ya?ml|json)$/;
+const CFN_PREFIX_PATTERNS = [
+  /^template\./, // template.yaml, template.json
+  /\.template\./, // foo.template.json
+  /^cloudformation\//, // cloudformation/stack.yaml
+  /^serverless\.ya?ml$/, // serverless.yml
+  /^sam\.ya?ml$/, // sam.yaml
+];
+
+function isCfnTemplate(path: string): boolean {
+  if (!CFN_YAML_OR_JSON.test(path)) return false;
+  return CFN_PREFIX_PATTERNS.some((p) => p.test(path));
+}
 
 const MAX_TECH_FILES = 60;
 
@@ -988,10 +1059,8 @@ export function filterTechFiles(tree: TreeEntry[]): string[] {
   paths.push(...tfFiles);
 
   // CloudFormation templates
-  const cfnPatterns =
-    /^(template\.(ya?ml|json)|.*\.template\.(json|ya?ml)|cloudformation\/.*\.(ya?ml|json)|serverless\.(ya?ml)|sam\.(ya?ml))$/;
   const cfnFiles = tree
-    .filter((e) => e.type === 'blob' && cfnPatterns.test(e.path))
+    .filter((e) => e.type === 'blob' && isCfnTemplate(e.path))
     .map((e) => e.path)
     .slice(0, 10);
   paths.push(...cfnFiles);

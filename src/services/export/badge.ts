@@ -15,7 +15,8 @@ export function generateBadgeSvg(config: BadgeConfig): string {
   const valueText = `${grade} (${score})`;
   const valueWidth = valueText.length * 7 + 10;
   const totalWidth = labelWidth + valueWidth;
-  const radius = style === 'pill' ? 10 : style === 'flat-square' ? 2 : 4;
+  const flatSquareRadius = style === 'flat-square' ? 2 : 4;
+  const radius = style === 'pill' ? 10 : flatSquareRadius;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="20" role="img" aria-label="${label}: ${valueText}">
   <title>${label}: ${valueText}</title>

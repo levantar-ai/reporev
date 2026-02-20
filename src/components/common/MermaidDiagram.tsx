@@ -49,9 +49,9 @@ export function MermaidDiagram({ chart }: Props) {
 
   if (error) {
     return (
-      <div className="text-sm text-text-muted italic p-6" role="status">
+      <output className="block text-sm text-text-muted italic p-6">
         Unable to render repository structure diagram.
-      </div>
+      </output>
     );
   }
 
@@ -59,7 +59,6 @@ export function MermaidDiagram({ chart }: Props) {
     <div
       ref={containerRef}
       className="w-full overflow-x-auto p-6 [&_svg]:max-w-full [&_svg]:h-auto"
-      role="img"
       aria-label="Repository file structure diagram"
     />
   );

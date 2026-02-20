@@ -8,13 +8,13 @@ interface Props {
 
 export function CategoryScores({ categories }: Props) {
   return (
-    <div className="space-y-6" role="list" aria-label="Category scores">
+    <ul className="space-y-6 list-none p-0" aria-label="Category scores">
       {categories.map((cat) => {
         const grade = scoreToGrade(cat.score);
         const color = GRADE_COLORS[grade];
 
         return (
-          <div key={cat.key} role="listitem">
+          <li key={cat.key}>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <span className="text-base font-semibold text-text">{cat.label}</span>
@@ -37,13 +37,15 @@ export function CategoryScores({ categories }: Props) {
                   backgroundColor: color,
                   boxShadow: `0 0 10px ${color}40`,
                 }}
-                role="progressbar"
-                aria-valuenow={cat.score}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={`${cat.label}: ${cat.score} out of 100`}
+                aria-hidden="true"
               />
             </div>
+            <progress
+              className="sr-only"
+              value={cat.score}
+              max={100}
+              aria-label={`${cat.label}: ${cat.score} out of 100`}
+            />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 ml-1">
               {cat.signals.map((signal) => (
                 <div key={signal.name} className="flex items-center gap-2 text-sm">
@@ -88,9 +90,9 @@ export function CategoryScores({ categories }: Props) {
                 </div>
               ))}
             </div>
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }

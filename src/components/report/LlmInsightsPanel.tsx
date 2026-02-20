@@ -29,8 +29,8 @@ export function LlmInsightsPanel({ insights }: Props) {
             Risks
           </h4>
           <ul className="space-y-2">
-            {insights.risks.map((risk, i) => (
-              <li key={i} className="text-sm text-text flex items-start gap-2.5 leading-relaxed">
+            {insights.risks.map((risk) => (
+              <li key={risk} className="text-sm text-text flex items-start gap-2.5 leading-relaxed">
                 <span className="text-grade-c mt-0.5">
                   <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                     <path
@@ -53,8 +53,8 @@ export function LlmInsightsPanel({ insights }: Props) {
             Recommendations
           </h4>
           <ul className="space-y-2">
-            {insights.recommendations.map((rec, i) => (
-              <li key={i} className="text-sm text-text flex items-start gap-2.5 leading-relaxed">
+            {insights.recommendations.map((rec) => (
+              <li key={rec} className="text-sm text-text flex items-start gap-2.5 leading-relaxed">
                 <span className="text-neon mt-0.5">
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path

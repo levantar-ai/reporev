@@ -305,7 +305,7 @@ export function Header({ onNavigate, currentPage }: Props) {
           </button>
 
           {state.rateLimit && (
-            <div
+            <output
               className="hidden md:flex items-center ml-2 px-2.5 py-1 rounded-md text-xs"
               style={{
                 background: 'var(--color-surface-alt)',
@@ -315,11 +315,10 @@ export function Header({ onNavigate, currentPage }: Props) {
                     ? 'var(--color-grade-f)'
                     : 'var(--color-text-muted)',
               }}
-              role="status"
               aria-label={`GitHub API rate limit: ${state.rateLimit.remaining} of ${state.rateLimit.limit} requests remaining`}
             >
               {state.rateLimit.remaining}/{state.rateLimit.limit}
-            </div>
+            </output>
           )}
         </div>
       </div>
@@ -329,11 +328,10 @@ export function Header({ onNavigate, currentPage }: Props) {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div
+        <section
           id="mobile-nav-menu"
           ref={mobileMenuRef}
           className="lg:hidden border-t border-border bg-surface-alt/95 backdrop-blur-lg"
-          role="region"
           aria-label="Mobile navigation"
         >
           <nav className="px-8 lg:px-12 py-3 grid grid-cols-2 gap-1" aria-label="Mobile navigation">
@@ -356,7 +354,7 @@ export function Header({ onNavigate, currentPage }: Props) {
               </button>
             ))}
           </nav>
-        </div>
+        </section>
       )}
     </header>
   );

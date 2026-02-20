@@ -201,8 +201,14 @@ export function ComparePage({ onBack, githubToken }: Props) {
       <div className="mb-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1.5">Repo A</label>
+            <label
+              htmlFor="compare-repo-a"
+              className="block text-sm font-medium text-text-secondary mb-1.5"
+            >
+              Repo A
+            </label>
             <input
+              id="compare-repo-a"
               type="text"
               value={inputA}
               onChange={(e) => setInputA(e.target.value)}
@@ -213,8 +219,14 @@ export function ComparePage({ onBack, githubToken }: Props) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1.5">Repo B</label>
+            <label
+              htmlFor="compare-repo-b"
+              className="block text-sm font-medium text-text-secondary mb-1.5"
+            >
+              Repo B
+            </label>
             <input
+              id="compare-repo-b"
               type="text"
               value={inputB}
               onChange={(e) => setInputB(e.target.value)}

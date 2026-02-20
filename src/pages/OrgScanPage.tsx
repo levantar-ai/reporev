@@ -576,6 +576,70 @@ function SortHeader({
   );
 }
 
+// ── ScoreCell component (extracted outside parent to satisfy S6478) ──
+
+function ScoreCell({ score }: { score: number }) {
+  return (
+    <td className={`py-3 px-3 font-medium ${scoreColorClass(score)}`}>
+      <span
+        className={`inline-block px-2 py-0.5 rounded-md text-xs font-semibold ${scoreBgClass(score)} ${scoreColorClass(score)}`}
+      >
+        {score}
+      </span>
+    </td>
+  );
+}
+
+// ── Analyze a single repo from org scan (extracted to reduce nesting depth) ──
+
+async function analyzeOrgRepo(
+  org: string,
+  rawRepo: Record<string, unknown>,
+  ghFetchFn: (url: string, signal?: AbortSignal) => Promise<Response>,
+  signal: AbortSignal,
+): Promise<LightAnalysisReport | null> {
+  const repoName = rawRepo.name as string;
+  const defaultBranch = (rawRepo.default_branch as string) || 'main';
+
+  const repoInfo: RepoInfo = {
+    owner: org,
+    repo: repoName,
+    defaultBranch,
+    description: (rawRepo.description as string) ?? '',
+    stars: (rawRepo.stargazers_count as number) ?? 0,
+    forks: (rawRepo.forks_count as number) ?? 0,
+    openIssues: (rawRepo.open_issues_count as number) ?? 0,
+    license: (rawRepo.license as { spdx_id?: string } | null)?.spdx_id ?? null,
+    language: (rawRepo.language as string | null) ?? null,
+    createdAt: (rawRepo.created_at as string) ?? '',
+    updatedAt: (rawRepo.updated_at as string) ?? '',
+    topics: (rawRepo.topics as string[]) ?? [],
+    archived: (rawRepo.archived as boolean) ?? false,
+    size: (rawRepo.size as number) ?? 0,
+  };
+
+  const treeRes = await ghFetchFn(
+    `${GITHUB_API_BASE}/repos/${encodeURIComponent(org)}/${encodeURIComponent(repoName)}/git/trees/${encodeURIComponent(defaultBranch)}?recursive=1`,
+    signal,
+  );
+  const treeJson = await treeRes.json();
+  const treeEntries: TreeEntry[] = treeJson.tree ?? [];
+  const treePaths = new Set(treeEntries.map((e: TreeEntry) => e.path));
+
+  return runLightAnalysis(repoInfo, treePaths, treeEntries.length);
+}
+
+// ── Compute progress percentage (extracted to avoid nested ternary) ──
+
+function computeScanProgress(scan: ScanState): number {
+  if (scan.phase === 'fetching-repos') return 5;
+  if (scan.phase === 'analyzing' && scan.totalRepos > 0) {
+    return 10 + (scan.analyzedCount / scan.totalRepos) * 85;
+  }
+  if (scan.phase === 'done') return 100;
+  return 0;
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
@@ -676,38 +740,8 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
         setScan((s) => ({ ...s, currentRepo: repoName }));
 
         try {
-          const defaultBranch = (rawRepo.default_branch as string) || 'main';
-
-          // Build RepoInfo from the repos list response
-          const repoInfo: RepoInfo = {
-            owner: org,
-            repo: repoName,
-            defaultBranch,
-            description: rawRepo.description ?? '',
-            stars: rawRepo.stargazers_count ?? 0,
-            forks: rawRepo.forks_count ?? 0,
-            openIssues: rawRepo.open_issues_count ?? 0,
-            license: rawRepo.license?.spdx_id ?? null,
-            language: rawRepo.language ?? null,
-            createdAt: rawRepo.created_at ?? '',
-            updatedAt: rawRepo.updated_at ?? '',
-            topics: rawRepo.topics ?? [],
-            archived: rawRepo.archived ?? false,
-            size: rawRepo.size ?? 0,
-          };
-
-          // Fetch recursive tree
-          const treeRes = await ghFetch(
-            `${GITHUB_API_BASE}/repos/${encodeURIComponent(org)}/${encodeURIComponent(repoName)}/git/trees/${encodeURIComponent(defaultBranch)}?recursive=1`,
-            controller.signal,
-          );
-          const treeJson = await treeRes.json();
-          const treeEntries: TreeEntry[] = treeJson.tree ?? [];
-          const treePaths = new Set(treeEntries.map((e: TreeEntry) => e.path));
-
-          // Run light analysis
-          const report = runLightAnalysis(repoInfo, treePaths, treeEntries.length);
-          results.push(report);
+          const report = await analyzeOrgRepo(org, rawRepo, ghFetch, controller.signal);
+          if (report) results.push(report);
         } catch (err: unknown) {
           // Skip repos that fail (e.g. empty repos with no tree)
           console.warn(
@@ -875,14 +909,7 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
 
   // ── Progress percentage ──────────────────────────────────────────────────
 
-  const progress =
-    scan.phase === 'fetching-repos'
-      ? 5
-      : scan.phase === 'analyzing' && scan.totalRepos > 0
-        ? 10 + (scan.analyzedCount / scan.totalRepos) * 85
-        : scan.phase === 'done'
-          ? 100
-          : 0;
+  const progress = computeScanProgress(scan);
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -1202,16 +1229,6 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
                         const cat = r.categories.find((c) => c.key === key);
                         return cat?.score ?? 0;
                       };
-
-                      const ScoreCell = ({ score }: { score: number }) => (
-                        <td className={`py-3 px-3 font-medium ${scoreColorClass(score)}`}>
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded-md text-xs font-semibold ${scoreBgClass(score)} ${scoreColorClass(score)}`}
-                          >
-                            {score}
-                          </span>
-                        </td>
-                      );
 
                       return (
                         <tr

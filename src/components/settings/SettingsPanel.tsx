@@ -73,7 +73,7 @@ function GitHubTokenField() {
 
 export function SettingsPanel() {
   const { state, dispatch } = useApp();
-  const panelRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDialogElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleClose = useCallback(() => {
@@ -140,12 +140,11 @@ export function SettingsPanel() {
       />
 
       {/* Panel */}
-      <div
+      <dialog
         ref={panelRef}
-        className="fixed top-0 right-0 h-full w-full max-w-md bg-surface border-l border-border shadow-2xl z-50 overflow-y-auto"
-        role="dialog"
-        aria-modal="true"
+        className="fixed top-0 right-0 h-full w-full max-w-md bg-surface border-l border-border shadow-2xl z-50 overflow-y-auto m-0 p-0"
         aria-label="Settings"
+        open
       >
         <div className="p-8">
           <div className="flex items-center justify-between mb-8">
@@ -178,17 +177,22 @@ export function SettingsPanel() {
           {/* Theme */}
           <fieldset className="mb-8">
             <legend className="block text-sm font-semibold text-text mb-3">Theme</legend>
-            <div className="flex gap-2" role="radiogroup" aria-label="Theme selection">
+            <div className="flex gap-2">
               {(['dark', 'light'] as const).map((theme) => (
-                <button
+                <label
                   key={theme}
-                  onClick={() => dispatch({ type: 'SET_THEME', theme })}
-                  className={pillClass(state.settings.theme === theme)}
-                  role="radio"
-                  aria-checked={state.settings.theme === theme}
+                  className={`cursor-pointer ${pillClass(state.settings.theme === theme)}`}
                 >
+                  <input
+                    type="radio"
+                    name="theme"
+                    value={theme}
+                    checked={state.settings.theme === theme}
+                    onChange={() => dispatch({ type: 'SET_THEME', theme })}
+                    className="sr-only"
+                  />
                   {theme.charAt(0).toUpperCase() + theme.slice(1)}
-                </button>
+                </label>
               ))}
             </div>
           </fieldset>
@@ -203,22 +207,22 @@ export function SettingsPanel() {
               Uses your Anthropic API key to generate AI-powered executive summary, risks, and
               recommendations.
             </p>
-            <div
-              className="flex gap-2"
-              role="radiogroup"
-              aria-describedby="llm-mode-desc"
-              aria-label="AI enrichment mode"
-            >
+            <div className="flex gap-2" aria-describedby="llm-mode-desc">
               {(['off', 'enriched'] as AppSettings['llmMode'][]).map((mode) => (
-                <button
+                <label
                   key={mode}
-                  onClick={() => dispatch({ type: 'SET_LLM_MODE', mode })}
-                  className={pillClass(state.settings.llmMode === mode)}
-                  role="radio"
-                  aria-checked={state.settings.llmMode === mode}
+                  className={`cursor-pointer ${pillClass(state.settings.llmMode === mode)}`}
                 >
+                  <input
+                    type="radio"
+                    name="llm-mode"
+                    value={mode}
+                    checked={state.settings.llmMode === mode}
+                    onChange={() => dispatch({ type: 'SET_LLM_MODE', mode })}
+                    className="sr-only"
+                  />
                   {mode === 'off' ? 'Off' : 'AI Enriched'}
-                </button>
+                </label>
               ))}
             </div>
           </fieldset>
@@ -293,7 +297,7 @@ export function SettingsPanel() {
             </output>
           )}
         </div>
-      </div>
+      </dialog>
     </>
   );
 }

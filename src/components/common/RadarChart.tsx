@@ -79,16 +79,15 @@ export function RadarChart({ data, size = 300 }: Props) {
       height={size}
       viewBox={`0 0 ${size} ${size}`}
       className="select-none"
-      role="img"
       aria-label={`Radar chart showing category scores: ${description}`}
     >
       <title>Category Score Radar Chart</title>
       <desc>{description}</desc>
 
       {/* Grid levels */}
-      {gridPolygons.map((points, i) => (
+      {gridPolygons.map((points, levelIdx) => (
         <polygon
-          key={`grid-${i}`}
+          key={`grid-${levels[levelIdx]}`}
           points={points}
           fill="none"
           stroke="var(--color-border)"
@@ -98,9 +97,9 @@ export function RadarChart({ data, size = 300 }: Props) {
       ))}
 
       {/* Axis lines */}
-      {axisLines.map((end, i) => (
+      {axisLines.map((end, axisIdx) => (
         <line
-          key={`axis-${i}`}
+          key={`axis-${data[axisIdx].label}`}
           x1={cx}
           y1={cy}
           x2={end.x}
@@ -121,9 +120,9 @@ export function RadarChart({ data, size = 300 }: Props) {
       />
 
       {/* Data points */}
-      {dataPoints.map((p, i) => (
+      {dataPoints.map((p, dotIdx) => (
         <circle
-          key={`dot-${i}`}
+          key={`dot-${data[dotIdx].label}`}
           cx={p.x}
           cy={p.y}
           r={4}
@@ -134,9 +133,9 @@ export function RadarChart({ data, size = 300 }: Props) {
       ))}
 
       {/* Labels */}
-      {labels.map((l, i) => (
+      {labels.map((l) => (
         <text
-          key={`label-${i}`}
+          key={`label-${l.label}`}
           x={l.x}
           y={l.y}
           textAnchor={l.anchor}
