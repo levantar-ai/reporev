@@ -104,7 +104,11 @@ export function BadgeGenerator({ owner, repo, grade, score }: Props) {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-3 border-b border-border" role="tablist" aria-label="Badge embed format">
+      <div
+        className="flex gap-1 mb-3 border-b border-border"
+        role="tablist"
+        aria-label="Badge embed format"
+      >
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -140,7 +144,9 @@ export function BadgeGenerator({ owner, repo, grade, score }: Props) {
           aria-label={`Copy ${activeTab} badge code`}
         >
           {copied ? (
-            <span className="text-grade-a" role="status">Copied!</span>
+            <span className="text-grade-a" role="status">
+              Copied!
+            </span>
           ) : (
             'Copy'
           )}

@@ -1,5 +1,11 @@
 import { openDB, type IDBPDatabase } from 'idb';
-import { IDB_NAME, IDB_VERSION, STORE_REPORTS, STORE_RECENT, STORE_SETTINGS } from '../../utils/constants';
+import {
+  IDB_NAME,
+  IDB_VERSION,
+  STORE_REPORTS,
+  STORE_RECENT,
+  STORE_SETTINGS,
+} from '../../utils/constants';
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 

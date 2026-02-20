@@ -7,14 +7,20 @@ import { analyzeCodeQuality } from './codeQualityAnalyzer';
 import { analyzeLicense } from './licenseAnalyzer';
 import { analyzeCommunity } from './communityAnalyzer';
 import { analyzeContributorFriendliness } from './contributorAnalyzer';
-import { computeOverallScore, computeGrade, generateStrengths, generateRisks, generateNextSteps } from './scoring';
+import {
+  computeOverallScore,
+  computeGrade,
+  generateStrengths,
+  generateRisks,
+  generateNextSteps,
+} from './scoring';
 import { generateMermaidDiagram } from './repoStructure';
 
 export function runAnalysis(
   parsedRepo: ParsedRepo,
   repoInfo: RepoInfo,
   tree: TreeEntry[],
-  files: FileContent[]
+  files: FileContent[],
 ): AnalysisReport {
   // Run all 7 analyzers
   const documentation = analyzeDocumentation(files, tree);
@@ -38,7 +44,10 @@ export function runAnalysis(
   const contributorScore = analyzeContributorFriendliness(files, tree, repoInfo);
 
   // Add language from repoInfo if not already in techStack
-  if (repoInfo.language && !techStack.some((t) => t.name.toLowerCase() === repoInfo.language!.toLowerCase())) {
+  if (
+    repoInfo.language &&
+    !techStack.some((t) => t.name.toLowerCase() === repoInfo.language!.toLowerCase())
+  ) {
     techStack.unshift({ name: repoInfo.language, category: 'language' });
   }
 

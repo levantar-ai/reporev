@@ -63,7 +63,9 @@ export function generateNextSteps(categories: CategoryResult[]): string[] {
   for (const cat of sorted.slice(0, 3)) {
     const missing = cat.signals.filter((s) => !s.found);
     if (missing.length > 0) {
-      steps.push(`Add ${missing[0].name.toLowerCase()} to improve ${cat.label.toLowerCase()} score`);
+      steps.push(
+        `Add ${missing[0].name.toLowerCase()} to improve ${cat.label.toLowerCase()} score`,
+      );
     }
   }
 

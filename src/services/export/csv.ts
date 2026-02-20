@@ -42,7 +42,7 @@ export function reportToCsv(report: AnalysisReport): string {
         grade,
         escapeCsv(found),
         escapeCsv(missing),
-      ].join(',')
+      ].join(','),
     );
   }
 
@@ -61,7 +61,13 @@ export function orgScanToCsv(result: OrgScanResult): string {
   const rows: string[] = [];
 
   const categoryKeys: CategoryKey[] = [
-    'documentation', 'security', 'cicd', 'dependencies', 'codeQuality', 'license', 'community',
+    'documentation',
+    'security',
+    'cicd',
+    'dependencies',
+    'codeQuality',
+    'license',
+    'community',
   ];
   const categoryHeaders = categoryKeys.map((k) => CATEGORY_LABELS[k]);
 
@@ -76,12 +82,7 @@ export function orgScanToCsv(result: OrgScanResult): string {
     });
 
     rows.push(
-      [
-        escapeCsv(repoName),
-        repo.overallScore.toString(),
-        repo.grade,
-        ...categoryScores,
-      ].join(',')
+      [escapeCsv(repoName), repo.overallScore.toString(), repo.grade, ...categoryScores].join(','),
     );
   }
 
@@ -97,7 +98,7 @@ export function orgScanToCsv(result: OrgScanResult): string {
       Math.round(result.averageScore).toString(),
       result.averageGrade,
       ...avgCategoryScores,
-    ].join(',')
+    ].join(','),
   );
 
   return rows.join('\n');

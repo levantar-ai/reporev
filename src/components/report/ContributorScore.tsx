@@ -18,7 +18,14 @@ export function ContributorScore({ data }: Props) {
 
   const passedCount = data.readinessChecklist.filter((c) => c.passed).length;
   const totalCount = data.readinessChecklist.length;
-  const ratingLabel = data.score >= 80 ? 'Excellent' : data.score >= 60 ? 'Good' : data.score >= 40 ? 'Fair' : 'Needs Work';
+  const ratingLabel =
+    data.score >= 80
+      ? 'Excellent'
+      : data.score >= 60
+        ? 'Good'
+        : data.score >= 40
+          ? 'Fair'
+          : 'Needs Work';
 
   return (
     <div className="rounded-xl border border-border bg-surface-alt p-6">
@@ -34,7 +41,11 @@ export function ContributorScore({ data }: Props) {
           role="img"
           aria-label={`Contributor friendliness score: ${data.score} out of 100, rated ${ratingLabel}`}
         >
-          <svg className="absolute inset-0 -rotate-90" viewBox={`0 0 ${viewBox} ${viewBox}`} aria-hidden="true">
+          <svg
+            className="absolute inset-0 -rotate-90"
+            viewBox={`0 0 ${viewBox} ${viewBox}`}
+            aria-hidden="true"
+          >
             <circle
               cx={center}
               cy={center}
@@ -59,15 +70,15 @@ export function ContributorScore({ data }: Props) {
             />
           </svg>
           <div className="text-center" aria-hidden="true">
-            <div className="text-xl font-bold" style={{ color }}>{data.score}</div>
+            <div className="text-xl font-bold" style={{ color }}>
+              {data.score}
+            </div>
           </div>
         </div>
 
         {/* Score summary */}
         <div className="min-w-0">
-          <div className="text-lg font-bold text-text mb-1">
-            {ratingLabel}
-          </div>
+          <div className="text-lg font-bold text-text mb-1">{ratingLabel}</div>
           <p className="text-sm text-text-muted">
             {passedCount} of {totalCount} readiness checks pass
           </p>
@@ -82,16 +93,40 @@ export function ContributorScore({ data }: Props) {
             className="flex items-start gap-2.5 p-2.5 rounded-lg hover:bg-surface-hover transition-colors"
           >
             {item.passed ? (
-              <svg className="h-4 w-4 text-grade-a shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              <svg
+                className="h-4 w-4 text-grade-a shrink-0 mt-0.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             ) : (
-              <svg className="h-4 w-4 text-grade-f/50 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="h-4 w-4 text-grade-f/50 shrink-0 mt-0.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             )}
             <div className="min-w-0">
-              <div className={`text-sm font-medium ${item.passed ? 'text-text' : 'text-text-muted'}`}>
+              <div
+                className={`text-sm font-medium ${item.passed ? 'text-text' : 'text-text-muted'}`}
+              >
                 <span className="sr-only">{item.passed ? 'Passed:' : 'Missing:'}</span>
                 {item.label}
               </div>

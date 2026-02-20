@@ -2,18 +2,31 @@ import type { CategoryResult, FileContent, TreeEntry, Signal } from '../../types
 
 // Maps config file paths to human-readable tool names
 const LINTER_FILES: Record<string, string> = {
-  '.eslintrc.json': 'ESLint', '.eslintrc.js': 'ESLint', '.eslintrc.yml': 'ESLint',
-  '.eslintrc': 'ESLint', 'eslint.config.js': 'ESLint', 'eslint.config.mjs': 'ESLint',
-  '.flake8': 'Flake8', '.pylintrc': 'Pylint', 'clippy.toml': 'Clippy',
-  '.rubocop.yml': 'RuboCop', '.golangci.yml': 'golangci-lint',
-  'biome.json': 'Biome', 'deno.json': 'Deno',
+  '.eslintrc.json': 'ESLint',
+  '.eslintrc.js': 'ESLint',
+  '.eslintrc.yml': 'ESLint',
+  '.eslintrc': 'ESLint',
+  'eslint.config.js': 'ESLint',
+  'eslint.config.mjs': 'ESLint',
+  '.flake8': 'Flake8',
+  '.pylintrc': 'Pylint',
+  'clippy.toml': 'Clippy',
+  '.rubocop.yml': 'RuboCop',
+  '.golangci.yml': 'golangci-lint',
+  'biome.json': 'Biome',
+  'deno.json': 'Deno',
 };
 
 const FORMATTER_FILES: Record<string, string> = {
-  '.prettierrc': 'Prettier', '.prettierrc.json': 'Prettier', '.prettierrc.js': 'Prettier',
-  'prettier.config.js': 'Prettier', '.prettierrc.yaml': 'Prettier',
-  'rustfmt.toml': 'rustfmt', '.clang-format': 'clang-format',
-  'biome.json': 'Biome', '.editorconfig': 'EditorConfig',
+  '.prettierrc': 'Prettier',
+  '.prettierrc.json': 'Prettier',
+  '.prettierrc.js': 'Prettier',
+  'prettier.config.js': 'Prettier',
+  '.prettierrc.yaml': 'Prettier',
+  'rustfmt.toml': 'rustfmt',
+  '.clang-format': 'clang-format',
+  'biome.json': 'Biome',
+  '.editorconfig': 'EditorConfig',
 };
 
 const TEST_DIR_NAMES = ['test', 'tests', '__tests__', 'spec', 'src/test', 'src/__tests__'];
@@ -32,33 +45,34 @@ const CI_TEST_COMMANDS: Record<string, string> = {
   'npm run test': 'npm run test',
   'yarn test': 'yarn test',
   'pnpm test': 'pnpm test',
-  'pytest': 'pytest',
+  pytest: 'pytest',
   'cargo test': 'cargo test',
   'go test': 'go test',
-  'jest': 'Jest',
-  'vitest': 'Vitest',
+  jest: 'Jest',
+  vitest: 'Vitest',
   'make test': 'make test',
   'bundle exec rspec': 'RSpec',
-  'phpunit': 'PHPUnit',
+  phpunit: 'PHPUnit',
 };
 
-function findMatchingFile(paths: Set<string> | Map<string, FileContent>, lookup: Record<string, string>): string | null {
+function findMatchingFile(
+  paths: Set<string> | Map<string, FileContent>,
+  lookup: Record<string, string>,
+): string | null {
   for (const [file, name] of Object.entries(lookup)) {
     if (paths.has(file)) return name;
   }
   return null;
 }
 
-export function analyzeCodeQuality(
-  files: FileContent[],
-  tree: TreeEntry[]
-): CategoryResult {
+export function analyzeCodeQuality(files: FileContent[], tree: TreeEntry[]): CategoryResult {
   const signals: Signal[] = [];
   const fileMap = new Map(files.map((f) => [f.path, f]));
   const treePaths = new Set(tree.map((e) => e.path));
 
   // --- Linter ---
-  const linterName = findMatchingFile(fileMap, LINTER_FILES) || findMatchingFile(treePaths, LINTER_FILES);
+  const linterName =
+    findMatchingFile(fileMap, LINTER_FILES) || findMatchingFile(treePaths, LINTER_FILES);
   signals.push({
     name: 'Linter configured',
     found: !!linterName,
@@ -66,7 +80,8 @@ export function analyzeCodeQuality(
   });
 
   // --- Formatter ---
-  const formatterName = findMatchingFile(fileMap, FORMATTER_FILES) || findMatchingFile(treePaths, FORMATTER_FILES);
+  const formatterName =
+    findMatchingFile(fileMap, FORMATTER_FILES) || findMatchingFile(treePaths, FORMATTER_FILES);
   signals.push({
     name: 'Formatter configured',
     found: !!formatterName,
@@ -83,7 +98,11 @@ export function analyzeCodeQuality(
 
   // --- Git hooks ---
   let hookTool: string | null = null;
-  if (fileMap.has('.husky/pre-commit') || treePaths.has('.husky/pre-commit') || treePaths.has('.husky')) {
+  if (
+    fileMap.has('.husky/pre-commit') ||
+    treePaths.has('.husky/pre-commit') ||
+    treePaths.has('.husky')
+  ) {
     hookTool = 'Husky';
   } else if (fileMap.has('.pre-commit-config.yaml') || treePaths.has('.pre-commit-config.yaml')) {
     hookTool = 'pre-commit';
@@ -98,7 +117,7 @@ export function analyzeCodeQuality(
 
   // --- Tests ---
   const testDirs = TEST_DIR_NAMES.filter((d) =>
-    tree.some((e) => e.type === 'tree' && e.path === d)
+    tree.some((e) => e.type === 'tree' && e.path === d),
   );
 
   let testFileCount = 0;

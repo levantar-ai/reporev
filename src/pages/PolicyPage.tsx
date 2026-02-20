@@ -58,7 +58,8 @@ const PRESET_POLICIES: PolicySet[] = [
   {
     id: 'preset-open-source-ready',
     name: 'Open Source Ready',
-    description: 'Ensures the repository has essential files for open-source projects: license, README, and CONTRIBUTING guide.',
+    description:
+      'Ensures the repository has essential files for open-source projects: license, README, and CONTRIBUTING guide.',
     rules: [
       {
         id: 'osr-license',
@@ -121,7 +122,8 @@ const PRESET_POLICIES: PolicySet[] = [
   {
     id: 'preset-beginner-friendly',
     name: 'Beginner Friendly',
-    description: 'Ensures the repository is welcoming to new contributors with good community practices.',
+    description:
+      'Ensures the repository is welcoming to new contributors with good community practices.',
     rules: [
       {
         id: 'bf-community',
@@ -203,7 +205,15 @@ const SEVERITY_OPTIONS: { value: 'error' | 'warning' | 'info'; label: string; co
 
 // ─── Evaluation phase ────────────────────────────────────────────────────────
 
-type EvalPhase = 'idle' | 'fetching-info' | 'fetching-tree' | 'fetching-files' | 'analyzing' | 'evaluating' | 'done' | 'error';
+type EvalPhase =
+  | 'idle'
+  | 'fetching-info'
+  | 'fetching-tree'
+  | 'fetching-files'
+  | 'analyzing'
+  | 'evaluating'
+  | 'done'
+  | 'error';
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -227,10 +237,11 @@ export function PolicyPage({ onNavigate }: Props) {
   const abortRef = useRef<AbortController | null>(null);
 
   // ── Load saved policies from localStorage on mount ─────────────────────
+  /* eslint-disable react-hooks/set-state-in-effect -- load from localStorage on mount */
   useEffect(() => {
-    const loaded = loadPolicySets();
-    setSavedPolicies(loaded);
+    setSavedPolicies(loadPolicySets());
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // ── All available policies (saved + presets + defaults from engine) ─────
   const allPolicies = useMemo(() => {
@@ -284,10 +295,13 @@ export function PolicyPage({ onNavigate }: Props) {
   }, []);
 
   // ── Delete a saved policy ──────────────────────────────────────────────
-  const deletePolicy = useCallback((id: string) => {
-    const updated = savedPolicies.filter((p) => p.id !== id);
-    persistPolicies(updated);
-  }, [savedPolicies, persistPolicies]);
+  const deletePolicy = useCallback(
+    (id: string) => {
+      const updated = savedPolicies.filter((p) => p.id !== id);
+      persistPolicies(updated);
+    },
+    [savedPolicies, persistPolicies],
+  );
 
   // ── Save the editing policy ────────────────────────────────────────────
   const savePolicy = useCallback(() => {
@@ -342,7 +356,7 @@ export function PolicyPage({ onNavigate }: Props) {
 
   // ── Update a field on the editing policy ───────────────────────────────
   const updatePolicyField = useCallback((field: 'name' | 'description', value: string) => {
-    setEditingPolicy((prev) => prev ? { ...prev, [field]: value } : prev);
+    setEditingPolicy((prev) => (prev ? { ...prev, [field]: value } : prev));
   }, []);
 
   // ── Add a rule to the editing policy ───────────────────────────────────
@@ -469,25 +483,14 @@ export function PolicyPage({ onNavigate }: Props) {
       setEvalPhase('fetching-files');
       setEvalProgress(40);
       const targetFiles = filterTargetFiles(tree);
-      const files = await fetchFileContents(
-        parsed.owner,
-        parsed.repo,
-        branch,
-        targetFiles,
-        token,
-      );
+      const files = await fetchFileContents(parsed.owner, parsed.repo, branch, targetFiles, token);
 
       if (controller.signal.aborted) return;
 
       // Run analysis
       setEvalPhase('analyzing');
       setEvalProgress(75);
-      const report = runAnalysis(
-        { ...parsed, branch },
-        repoInfo,
-        tree,
-        files,
-      );
+      const report = runAnalysis({ ...parsed, branch }, repoInfo, tree, files);
 
       if (controller.signal.aborted) return;
 
@@ -499,10 +502,12 @@ export function PolicyPage({ onNavigate }: Props) {
       setEvaluation(result);
       setEvalPhase('done');
       setEvalProgress(100);
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       setEvalPhase('error');
-      setEvalError(err.message || 'An unexpected error occurred during evaluation.');
+      setEvalError(
+        err instanceof Error ? err.message : 'An unexpected error occurred during evaluation.',
+      );
     }
   }, [repoUrl, selectedPolicyId, allPolicies, githubToken]);
 
@@ -524,7 +529,9 @@ export function PolicyPage({ onNavigate }: Props) {
       info: 'bg-neon/15 text-neon border-neon/25',
     };
     return (
-      <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-semibold border ${styles[severity]}`}>
+      <span
+        className={`inline-block px-2 py-0.5 rounded-md text-xs font-semibold border ${styles[severity]}`}
+      >
         {severity.toUpperCase()}
       </span>
     );
@@ -535,7 +542,12 @@ export function PolicyPage({ onNavigate }: Props) {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-grade-a/15 text-grade-a border border-grade-a/25">
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2.5}
+              d="M5 13l4 4L19 7"
+            />
           </svg>
           PASS
         </span>
@@ -549,9 +561,16 @@ export function PolicyPage({ onNavigate }: Props) {
     };
 
     return (
-      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border ${failStyles[result.rule.severity]}`}>
+      <span
+        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border ${failStyles[result.rule.severity]}`}
+      >
         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2.5}
+            d="M6 18L18 6M6 6l12 12"
+          />
         </svg>
         FAIL
       </span>
@@ -588,12 +607,11 @@ export function PolicyPage({ onNavigate }: Props) {
       {/* Header */}
       <div className="text-center mb-12">
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-text tracking-tight">
-          Compliance{' '}
-          <span className="text-neon neon-text">Policy</span>
+          Compliance <span className="text-neon neon-text">Policy</span>
         </h1>
         <p className="mt-4 text-lg text-text-secondary max-w-2xl mx-auto leading-relaxed">
-          Create policy rule sets and evaluate GitHub repositories against them.
-          Enforce compliance standards across your projects.
+          Create policy rule sets and evaluate GitHub repositories against them. Enforce compliance
+          standards across your projects.
         </p>
       </div>
 
@@ -611,7 +629,12 @@ export function PolicyPage({ onNavigate }: Props) {
               className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl bg-neon text-surface transition-all hover:shadow-lg hover:shadow-neon/20"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
               New Policy
             </button>
@@ -629,8 +652,18 @@ export function PolicyPage({ onNavigate }: Props) {
                   onClick={() => loadPreset(preset)}
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-border bg-surface-alt text-text-secondary hover:border-neon/50 hover:text-neon transition-all"
                 >
-                  <svg className="h-4 w-4 text-neon/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  <svg
+                    className="h-4 w-4 text-neon/60"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
                   </svg>
                   {preset.name}
                 </button>
@@ -643,13 +676,17 @@ export function PolicyPage({ onNavigate }: Props) {
         {showBuilder && editingPolicy && (
           <div className="rounded-2xl border border-border bg-surface-alt p-6 sm:p-8 neon-glow mb-8">
             <h3 className="text-lg font-semibold text-text mb-6">
-              {savedPolicies.some((p) => p.id === editingPolicy.id) ? 'Edit Policy' : 'Create New Policy'}
+              {savedPolicies.some((p) => p.id === editingPolicy.id)
+                ? 'Edit Policy'
+                : 'Create New Policy'}
             </h3>
 
             {/* Policy name & description */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">Policy Name</label>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                  Policy Name
+                </label>
                 <input
                   type="text"
                   value={editingPolicy.name}
@@ -659,7 +696,9 @@ export function PolicyPage({ onNavigate }: Props) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">Description</label>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                  Description
+                </label>
                 <input
                   type="text"
                   value={editingPolicy.description}
@@ -673,13 +712,25 @@ export function PolicyPage({ onNavigate }: Props) {
             {/* Rules */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-semibold text-text">Rules ({editingPolicy.rules.length})</label>
+                <label className="text-sm font-semibold text-text">
+                  Rules ({editingPolicy.rules.length})
+                </label>
                 <button
                   onClick={addRule}
                   className="inline-flex items-center gap-1.5 text-xs font-medium text-neon hover:text-neon/80 transition-colors"
                 >
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  <svg
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
                   </svg>
                   Add Rule
                 </button>
@@ -701,8 +752,18 @@ export function PolicyPage({ onNavigate }: Props) {
                           className="text-text-muted hover:text-grade-f transition-colors"
                           title="Remove rule"
                         >
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          <svg
+                            className="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
                           </svg>
                         </button>
                       )}
@@ -738,7 +799,9 @@ export function PolicyPage({ onNavigate }: Props) {
                         <label className="block text-xs text-text-muted mb-1">Type</label>
                         <select
                           value={rule.type}
-                          onChange={(e) => updateRule(rule.id, { type: e.target.value as PolicyRule['type'] })}
+                          onChange={(e) =>
+                            updateRule(rule.id, { type: e.target.value as PolicyRule['type'] })
+                          }
                           className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface-alt text-text focus:outline-none focus:ring-2 focus:ring-neon/50 focus:border-neon/50 transition-all"
                         >
                           <option value="overall-score">Overall Score</option>
@@ -753,11 +816,15 @@ export function PolicyPage({ onNavigate }: Props) {
                           <label className="block text-xs text-text-muted mb-1">Category</label>
                           <select
                             value={rule.category || 'documentation'}
-                            onChange={(e) => updateRule(rule.id, { category: e.target.value as CategoryKey })}
+                            onChange={(e) =>
+                              updateRule(rule.id, { category: e.target.value as CategoryKey })
+                            }
                             className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface-alt text-text focus:outline-none focus:ring-2 focus:ring-neon/50 focus:border-neon/50 transition-all"
                           >
                             {CATEGORY_OPTIONS.map((opt) => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
                             ))}
                           </select>
                         </div>
@@ -782,30 +849,39 @@ export function PolicyPage({ onNavigate }: Props) {
                         <label className="block text-xs text-text-muted mb-1">Operator</label>
                         <select
                           value={rule.operator}
-                          onChange={(e) => updateRule(rule.id, { operator: e.target.value as PolicyOperator })}
+                          onChange={(e) =>
+                            updateRule(rule.id, { operator: e.target.value as PolicyOperator })
+                          }
                           className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface-alt text-text focus:outline-none focus:ring-2 focus:ring-neon/50 focus:border-neon/50 transition-all"
                         >
-                          {OPERATOR_OPTIONS
-                            .filter((opt) => {
-                              if (rule.type === 'signal') return opt.value === 'exists' || opt.value === 'not-exists';
-                              return opt.value !== 'exists' && opt.value !== 'not-exists';
-                            })
-                            .map((opt) => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
+                          {OPERATOR_OPTIONS.filter((opt) => {
+                            if (rule.type === 'signal')
+                              return opt.value === 'exists' || opt.value === 'not-exists';
+                            return opt.value !== 'exists' && opt.value !== 'not-exists';
+                          }).map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
                         </select>
                       </div>
 
                       {/* Value (if score-based) */}
                       {(rule.type === 'overall-score' || rule.type === 'category-score') && (
                         <div>
-                          <label className="block text-xs text-text-muted mb-1">Value (0-100)</label>
+                          <label className="block text-xs text-text-muted mb-1">
+                            Value (0-100)
+                          </label>
                           <input
                             type="number"
                             min={0}
                             max={100}
                             value={rule.value ?? 60}
-                            onChange={(e) => updateRule(rule.id, { value: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) })}
+                            onChange={(e) =>
+                              updateRule(rule.id, {
+                                value: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)),
+                              })
+                            }
                             className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface-alt text-text focus:outline-none focus:ring-2 focus:ring-neon/50 focus:border-neon/50 transition-all"
                           />
                         </div>
@@ -816,11 +892,17 @@ export function PolicyPage({ onNavigate }: Props) {
                         <label className="block text-xs text-text-muted mb-1">Severity</label>
                         <select
                           value={rule.severity}
-                          onChange={(e) => updateRule(rule.id, { severity: e.target.value as PolicyRule['severity'] })}
+                          onChange={(e) =>
+                            updateRule(rule.id, {
+                              severity: e.target.value as PolicyRule['severity'],
+                            })
+                          }
                           className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface-alt text-text focus:outline-none focus:ring-2 focus:ring-neon/50 focus:border-neon/50 transition-all"
                         >
                           {SEVERITY_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -844,7 +926,12 @@ export function PolicyPage({ onNavigate }: Props) {
                 className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-xl bg-neon text-surface transition-all hover:shadow-lg hover:shadow-neon/20"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
                 Save Policy
               </button>
@@ -880,8 +967,18 @@ export function PolicyPage({ onNavigate }: Props) {
                         className="p-1.5 text-text-muted hover:text-neon transition-colors rounded-lg hover:bg-neon/10"
                         title="Edit policy"
                       >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
                         </svg>
                       </button>
                       <button
@@ -889,14 +986,26 @@ export function PolicyPage({ onNavigate }: Props) {
                         className="p-1.5 text-text-muted hover:text-grade-f transition-colors rounded-lg hover:bg-grade-f/10"
                         title="Delete policy"
                       >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
                         </svg>
                       </button>
                     </div>
                   </div>
                   {policy.description && (
-                    <p className="text-sm text-text-muted mb-3 line-clamp-2">{policy.description}</p>
+                    <p className="text-sm text-text-muted mb-3 line-clamp-2">
+                      {policy.description}
+                    </p>
                   )}
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs text-text-muted">
@@ -946,7 +1055,9 @@ export function PolicyPage({ onNavigate }: Props) {
                     </span>
                   </div>
                   {policy.description && (
-                    <p className="text-sm text-text-muted mb-3 line-clamp-2">{policy.description}</p>
+                    <p className="text-sm text-text-muted mb-3 line-clamp-2">
+                      {policy.description}
+                    </p>
                   )}
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-text-muted">
@@ -980,11 +1091,23 @@ export function PolicyPage({ onNavigate }: Props) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               {/* Repo URL input */}
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">GitHub Repository</label>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                  GitHub Repository
+                </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                    <svg className="h-4.5 w-4.5 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    <svg
+                      className="h-4.5 w-4.5 text-text-muted"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                      />
                     </svg>
                   </div>
                   <input
@@ -1000,7 +1123,9 @@ export function PolicyPage({ onNavigate }: Props) {
 
               {/* Policy selector */}
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">Policy to Evaluate</label>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                  Policy to Evaluate
+                </label>
                 <select
                   value={selectedPolicyId}
                   onChange={(e) => setSelectedPolicyId(e.target.value)}
@@ -1010,18 +1135,24 @@ export function PolicyPage({ onNavigate }: Props) {
                   {savedPolicies.length > 0 && (
                     <optgroup label="Saved Policies">
                       {savedPolicies.map((p) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
                       ))}
                     </optgroup>
                   )}
                   <optgroup label="Presets">
                     {PRESET_POLICIES.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
                     ))}
                   </optgroup>
                   <optgroup label="Built-in Templates">
                     {DEFAULT_POLICIES.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
                     ))}
                   </optgroup>
                 </select>
@@ -1034,15 +1165,20 @@ export function PolicyPage({ onNavigate }: Props) {
               className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-xl bg-neon text-surface transition-all hover:shadow-lg hover:shadow-neon/20 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               Evaluate Repository
             </button>
 
             {!githubToken && (
               <p className="text-xs text-text-muted mt-3">
-                Evaluation requires fetching repo data. Without a token you have 60 req/hr.
-                Add a GitHub token in Settings for 5,000 req/hr.
+                Evaluation requires fetching repo data. Without a token you have 60 req/hr. Add a
+                GitHub token in Settings for 5,000 req/hr.
               </p>
             )}
 
@@ -1050,8 +1186,18 @@ export function PolicyPage({ onNavigate }: Props) {
             {evalPhase === 'error' && evalError && (
               <div className="mt-4 px-5 py-4 rounded-xl bg-grade-f/10 border border-grade-f/25 text-sm text-grade-f">
                 <div className="flex items-start gap-3">
-                  <svg className="h-5 w-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    className="h-5 w-5 shrink-0 mt-0.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                   <div>
                     <p className="font-medium">Evaluation failed</p>
@@ -1083,37 +1229,63 @@ export function PolicyPage({ onNavigate }: Props) {
         {evalPhase === 'done' && evaluation && (
           <div>
             {/* Overall status card */}
-            <div className={`rounded-2xl border p-6 sm:p-8 mb-8 neon-glow ${
-              evaluation.passed
-                ? 'border-grade-a/40 bg-grade-a/5'
-                : 'border-grade-f/40 bg-grade-f/5'
-            }`}>
+            <div
+              className={`rounded-2xl border p-6 sm:p-8 mb-8 neon-glow ${
+                evaluation.passed
+                  ? 'border-grade-a/40 bg-grade-a/5'
+                  : 'border-grade-f/40 bg-grade-f/5'
+              }`}
+            >
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   {/* Pass/Fail icon */}
-                  <div className={`flex items-center justify-center h-16 w-16 rounded-2xl ${
-                    evaluation.passed
-                      ? 'bg-grade-a/15 border border-grade-a/30'
-                      : 'bg-grade-f/15 border border-grade-f/30'
-                  }`}>
+                  <div
+                    className={`flex items-center justify-center h-16 w-16 rounded-2xl ${
+                      evaluation.passed
+                        ? 'bg-grade-a/15 border border-grade-a/30'
+                        : 'bg-grade-f/15 border border-grade-f/30'
+                    }`}
+                  >
                     {evaluation.passed ? (
-                      <svg className="h-8 w-8 text-grade-a" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <svg
+                        className="h-8 w-8 text-grade-a"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2.5}
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
                     ) : (
-                      <svg className="h-8 w-8 text-grade-f" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <svg
+                        className="h-8 w-8 text-grade-f"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2.5}
+                          d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
                     )}
                   </div>
 
                   <div>
-                    <h3 className={`text-2xl font-bold ${evaluation.passed ? 'text-grade-a' : 'text-grade-f'}`}>
+                    <h3
+                      className={`text-2xl font-bold ${evaluation.passed ? 'text-grade-a' : 'text-grade-f'}`}
+                    >
                       {evaluation.passed ? 'POLICY PASSED' : 'POLICY FAILED'}
                     </h3>
                     <p className="text-sm text-text-secondary mt-1">
-                      <span className="text-neon font-medium">{evaluation.repo}</span>
-                      {' '} evaluated against{' '}
+                      <span className="text-neon font-medium">{evaluation.repo}</span> evaluated
+                      against{' '}
                       <span className="text-text font-medium">{evaluation.policy.name}</span>
                     </p>
                   </div>
@@ -1155,9 +1327,7 @@ export function PolicyPage({ onNavigate }: Props) {
                     }`}
                   >
                     {/* Result badge */}
-                    <div className="shrink-0">
-                      {resultBadge(result)}
-                    </div>
+                    <div className="shrink-0">{resultBadge(result)}</div>
 
                     {/* Rule details */}
                     <div className="flex-1 min-w-0">
@@ -1168,7 +1338,8 @@ export function PolicyPage({ onNavigate }: Props) {
                           {result.rule.type === 'overall-score'
                             ? 'Overall Score'
                             : result.rule.type === 'category-score'
-                              ? CATEGORY_LABELS[result.rule.category as CategoryKey] || result.rule.category
+                              ? CATEGORY_LABELS[result.rule.category as CategoryKey] ||
+                                result.rule.category
                               : 'Signal'}
                         </span>
                       </div>
@@ -1180,7 +1351,12 @@ export function PolicyPage({ onNavigate }: Props) {
                     {/* Actual vs Expected */}
                     <div className="shrink-0 text-right sm:min-w-[200px]">
                       <div className="text-xs text-text-muted">
-                        Actual: <span className={`font-semibold ${result.passed ? 'text-grade-a' : 'text-grade-f'}`}>{result.actual}</span>
+                        Actual:{' '}
+                        <span
+                          className={`font-semibold ${result.passed ? 'text-grade-a' : 'text-grade-f'}`}
+                        >
+                          {result.actual}
+                        </span>
                       </div>
                       <div className="text-xs text-text-muted">
                         Expected: <span className="font-semibold text-text">{result.expected}</span>
@@ -1198,7 +1374,12 @@ export function PolicyPage({ onNavigate }: Props) {
                 className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-xl border border-border text-text-secondary hover:text-neon hover:border-neon/30 transition-all"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
                 </svg>
                 New Evaluation
               </button>
@@ -1210,14 +1391,24 @@ export function PolicyPage({ onNavigate }: Props) {
         {evalPhase === 'idle' && !evaluation && (
           <div className="text-center mt-8 mb-8">
             <div className="inline-flex items-center justify-center h-20 w-20 rounded-2xl bg-neon/10 border border-neon/20 mb-6">
-              <svg className="h-10 w-10 text-neon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              <svg
+                className="h-10 w-10 text-neon"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                />
               </svg>
             </div>
             <h3 className="text-lg font-semibold text-text mb-2">Evaluate a Repository</h3>
             <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed">
-              Enter a GitHub repo URL and select a policy above to check compliance.
-              The evaluator will run a full analysis and report pass/fail for each rule.
+              Enter a GitHub repo URL and select a policy above to check compliance. The evaluator
+              will run a full analysis and report pass/fail for each rule.
             </p>
           </div>
         )}

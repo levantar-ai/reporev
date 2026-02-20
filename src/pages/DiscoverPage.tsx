@@ -157,9 +157,9 @@ export function DiscoverPage({ onNavigate }: Props) {
 
       setResults(data.items);
       setTotalCount(data.total_count);
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
-      setSearchError(err.message || 'Search failed. Please try again.');
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      setSearchError(err instanceof Error ? err.message : 'Search failed. Please try again.');
     } finally {
       setSearching(false);
     }
@@ -214,10 +214,14 @@ export function DiscoverPage({ onNavigate }: Props) {
           ...prev,
           [key]: { scanning: false, report, error: null },
         }));
-      } catch (err: any) {
+      } catch (err: unknown) {
         setCardStates((prev) => ({
           ...prev,
-          [key]: { scanning: false, report: null, error: err.message || 'Scan failed' },
+          [key]: {
+            scanning: false,
+            report: null,
+            error: err instanceof Error ? err.message : 'Scan failed',
+          },
         }));
       }
     },
@@ -242,12 +246,11 @@ export function DiscoverPage({ onNavigate }: Props) {
       {/* Header */}
       <div className="text-center mb-10">
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-text tracking-tight">
-          Discover{' '}
-          <span className="text-neon neon-text">Repositories</span>
+          Discover <span className="text-neon neon-text">Repositories</span>
         </h1>
         <p className="mt-4 text-lg text-text-secondary max-w-2xl mx-auto leading-relaxed">
-          Search GitHub for repositories by language, stars, and topic. Run a quick health scan
-          on any repo to see its grade before diving deeper.
+          Search GitHub for repositories by language, stars, and topic. Run a quick health scan on
+          any repo to see its grade before diving deeper.
         </p>
       </div>
 
@@ -333,15 +336,31 @@ export function DiscoverPage({ onNavigate }: Props) {
               {searching ? (
                 <span className="inline-flex items-center gap-2">
                   <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    />
                   </svg>
                   Searching...
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-2">
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
                   </svg>
                   Search Repositories
                 </span>
@@ -351,8 +370,8 @@ export function DiscoverPage({ onNavigate }: Props) {
 
           {!token && (
             <p className="text-xs text-text-muted mt-4 text-center">
-              Search uses the GitHub Search API. Without a token you have 10 search req/min.
-              Add a GitHub token in Settings for higher limits.
+              Search uses the GitHub Search API. Without a token you have 10 search req/min. Add a
+              GitHub token in Settings for higher limits.
             </p>
           )}
         </div>
@@ -363,8 +382,18 @@ export function DiscoverPage({ onNavigate }: Props) {
         <div className="max-w-4xl mx-auto mb-8">
           <div className="px-5 py-4 rounded-xl bg-grade-f/10 border border-grade-f/25 text-sm text-grade-f">
             <div className="flex items-start gap-3">
-              <svg className="h-5 w-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="h-5 w-5 shrink-0 mt-0.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               <div>
                 <p className="font-medium">Search failed</p>
@@ -381,7 +410,8 @@ export function DiscoverPage({ onNavigate }: Props) {
           <p className="text-sm text-text-secondary">
             {totalCount > 0 ? (
               <>
-                Found <span className="text-neon font-semibold">{formatNumber(totalCount)}</span> repositories
+                Found <span className="text-neon font-semibold">{formatNumber(totalCount)}</span>{' '}
+                repositories
                 {results.length < totalCount && (
                   <span className="text-text-muted"> (showing top {results.length})</span>
                 )}
@@ -431,7 +461,9 @@ export function DiscoverPage({ onNavigate }: Props) {
               >
                 {/* Grade badge overlay when scanned */}
                 {report && (
-                  <div className={`absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${gradeBadgeBg(report.grade)}`}>
+                  <div
+                    className={`absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${gradeBadgeBg(report.grade)}`}
+                  >
                     <span className={`text-lg font-bold ${gradeColorClass(report.grade)}`}>
                       {report.grade}
                     </span>
@@ -472,8 +504,18 @@ export function DiscoverPage({ onNavigate }: Props) {
 
                   {/* Forks */}
                   <span className="inline-flex items-center gap-1">
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                    <svg
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"
+                      />
                     </svg>
                     {formatNumber(repo.forks_count)}
                   </span>
@@ -521,9 +563,11 @@ export function DiscoverPage({ onNavigate }: Props) {
                         <div key={cat.key}>
                           <div
                             className={`text-xs font-bold ${
-                              cat.score >= 70 ? 'text-grade-a' :
-                              cat.score >= 50 ? 'text-grade-c' :
-                              'text-grade-f'
+                              cat.score >= 70
+                                ? 'text-grade-a'
+                                : cat.score >= 50
+                                  ? 'text-grade-c'
+                                  : 'text-grade-f'
                             }`}
                           >
                             {cat.score}
@@ -546,15 +590,36 @@ export function DiscoverPage({ onNavigate }: Props) {
                       {isScanning ? (
                         <>
                           <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                            />
                           </svg>
                           Scanning...
                         </>
                       ) : (
                         <>
-                          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                          <svg
+                            className="h-3.5 w-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                            />
                           </svg>
                           Quick Scan
                         </>
@@ -565,8 +630,18 @@ export function DiscoverPage({ onNavigate }: Props) {
                       onClick={() => onNavigate(`analyze:${repo.full_name}`)}
                       className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl bg-neon/10 border border-neon/30 text-neon hover:bg-neon/20 transition-all"
                     >
-                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      <svg
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                        />
                       </svg>
                       Full Analysis
                     </button>
@@ -582,15 +657,25 @@ export function DiscoverPage({ onNavigate }: Props) {
       {!hasSearched && !searching && (
         <div className="text-center mt-12">
           <div className="inline-flex items-center justify-center h-20 w-20 rounded-2xl bg-neon/10 border border-neon/20 mb-6">
-            <svg className="h-10 w-10 text-neon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <svg
+              className="h-10 w-10 text-neon"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
           </div>
           <h3 className="text-lg font-semibold text-text mb-2">Discover Open Source Projects</h3>
           <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed">
             Set your filters above and search to find repositories. Then use{' '}
-            <span className="text-neon font-medium">Quick Scan</span> on any repo to instantly
-            see its health grade using lightweight tree-only analysis (2 API calls per scan).
+            <span className="text-neon font-medium">Quick Scan</span> on any repo to instantly see
+            its health grade using lightweight tree-only analysis (2 API calls per scan).
           </p>
         </div>
       )}
@@ -599,14 +684,24 @@ export function DiscoverPage({ onNavigate }: Props) {
       {hasSearched && !searching && !searchError && results.length === 0 && (
         <div className="text-center mt-12">
           <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-surface-alt border border-border mb-5">
-            <svg className="h-8 w-8 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="h-8 w-8 text-text-muted"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           </div>
           <h3 className="text-lg font-semibold text-text mb-2">No Results Found</h3>
           <p className="text-sm text-text-muted max-w-md mx-auto">
-            Try broadening your search by lowering the minimum stars, removing the topic filter,
-            or selecting a different language.
+            Try broadening your search by lowering the minimum stars, removing the topic filter, or
+            selecting a different language.
           </p>
         </div>
       )}

@@ -21,37 +21,40 @@ export function LanguageBreakdown({ languages }: Props) {
         trigger: 'item' as const,
         formatter: (params: { name: string; value: number; percent: number }) => {
           const bytes = params.value;
-          const size = bytes > 1024 * 1024
-            ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-            : bytes > 1024
-              ? `${(bytes / 1024).toFixed(1)} KB`
-              : `${bytes} B`;
+          const size =
+            bytes > 1024 * 1024
+              ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+              : bytes > 1024
+                ? `${(bytes / 1024).toFixed(1)} KB`
+                : `${bytes} B`;
           return `<b>${params.name}</b><br/>${size} (${params.percent}%)`;
         },
       },
-      series: [{
-        type: 'pie',
-        radius: ['45%', '75%'],
-        center: ['50%', '50%'],
-        avoidLabelOverlap: true,
-        itemStyle: {
-          borderColor: '#0f172a',
-          borderWidth: 2,
-          borderRadius: 6,
+      series: [
+        {
+          type: 'pie',
+          radius: ['45%', '75%'],
+          center: ['50%', '50%'],
+          avoidLabelOverlap: true,
+          itemStyle: {
+            borderColor: '#0f172a',
+            borderWidth: 2,
+            borderRadius: 6,
+          },
+          label: {
+            color: '#94a3b8',
+            fontSize: 11,
+            formatter: '{b}\n{d}%',
+          },
+          labelLine: {
+            lineStyle: { color: '#475569' },
+          },
+          emphasis: {
+            label: { fontSize: 13, fontWeight: 'bold' as const },
+          },
+          data,
         },
-        label: {
-          color: '#94a3b8',
-          fontSize: 11,
-          formatter: '{b}\n{d}%',
-        },
-        labelLine: {
-          lineStyle: { color: '#475569' },
-        },
-        emphasis: {
-          label: { fontSize: 13, fontWeight: 'bold' as const },
-        },
-        data,
-      }],
+      ],
     };
   }, [languages]);
 
@@ -69,30 +72,33 @@ export function LanguageBreakdown({ languages }: Props) {
         formatter: (params: { name: string; value: number }) => {
           const bytes = params.value;
           const pct = languages.find((l) => l.name === params.name)?.percentage || 0;
-          const size = bytes > 1024 * 1024
-            ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-            : `${(bytes / 1024).toFixed(1)} KB`;
+          const size =
+            bytes > 1024 * 1024
+              ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+              : `${(bytes / 1024).toFixed(1)} KB`;
           return `<b>${params.name}</b><br/>${size} (${pct}%)`;
         },
       },
-      series: [{
-        type: 'treemap',
-        data,
-        roam: false,
-        nodeClick: false,
-        breadcrumb: { show: false },
-        label: {
-          color: '#f1f5f9',
-          fontSize: 12,
-          fontWeight: 600,
-          formatter: '{b}',
+      series: [
+        {
+          type: 'treemap',
+          data,
+          roam: false,
+          nodeClick: false,
+          breadcrumb: { show: false },
+          label: {
+            color: '#f1f5f9',
+            fontSize: 12,
+            fontWeight: 600,
+            formatter: '{b}',
+          },
+          itemStyle: {
+            borderColor: '#0f172a',
+            borderWidth: 2,
+            gapWidth: 2,
+          },
         },
-        itemStyle: {
-          borderColor: '#0f172a',
-          borderWidth: 2,
-          gapWidth: 2,
-        },
-      }],
+      ],
     };
   }, [languages]);
 
@@ -112,16 +118,15 @@ export function LanguageBreakdown({ languages }: Props) {
         <button
           onClick={() => setView('treemap')}
           className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
-            view === 'treemap' ? 'bg-neon/15 text-neon' : 'text-text-muted hover:text-text-secondary'
+            view === 'treemap'
+              ? 'bg-neon/15 text-neon'
+              : 'text-text-muted hover:text-text-secondary'
           }`}
         >
           Treemap
         </button>
       </div>
-      <EChartsWrapper
-        option={view === 'donut' ? donutOption : treemapOption}
-        height="350px"
-      />
+      <EChartsWrapper option={view === 'donut' ? donutOption : treemapOption} height="350px" />
     </div>
   );
 }

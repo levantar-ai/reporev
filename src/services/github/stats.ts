@@ -187,21 +187,15 @@ export async function fetchAllStats(
 }> {
   const prefix = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
 
-  const [
-    contributorStats,
-    codeFrequency,
-    commitActivity,
-    participation,
-    punchCard,
-    languages,
-  ] = await Promise.all([
-    fetchWithRetry<GitHubContributorStats[]>(`${prefix}/stats/contributors`, token, onRateLimit),
-    fetchWithRetry<GitHubCodeFrequency[]>(`${prefix}/stats/code_frequency`, token, onRateLimit),
-    fetchWithRetry<GitHubCommitActivity[]>(`${prefix}/stats/commit_activity`, token, onRateLimit),
-    fetchWithRetry<GitHubParticipation>(`${prefix}/stats/participation`, token, onRateLimit),
-    fetchWithRetry<GitHubPunchCard[]>(`${prefix}/stats/punch_card`, token, onRateLimit),
-    fetchWithRetry<GitHubLanguages>(`${prefix}/languages`, token, onRateLimit),
-  ]);
+  const [contributorStats, codeFrequency, commitActivity, participation, punchCard, languages] =
+    await Promise.all([
+      fetchWithRetry<GitHubContributorStats[]>(`${prefix}/stats/contributors`, token, onRateLimit),
+      fetchWithRetry<GitHubCodeFrequency[]>(`${prefix}/stats/code_frequency`, token, onRateLimit),
+      fetchWithRetry<GitHubCommitActivity[]>(`${prefix}/stats/commit_activity`, token, onRateLimit),
+      fetchWithRetry<GitHubParticipation>(`${prefix}/stats/participation`, token, onRateLimit),
+      fetchWithRetry<GitHubPunchCard[]>(`${prefix}/stats/punch_card`, token, onRateLimit),
+      fetchWithRetry<GitHubLanguages>(`${prefix}/languages`, token, onRateLimit),
+    ]);
 
   return {
     contributorStats,
@@ -231,7 +225,14 @@ export async function fetchGitStatsData(
   let commitDetails: GitHubCommitDetailResponse[] = [];
   if (token && commits.length > 0) {
     const shas = commits.map((c) => c.sha);
-    commitDetails = await fetchCommitDetails(owner, repo, shas, token, onRateLimit, onDetailProgress);
+    commitDetails = await fetchCommitDetails(
+      owner,
+      repo,
+      shas,
+      token,
+      onRateLimit,
+      onDetailProgress,
+    );
   }
 
   // 3. Fetch stats endpoints

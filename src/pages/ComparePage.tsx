@@ -104,7 +104,7 @@ export function ComparePage({ onBack, githubToken }: Props) {
   async function analyzeRepo(
     input: string,
     label: string,
-    setProgress: (msg: string) => void
+    setProgress: (msg: string) => void,
   ): Promise<LightAnalysisReport> {
     const parsed = parseRepoUrl(input);
     if (!parsed) throw new Error(`Invalid repo format for ${label}: "${input}"`);
@@ -113,7 +113,7 @@ export function ComparePage({ onBack, githubToken }: Props) {
     const token = githubToken || undefined;
     const rawRepo = await githubFetch<GitHubRepoResponse>(
       `/repos/${parsed.owner}/${parsed.repo}`,
-      token
+      token,
     );
     const repoInfo = mapGitHubRepoToRepoInfo(rawRepo);
     const branch = parsed.branch || repoInfo.defaultBranch;
@@ -121,7 +121,7 @@ export function ComparePage({ onBack, githubToken }: Props) {
     setProgress(`Fetching ${label} file tree...`);
     const treeData = await githubFetch<GitHubTreeResponse>(
       `/repos/${parsed.owner}/${parsed.repo}/git/trees/${branch}?recursive=1`,
-      token
+      token,
     );
     const tree: TreeEntry[] = treeData.tree.map((e) => ({
       path: e.path,
@@ -140,11 +140,16 @@ export function ComparePage({ onBack, githubToken }: Props) {
   const handleCompare = useCallback(async () => {
     if (!inputA.trim() || !inputB.trim()) return;
 
-    setState({ step: 'loading', progress: 'Starting comparison...', reportA: null, reportB: null, error: null });
+    setState({
+      step: 'loading',
+      progress: 'Starting comparison...',
+      reportA: null,
+      reportB: null,
+      error: null,
+    });
 
     try {
-      const setProgress = (msg: string) =>
-        setState((prev) => ({ ...prev, progress: msg }));
+      const setProgress = (msg: string) => setState((prev) => ({ ...prev, progress: msg }));
 
       const reportA = await analyzeRepo(inputA.trim(), 'Repo A', setProgress);
       const reportB = await analyzeRepo(inputB.trim(), 'Repo B', setProgress);
@@ -185,8 +190,7 @@ export function ComparePage({ onBack, githubToken }: Props) {
       {/* Title */}
       <div className="text-center mb-10">
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-text tracking-tight">
-          Compare{' '}
-          <span className="text-neon neon-glow">Repositories</span>
+          Compare <span className="text-neon neon-glow">Repositories</span>
         </h1>
         <p className="mt-3 text-base sm:text-lg text-text-secondary max-w-xl mx-auto">
           Analyze two GitHub repos side by side. See which one scores higher across all categories.
@@ -273,8 +277,18 @@ export function ComparePage({ onBack, githubToken }: Props) {
       {state.step === 'error' && state.error && (
         <div className="max-w-2xl mx-auto mb-8 px-5 py-4 rounded-xl bg-grade-f/10 border border-grade-f/25">
           <div className="flex items-start gap-3">
-            <svg className="h-5 w-5 text-grade-f shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="h-5 w-5 text-grade-f shrink-0 mt-0.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <div>
               <p className="text-sm font-medium text-grade-f">Comparison failed</p>
@@ -405,9 +419,13 @@ function GradeDisplay({
         `}
       >
         <span className={`text-2xl sm:text-3xl font-bold ${gradeGlowClass(grade)}`}>{grade}</span>
-        <span className={`text-xs sm:text-sm font-medium ${scoreColorClass(score)}`}>{score}/100</span>
+        <span className={`text-xs sm:text-sm font-medium ${scoreColorClass(score)}`}>
+          {score}/100
+        </span>
       </div>
-      <span className="text-xs text-text-muted truncate max-w-[100px] sm:max-w-[140px]">{label}</span>
+      <span className="text-xs text-text-muted truncate max-w-[100px] sm:max-w-[140px]">
+        {label}
+      </span>
     </div>
   );
 }
@@ -440,7 +458,7 @@ function WinnerBanner({ nameA, nameB, diff }: { nameA: string; nameB: string; di
 // ── Category row with dual bar ──
 
 function CategoryRow({
-  categoryKey: _categoryKey,
+  categoryKey: _categoryKey, // eslint-disable-line @typescript-eslint/no-unused-vars -- reserved for future use
   label,
   scoreA,
   scoreB,
@@ -482,7 +500,9 @@ function CategoryRow({
         className="w-full px-3 sm:px-4 py-3 flex items-center gap-2 sm:gap-3 hover:bg-surface-hover rounded-xl transition-colors group"
       >
         {/* Score A */}
-        <span className={`text-sm sm:text-base font-bold w-10 text-right shrink-0 ${aWins ? 'text-neon' : scoreColorClass(scoreA)}`}>
+        <span
+          className={`text-sm sm:text-base font-bold w-10 text-right shrink-0 ${aWins ? 'text-neon' : scoreColorClass(scoreA)}`}
+        >
           {scoreA}
         </span>
 
@@ -505,7 +525,9 @@ function CategoryRow({
         </div>
 
         {/* Score B */}
-        <span className={`text-sm sm:text-base font-bold w-10 text-left shrink-0 ${bWins ? 'text-neon' : scoreColorClass(scoreB)}`}>
+        <span
+          className={`text-sm sm:text-base font-bold w-10 text-left shrink-0 ${bWins ? 'text-neon' : scoreColorClass(scoreB)}`}
+        >
           {scoreB}
         </span>
 
@@ -598,7 +620,11 @@ function TechStackComparison({
           ) : (
             <div className="flex flex-wrap gap-2">
               {techA.map((t) => (
-                <TechBadge key={t.name} item={t} highlighted={!techB.some((b) => b.name === t.name)} />
+                <TechBadge
+                  key={t.name}
+                  item={t}
+                  highlighted={!techB.some((b) => b.name === t.name)}
+                />
               ))}
             </div>
           )}
@@ -611,7 +637,11 @@ function TechStackComparison({
           ) : (
             <div className="flex flex-wrap gap-2">
               {techB.map((t) => (
-                <TechBadge key={t.name} item={t} highlighted={!techA.some((a) => a.name === t.name)} />
+                <TechBadge
+                  key={t.name}
+                  item={t}
+                  highlighted={!techA.some((a) => a.name === t.name)}
+                />
               ))}
             </div>
           )}
@@ -626,9 +656,10 @@ function TechBadge({ item, highlighted }: { item: TechStackItem; highlighted: bo
     <span
       className={`
         inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium
-        ${highlighted
-          ? 'bg-neon/15 border border-neon/30 text-neon'
-          : 'bg-surface-alt border border-border text-text-secondary'
+        ${
+          highlighted
+            ? 'bg-neon/15 border border-neon/30 text-neon'
+            : 'bg-surface-alt border border-border text-text-secondary'
         }
       `}
     >

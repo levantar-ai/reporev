@@ -7,7 +7,9 @@ export function getHistory(): HistoryEntry[] {
   try {
     const raw = localStorage.getItem(STORE_KEY);
     return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 export function addHistoryEntry(entry: HistoryEntry): void {
@@ -19,7 +21,7 @@ export function addHistoryEntry(entry: HistoryEntry): void {
 }
 
 export function getRepoHistory(owner: string, repo: string): HistoryEntry[] {
-  return getHistory().filter(e => e.owner === owner && e.repo === repo);
+  return getHistory().filter((e) => e.owner === owner && e.repo === repo);
 }
 
 export function clearHistory(): void {

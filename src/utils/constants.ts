@@ -3,13 +3,13 @@ import type { CategoryKey } from '../types';
 export const GITHUB_API_BASE = 'https://api.github.com';
 
 export const CATEGORY_WEIGHTS: Record<CategoryKey, number> = {
-  documentation: 0.20,
+  documentation: 0.2,
   security: 0.15,
   cicd: 0.15,
   dependencies: 0.15,
   codeQuality: 0.15,
-  license: 0.10,
-  community: 0.10,
+  license: 0.1,
+  community: 0.1,
 };
 
 export const CATEGORY_LABELS: Record<CategoryKey, string> = {
@@ -108,9 +108,21 @@ export const FETCH_DELAY_MS = 100;
 export const MAX_FILES_TO_FETCH = 25;
 
 export const DEMO_REPOS = [
-  { owner: 'facebook', repo: 'react', description: 'The library for web and native user interfaces' },
-  { owner: 'expressjs', repo: 'express', description: 'Fast, unopinionated, minimalist web framework for Node.js' },
-  { owner: 'kelseyhightower', repo: 'nocode', description: 'The best way to write secure and reliable applications' },
+  {
+    owner: 'facebook',
+    repo: 'react',
+    description: 'The library for web and native user interfaces',
+  },
+  {
+    owner: 'expressjs',
+    repo: 'express',
+    description: 'Fast, unopinionated, minimalist web framework for Node.js',
+  },
+  {
+    owner: 'kelseyhightower',
+    repo: 'nocode',
+    description: 'The best way to write secure and reliable applications',
+  },
 ] as const;
 
 export const IDB_NAME = 'reporev';

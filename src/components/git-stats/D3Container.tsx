@@ -36,12 +36,7 @@ export function D3Container({ render, height = 400, className = '' }: Props) {
 
   return (
     <div ref={containerRef} className={className}>
-      <svg
-        ref={svgRef}
-        width={width}
-        height={height}
-        style={{ overflow: 'visible' }}
-      />
+      <svg ref={svgRef} width={width} height={height} style={{ overflow: 'visible' }} />
     </div>
   );
 }

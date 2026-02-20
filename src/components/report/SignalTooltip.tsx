@@ -39,11 +39,7 @@ export function SignalTooltip({ signal, education, children }: Props) {
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className="cursor-help"
-      >
+      <button type="button" onClick={() => setOpen((prev) => !prev)} className="cursor-help">
         {children}
       </button>
 
@@ -57,18 +53,14 @@ export function SignalTooltip({ signal, education, children }: Props) {
               <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
                 Why this matters
               </p>
-              <p className="text-sm text-text-secondary leading-relaxed">
-                {education.why}
-              </p>
+              <p className="text-sm text-text-secondary leading-relaxed">{education.why}</p>
             </div>
 
             <div className="mb-2">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
                 How to fix
               </p>
-              <p className="text-sm text-text-secondary leading-relaxed">
-                {education.howToFix}
-              </p>
+              <p className="text-sm text-text-secondary leading-relaxed">{education.howToFix}</p>
             </div>
 
             {education.fixUrl && (
@@ -79,7 +71,12 @@ export function SignalTooltip({ signal, education, children }: Props) {
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-neon hover:text-neon-dim transition-colors mt-1"
               >
                 <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
                 </svg>
                 Create on GitHub
               </a>

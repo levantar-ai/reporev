@@ -1,8 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import type {
-  CategoryKey,
-  LetterGrade,
-} from '../types';
+import type { CategoryKey, LetterGrade } from '../types';
 import {
   CATEGORY_LABELS,
   CATEGORY_WEIGHTS,
@@ -103,15 +100,15 @@ const TECH_DETECT_MAP: Record<string, string> = {
   'Cargo.toml': 'Rust',
   'go.mod': 'Go',
   'requirements.txt': 'Python',
-  'Gemfile': 'Ruby',
-  'Dockerfile': 'Docker',
+  Gemfile: 'Ruby',
+  Dockerfile: 'Docker',
   'pom.xml': 'Java',
   'build.gradle': 'Java',
   'build.gradle.kts': 'Kotlin',
   'pyproject.toml': 'Python',
   'setup.py': 'Python',
   'composer.json': 'PHP',
-  'Pipfile': 'Python',
+  Pipfile: 'Python',
   'mix.exs': 'Elixir',
   'stack.yaml': 'Haskell',
   'Package.swift': 'Swift',
@@ -190,15 +187,31 @@ function analyzeTree(
   // Dependencies (max 100)
   let deps = 0;
   const manifests = [
-    'package.json', 'Cargo.toml', 'go.mod', 'requirements.txt', 'Gemfile',
-    'composer.json', 'pom.xml', 'build.gradle', 'build.gradle.kts',
-    'pyproject.toml', 'setup.py', 'Pipfile', 'mix.exs',
+    'package.json',
+    'Cargo.toml',
+    'go.mod',
+    'requirements.txt',
+    'Gemfile',
+    'composer.json',
+    'pom.xml',
+    'build.gradle',
+    'build.gradle.kts',
+    'pyproject.toml',
+    'setup.py',
+    'Pipfile',
+    'mix.exs',
   ];
   const manifestCount = manifests.filter((m) => paths.has(m)).length;
   if (manifestCount > 0) deps += 30;
   const lockfiles = [
-    'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'Cargo.lock',
-    'go.sum', 'Gemfile.lock', 'composer.lock', 'Pipfile.lock',
+    'package-lock.json',
+    'yarn.lock',
+    'pnpm-lock.yaml',
+    'Cargo.lock',
+    'go.sum',
+    'Gemfile.lock',
+    'composer.lock',
+    'Pipfile.lock',
   ];
   if (lockfiles.some((l) => paths.has(l))) deps += 25;
   if (manifestCount > 0) deps += 20; // reasonable assumed
@@ -208,31 +221,43 @@ function analyzeTree(
   // Code Quality (max 100)
   let quality = 0;
   const linters = [
-    '.eslintrc.json', '.eslintrc.js', '.eslintrc.yml', '.eslintrc',
-    'eslint.config.js', 'eslint.config.mjs', '.flake8', '.pylintrc',
-    'clippy.toml', '.golangci.yml', '.rubocop.yml',
+    '.eslintrc.json',
+    '.eslintrc.js',
+    '.eslintrc.yml',
+    '.eslintrc',
+    'eslint.config.js',
+    'eslint.config.mjs',
+    '.flake8',
+    '.pylintrc',
+    'clippy.toml',
+    '.golangci.yml',
+    '.rubocop.yml',
   ];
   if (linters.some((l) => paths.has(l))) quality += 25;
   const formatters = [
-    '.prettierrc', '.prettierrc.json', '.prettierrc.js', 'prettier.config.js',
-    'rustfmt.toml', '.clang-format',
+    '.prettierrc',
+    '.prettierrc.json',
+    '.prettierrc.js',
+    'prettier.config.js',
+    'rustfmt.toml',
+    '.clang-format',
   ];
   if (formatters.some((f) => paths.has(f))) quality += 20;
   if (has(paths, 'tsconfig.json')) quality += 15;
   if (
-    hasPrefix(paths, 'test/') || hasPrefix(paths, 'tests/') ||
-    hasPrefix(paths, '__tests__/') || hasPrefix(paths, 'spec/')
-  ) quality += 25;
+    hasPrefix(paths, 'test/') ||
+    hasPrefix(paths, 'tests/') ||
+    hasPrefix(paths, '__tests__/') ||
+    hasPrefix(paths, 'spec/')
+  )
+    quality += 25;
   if (has(paths, '.editorconfig')) quality += 15;
   quality = clamp(quality, 0, 100);
 
   // License (max 100)
   let lic = 0;
   if (has(paths, 'LICENSE', 'LICENSE.md', 'LICENSE.txt', 'LICENCE', 'LICENCE.md')) lic += 50;
-  if (
-    has(paths, 'LICENSE.md', 'LICENSE.txt', 'LICENCE.md') &&
-    has(paths, 'LICENSE', 'LICENCE')
-  ) {
+  if (has(paths, 'LICENSE.md', 'LICENSE.txt', 'LICENCE.md') && has(paths, 'LICENSE', 'LICENCE')) {
     // has extension variant too
   } else if (has(paths, 'LICENSE.md', 'LICENSE.txt', 'LICENCE.md')) {
     lic += 10;
@@ -242,8 +267,10 @@ function analyzeTree(
 
   // Community (max 100)
   let comm = 0;
-  if (hasPrefix(paths, '.github/ISSUE_TEMPLATE/') || has(paths, '.github/ISSUE_TEMPLATE.md')) comm += 25;
-  if (has(paths, '.github/PULL_REQUEST_TEMPLATE.md', '.github/pull_request_template.md')) comm += 20;
+  if (hasPrefix(paths, '.github/ISSUE_TEMPLATE/') || has(paths, '.github/ISSUE_TEMPLATE.md'))
+    comm += 25;
+  if (has(paths, '.github/PULL_REQUEST_TEMPLATE.md', '.github/pull_request_template.md'))
+    comm += 20;
   if (has(paths, 'CODE_OF_CONDUCT.md', '.github/CODE_OF_CONDUCT.md')) comm += 20;
   if (has(paths, 'CONTRIBUTING.md', '.github/CONTRIBUTING.md')) comm += 20;
   if (has(paths, '.github/FUNDING.yml')) comm += 15;
@@ -314,7 +341,8 @@ export function PortfolioPage({ onBack, onAnalyze, githubToken }: Props) {
 
       if (!reposRes.ok) {
         if (reposRes.status === 404) throw new Error(`User "${trimmed}" not found on GitHub.`);
-        if (reposRes.status === 403) throw new Error('GitHub API rate limit exceeded. Add a token in Settings.');
+        if (reposRes.status === 403)
+          throw new Error('GitHub API rate limit exceeded. Add a token in Settings.');
         throw new Error(`GitHub API error: ${reposRes.status} ${reposRes.statusText}`);
       }
 
@@ -353,7 +381,9 @@ export function PortfolioPage({ onBack, onAnalyze, githubToken }: Props) {
           }
 
           const treeData: { tree: TreeEntry[] } = await treeRes.json();
-          const pathSet = new Set(treeData.tree.filter((e) => e.type === 'blob').map((e) => e.path));
+          const pathSet = new Set(
+            treeData.tree.filter((e) => e.type === 'blob').map((e) => e.path),
+          );
 
           const { categories, tech } = analyzeTree(pathSet, {
             license: repo.license,
@@ -371,7 +401,7 @@ export function PortfolioPage({ onBack, onAnalyze, githubToken }: Props) {
             categories,
             techDetected: tech,
           });
-        } catch (err: unknown) {
+        } catch {
           // Skip individual repo errors; continue with the rest
           if (signal.aborted) break;
         }
@@ -382,9 +412,7 @@ export function PortfolioPage({ onBack, onAnalyze, githubToken }: Props) {
       }
 
       // 4. Compute aggregates
-      const avgScore = Math.round(
-        analyses.reduce((sum, r) => sum + r.score, 0) / analyses.length,
-      );
+      const avgScore = Math.round(analyses.reduce((sum, r) => sum + r.score, 0) / analyses.length);
 
       // Category averages
       const categoryAverages = {} as Record<CategoryKey, number>;
@@ -490,8 +518,18 @@ export function PortfolioPage({ onBack, onAnalyze, githubToken }: Props) {
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                <svg
+                  className="h-5 w-5 text-text-muted"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
                 </svg>
               </div>
               <input
@@ -511,8 +549,19 @@ export function PortfolioPage({ onBack, onAnalyze, githubToken }: Props) {
               {loading ? (
                 <span className="inline-flex items-center gap-2">
                   <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    />
                   </svg>
                   Analyzing...
                 </span>
@@ -543,15 +592,33 @@ export function PortfolioPage({ onBack, onAnalyze, githubToken }: Props) {
       {/* Error */}
       {error && (
         <div className="w-full max-w-2xl mx-auto mb-10 px-5 py-4 rounded-xl bg-grade-f/10 border border-grade-f/25 flex items-start gap-3">
-          <svg className="h-5 w-5 text-grade-f shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="h-5 w-5 text-grade-f shrink-0 mt-0.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <div className="flex-1">
             <p className="text-sm text-grade-f font-medium">{error}</p>
           </div>
-          <button onClick={() => setError(null)} className="text-text-muted hover:text-text transition-colors">
+          <button
+            onClick={() => setError(null)}
+            className="text-text-muted hover:text-text transition-colors"
+          >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -575,7 +642,8 @@ export function PortfolioPage({ onBack, onAnalyze, githubToken }: Props) {
               <div className="flex-1 text-center sm:text-left">
                 <h2 className="text-2xl sm:text-3xl font-bold text-text">{portfolio.username}</h2>
                 <p className="text-text-secondary mt-1">
-                  {portfolio.repoCount} {portfolio.repoCount === 1 ? 'repository' : 'repositories'} analyzed
+                  {portfolio.repoCount} {portfolio.repoCount === 1 ? 'repository' : 'repositories'}{' '}
+                  analyzed
                 </p>
               </div>
               {/* Overall grade */}
@@ -669,8 +737,18 @@ export function PortfolioPage({ onBack, onAnalyze, githubToken }: Props) {
                     key={s}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-grade-a/10 border border-grade-a/25 text-grade-a"
                   >
-                    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="h-4 w-4 shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2.5}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     {s}
                   </span>
@@ -690,11 +768,21 @@ export function PortfolioPage({ onBack, onAnalyze, githubToken }: Props) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-3 px-6 text-text-secondary font-semibold">Repository</th>
-                    <th className="text-center py-3 px-4 text-text-secondary font-semibold">Grade</th>
-                    <th className="text-center py-3 px-4 text-text-secondary font-semibold">Score</th>
-                    <th className="text-left py-3 px-4 text-text-secondary font-semibold hidden sm:table-cell">Language</th>
-                    <th className="text-right py-3 px-6 text-text-secondary font-semibold hidden sm:table-cell">Stars</th>
+                    <th className="text-left py-3 px-6 text-text-secondary font-semibold">
+                      Repository
+                    </th>
+                    <th className="text-center py-3 px-4 text-text-secondary font-semibold">
+                      Grade
+                    </th>
+                    <th className="text-center py-3 px-4 text-text-secondary font-semibold">
+                      Score
+                    </th>
+                    <th className="text-left py-3 px-4 text-text-secondary font-semibold hidden sm:table-cell">
+                      Language
+                    </th>
+                    <th className="text-right py-3 px-6 text-text-secondary font-semibold hidden sm:table-cell">
+                      Stars
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -725,7 +813,9 @@ export function PortfolioPage({ onBack, onAnalyze, githubToken }: Props) {
                             <span className="inline-flex items-center gap-1.5 text-text-secondary">
                               <span
                                 className="h-2.5 w-2.5 rounded-full shrink-0"
-                                style={{ backgroundColor: LANGUAGE_COLORS[repo.language] || '#8b949e' }}
+                                style={{
+                                  backgroundColor: LANGUAGE_COLORS[repo.language] || '#8b949e',
+                                }}
                               />
                               {repo.language}
                             </span>
@@ -734,7 +824,9 @@ export function PortfolioPage({ onBack, onAnalyze, githubToken }: Props) {
                           )}
                         </td>
                         <td className="py-3 px-6 text-right hidden sm:table-cell">
-                          <span className="text-text-muted tabular-nums">{formatNumber(repo.stars)}</span>
+                          <span className="text-text-muted tabular-nums">
+                            {formatNumber(repo.stars)}
+                          </span>
                         </td>
                       </tr>
                     );
@@ -808,10 +900,7 @@ function OverallGradeRing({ grade, score }: { grade: LetterGrade; score: number 
         />
       </svg>
       <div className="text-center">
-        <div
-          className="text-4xl font-black"
-          style={{ color, textShadow: `0 0 20px ${color}40` }}
-        >
+        <div className="text-4xl font-black" style={{ color, textShadow: `0 0 20px ${color}40` }}>
           {grade}
         </div>
         <div className="text-xs text-text-secondary font-semibold mt-0.5">{score}/100</div>

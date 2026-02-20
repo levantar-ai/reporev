@@ -19,9 +19,10 @@ export function AnimatedGradeReveal({ grade, score, onComplete }: Props) {
   const color = GRADE_COLORS[grade];
 
   // Check for reduced motion preference
-  const prefersReducedMotion = typeof window !== 'undefined'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const prefersReducedMotion =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  /* eslint-disable react-hooks/set-state-in-effect -- animation driven by requestAnimationFrame */
   useEffect(() => {
     // If user prefers reduced motion, skip animation
     if (prefersReducedMotion) {
@@ -65,6 +66,7 @@ export function AnimatedGradeReveal({ grade, score, onComplete }: Props) {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [score, onComplete, prefersReducedMotion]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Focus container for keyboard accessibility
   useEffect(() => {

@@ -8,9 +8,9 @@ const IDB_KEY = 'github-token';
 // ── Credential Management API (Chrome, Edge) ──
 
 function isCredentialApiSupported(): boolean {
-  return typeof window !== 'undefined'
-    && 'credentials' in navigator
-    && 'PasswordCredential' in window;
+  return (
+    typeof window !== 'undefined' && 'credentials' in navigator && 'PasswordCredential' in window
+  );
 }
 
 async function saveWithCredentialApi(token: string): Promise<boolean> {
@@ -33,7 +33,7 @@ async function loadWithCredentialApi(): Promise<string | null> {
       mediation: 'silent',
     } as any);
     if (cred && 'password' in cred) {
-      return (cred as any).password as string || null;
+      return ((cred as any).password as string) || null;
     }
     return null;
   } catch {

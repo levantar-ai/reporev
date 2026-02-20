@@ -4,10 +4,7 @@ import { buildAnalysisPrompt, SYSTEM_PROMPT } from './prompts';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
-export async function enrichWithLlm(
-  report: AnalysisReport,
-  apiKey: string
-): Promise<LlmInsights> {
+export async function enrichWithLlm(report: AnalysisReport, apiKey: string): Promise<LlmInsights> {
   const prompt = buildAnalysisPrompt(report);
 
   const requestBody: AnthropicRequest = {

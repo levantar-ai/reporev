@@ -25,7 +25,11 @@ export function LetterGrade({ grade, score, size = 'lg' }: Props) {
       role="img"
       aria-label={`Overall grade: ${grade}, score ${score} out of 100`}
     >
-      <svg className="absolute inset-0 -rotate-90" viewBox={`0 0 ${viewBox} ${viewBox}`} aria-hidden="true">
+      <svg
+        className="absolute inset-0 -rotate-90"
+        viewBox={`0 0 ${viewBox} ${viewBox}`}
+        aria-hidden="true"
+      >
         <circle
           cx={center}
           cy={center}
@@ -50,7 +54,12 @@ export function LetterGrade({ grade, score, size = 'lg' }: Props) {
         />
       </svg>
       <div className="text-center" aria-hidden="true">
-        <div className={`${fontSize} font-black`} style={{ color, textShadow: `0 0 20px ${color}40` }}>{grade}</div>
+        <div
+          className={`${fontSize} font-black`}
+          style={{ color, textShadow: `0 0 20px ${color}40` }}
+        >
+          {grade}
+        </div>
         <div className={`${scoreSize} text-text-secondary font-semibold mt-1`}>{score}/100</div>
       </div>
     </div>

@@ -115,12 +115,15 @@ export function sbomToJson(report: AnalysisReport): string {
 // ── Helpers ──
 
 function mapTechCategoryToComponentType(
-  category: 'language' | 'framework' | 'tool' | 'platform' | 'database'
+  category: 'language' | 'framework' | 'tool' | 'platform' | 'database',
 ): SbomComponent['type'] {
   switch (category) {
-    case 'framework': return 'framework';
-    case 'platform':  return 'application';
-    default:          return 'library';
+    case 'framework':
+      return 'framework';
+    case 'platform':
+      return 'application';
+    default:
+      return 'library';
   }
 }
 

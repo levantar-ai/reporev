@@ -71,7 +71,7 @@ export function RadarChart({ data, size = 300 }: Props) {
   });
 
   // Build accessible description
-  const description = data.map(d => `${d.label}: ${d.value} of ${d.max ?? 100}`).join(', ');
+  const description = data.map((d) => `${d.label}: ${d.value} of ${d.max ?? 100}`).join(', ');
 
   return (
     <svg

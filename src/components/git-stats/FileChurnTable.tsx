@@ -7,6 +7,24 @@ interface Props {
 
 type SortKey = 'filename' | 'changeCount' | 'additions' | 'deletions' | 'contributors';
 
+function SortIcon({ active, dir }: { active: boolean; dir: 'asc' | 'desc' }) {
+  if (!active) return null;
+  return (
+    <svg
+      className="h-3 w-3 text-neon ml-1 inline"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      {dir === 'desc' ? (
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+      ) : (
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
+      )}
+    </svg>
+  );
+}
+
 export function FileChurnTable({ fileChurn }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('changeCount');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -67,17 +85,6 @@ export function FileChurnTable({ fileChurn }: Props) {
     );
   }
 
-  const SortIcon = ({ active }: { active: boolean }) =>
-    active ? (
-      <svg className="h-3 w-3 text-neon ml-1 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        {sortDir === 'desc' ? (
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-        ) : (
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
-        )}
-      </svg>
-    ) : null;
-
   return (
     <div>
       <div className="overflow-x-auto">
@@ -88,32 +95,32 @@ export function FileChurnTable({ fileChurn }: Props) {
                 className="text-left py-3 px-3 text-xs font-semibold text-text-secondary uppercase tracking-wider cursor-pointer hover:text-neon transition-colors"
                 onClick={() => toggleSort('filename')}
               >
-                File <SortIcon active={sortKey === 'filename'} />
+                File <SortIcon active={sortKey === 'filename'} dir={sortDir} />
               </th>
               <th
                 className="text-right py-3 px-3 text-xs font-semibold text-text-secondary uppercase tracking-wider cursor-pointer hover:text-neon transition-colors w-24"
                 onClick={() => toggleSort('changeCount')}
               >
-                Changes <SortIcon active={sortKey === 'changeCount'} />
+                Changes <SortIcon active={sortKey === 'changeCount'} dir={sortDir} />
               </th>
               <th className="text-left py-3 px-3 w-48 hidden sm:table-cell" />
               <th
                 className="text-right py-3 px-3 text-xs font-semibold text-text-secondary uppercase tracking-wider cursor-pointer hover:text-neon transition-colors w-20 hidden md:table-cell"
                 onClick={() => toggleSort('additions')}
               >
-                +Lines <SortIcon active={sortKey === 'additions'} />
+                +Lines <SortIcon active={sortKey === 'additions'} dir={sortDir} />
               </th>
               <th
                 className="text-right py-3 px-3 text-xs font-semibold text-text-secondary uppercase tracking-wider cursor-pointer hover:text-neon transition-colors w-20 hidden md:table-cell"
                 onClick={() => toggleSort('deletions')}
               >
-                -Lines <SortIcon active={sortKey === 'deletions'} />
+                -Lines <SortIcon active={sortKey === 'deletions'} dir={sortDir} />
               </th>
               <th
                 className="text-right py-3 px-3 text-xs font-semibold text-text-secondary uppercase tracking-wider cursor-pointer hover:text-neon transition-colors w-20 hidden lg:table-cell"
                 onClick={() => toggleSort('contributors')}
               >
-                Authors <SortIcon active={sortKey === 'contributors'} />
+                Authors <SortIcon active={sortKey === 'contributors'} dir={sortDir} />
               </th>
             </tr>
           </thead>
@@ -123,7 +130,10 @@ export function FileChurnTable({ fileChurn }: Props) {
                 key={file.filename}
                 className="border-b border-border/50 hover:bg-surface-hover transition-colors"
               >
-                <td className="py-2.5 px-3 font-mono text-xs text-text truncate max-w-[400px]" title={file.filename}>
+                <td
+                  className="py-2.5 px-3 font-mono text-xs text-text truncate max-w-[400px]"
+                  title={file.filename}
+                >
                   {file.filename}
                 </td>
                 <td className="py-2.5 px-3 text-right tabular-nums text-neon font-semibold">

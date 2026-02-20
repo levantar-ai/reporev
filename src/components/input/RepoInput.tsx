@@ -17,7 +17,11 @@ export function RepoInput({ onSubmit, isLoading }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto" aria-label="Repository analysis">
+    <form
+      onSubmit={handleSubmit}
+      className="w-full max-w-2xl mx-auto"
+      aria-label="Repository analysis"
+    >
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <label htmlFor="repo-url" className="sr-only">
@@ -35,8 +39,19 @@ export function RepoInput({ onSubmit, isLoading }: Props) {
             aria-describedby="repo-input-hint"
             autoComplete="url"
           />
-          <svg className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          <svg
+            className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-text-muted"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+            />
           </svg>
           <p id="repo-input-hint" className="sr-only">
             Enter a GitHub repository URL or owner/repo shorthand, then press Analyze or Enter

@@ -43,22 +43,27 @@ export function CommitSizeHistogram({ distribution }: Props) {
         name: 'Commits',
         nameTextStyle: { color: '#64748b', fontSize: 11 },
       },
-      series: [{
-        type: 'bar',
-        data: counts,
-        barMaxWidth: 40,
-        itemStyle: {
-          color: {
-            type: 'linear' as const,
-            x: 0, y: 0, x2: 0, y2: 1,
-            colorStops: [
-              { offset: 0, color: '#22d3ee' },
-              { offset: 1, color: '#0891b2' },
-            ],
+      series: [
+        {
+          type: 'bar',
+          data: counts,
+          barMaxWidth: 40,
+          itemStyle: {
+            color: {
+              type: 'linear' as const,
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: '#22d3ee' },
+                { offset: 1, color: '#0891b2' },
+              ],
+            },
+            borderRadius: [4, 4, 0, 0],
           },
-          borderRadius: [4, 4, 0, 0],
         },
-      }],
+      ],
     };
   }, [distribution]);
 

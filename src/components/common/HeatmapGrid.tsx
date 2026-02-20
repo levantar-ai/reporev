@@ -67,14 +67,20 @@ export function HeatmapGrid({ repos, categoryKeys, categoryLabels, onRepoClick }
   };
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-border" role="region" aria-label="Repository scores heatmap">
+    <div
+      className="overflow-x-auto rounded-xl border border-border"
+      role="region"
+      aria-label="Repository scores heatmap"
+    >
       <table className="w-full text-sm" aria-label="Repository category scores">
         <thead>
           <tr className="bg-surface-alt border-b border-border">
             <th
               className="text-left px-4 py-3 text-text-secondary font-semibold cursor-pointer hover:text-neon transition-colors select-none"
               onClick={() => handleSort('name')}
-              aria-sort={sortKey === 'name' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+              aria-sort={
+                sortKey === 'name' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'
+              }
               scope="col"
             >
               Repository{sortIndicator('name')}
@@ -84,16 +90,21 @@ export function HeatmapGrid({ repos, categoryKeys, categoryLabels, onRepoClick }
                 key={key}
                 className="text-center px-3 py-3 text-text-secondary font-semibold cursor-pointer hover:text-neon transition-colors select-none whitespace-nowrap"
                 onClick={() => handleSort(key)}
-                aria-sort={sortKey === key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                aria-sort={
+                  sortKey === key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'
+                }
                 scope="col"
               >
-                {categoryLabels[key] || key}{sortIndicator(key)}
+                {categoryLabels[key] || key}
+                {sortIndicator(key)}
               </th>
             ))}
             <th
               className="text-center px-4 py-3 text-text-secondary font-semibold cursor-pointer hover:text-neon transition-colors select-none"
               onClick={() => handleSort('overall')}
-              aria-sort={sortKey === 'overall' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
+              aria-sort={
+                sortKey === 'overall' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'
+              }
               scope="col"
             >
               Grade{sortIndicator('overall')}

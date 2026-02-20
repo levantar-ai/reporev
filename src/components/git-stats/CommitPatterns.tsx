@@ -32,26 +32,28 @@ export function CommitPatterns({ commitMessages }: Props) {
         trigger: 'item' as const,
         formatter: '{b}: {c} ({d}%)',
       },
-      series: [{
-        type: 'pie',
-        radius: ['40%', '70%'],
-        center: ['50%', '50%'],
-        avoidLabelOverlap: true,
-        itemStyle: {
-          borderColor: '#0f172a',
-          borderWidth: 2,
-          borderRadius: 4,
+      series: [
+        {
+          type: 'pie',
+          radius: ['40%', '70%'],
+          center: ['50%', '50%'],
+          avoidLabelOverlap: true,
+          itemStyle: {
+            borderColor: '#0f172a',
+            borderWidth: 2,
+            borderRadius: 4,
+          },
+          label: {
+            color: '#94a3b8',
+            fontSize: 11,
+          },
+          data: entries.map(([type, count]) => ({
+            name: type,
+            value: count,
+            itemStyle: { color: colors[type] || '#64748b' },
+          })),
         },
-        label: {
-          color: '#94a3b8',
-          fontSize: 11,
-        },
-        data: entries.map(([type, count]) => ({
-          name: type,
-          value: count,
-          itemStyle: { color: colors[type] || '#64748b' },
-        })),
-      }],
+      ],
     };
   }, [commitMessages]);
 
@@ -63,12 +65,18 @@ export function CommitPatterns({ commitMessages }: Props) {
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="p-4 rounded-lg bg-surface-hover border border-border">
-            <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Total Commits</div>
+            <div className="text-xs text-text-muted uppercase tracking-wider mb-1">
+              Total Commits
+            </div>
             <div className="text-xl font-bold text-text">{stats.totalCommits.toLocaleString()}</div>
           </div>
           <div className="p-4 rounded-lg bg-surface-hover border border-border">
-            <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Merge Commits</div>
-            <div className="text-xl font-bold text-text">{stats.mergeCommitCount.toLocaleString()}</div>
+            <div className="text-xs text-text-muted uppercase tracking-wider mb-1">
+              Merge Commits
+            </div>
+            <div className="text-xl font-bold text-text">
+              {stats.mergeCommitCount.toLocaleString()}
+            </div>
             <div className="text-xs text-text-muted mt-0.5">
               {stats.totalCommits > 0
                 ? `${Math.round((stats.mergeCommitCount / stats.totalCommits) * 100)}% of total`
@@ -76,13 +84,19 @@ export function CommitPatterns({ commitMessages }: Props) {
             </div>
           </div>
           <div className="p-4 rounded-lg bg-surface-hover border border-border">
-            <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Avg Message Length</div>
+            <div className="text-xs text-text-muted uppercase tracking-wider mb-1">
+              Avg Message Length
+            </div>
             <div className="text-xl font-bold text-text">{stats.averageLength}</div>
             <div className="text-xs text-text-muted mt-0.5">characters</div>
           </div>
           <div className="p-4 rounded-lg bg-surface-hover border border-border">
-            <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Conventional</div>
-            <div className={`text-xl font-bold ${stats.conventionalPercentage >= 50 ? 'text-grade-a' : stats.conventionalPercentage >= 20 ? 'text-grade-c' : 'text-text-muted'}`}>
+            <div className="text-xs text-text-muted uppercase tracking-wider mb-1">
+              Conventional
+            </div>
+            <div
+              className={`text-xl font-bold ${stats.conventionalPercentage >= 50 ? 'text-grade-a' : stats.conventionalPercentage >= 20 ? 'text-grade-c' : 'text-text-muted'}`}
+            >
               {stats.conventionalPercentage}%
             </div>
             <div className="text-xs text-text-muted mt-0.5">of commits</div>

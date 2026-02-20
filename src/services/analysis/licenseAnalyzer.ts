@@ -1,20 +1,31 @@
 import type { CategoryResult, FileContent, TreeEntry, Signal, RepoInfo } from '../../types';
 
-const PERMISSIVE_LICENSES = ['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', 'Unlicense', 'CC0-1.0'];
+const PERMISSIVE_LICENSES = [
+  'MIT',
+  'Apache-2.0',
+  'BSD-2-Clause',
+  'BSD-3-Clause',
+  'ISC',
+  'Unlicense',
+  'CC0-1.0',
+];
 const COPYLEFT_LICENSES = ['GPL-2.0', 'GPL-3.0', 'AGPL-3.0', 'LGPL-2.1', 'LGPL-3.0', 'MPL-2.0'];
 
 export function analyzeLicense(
   _files: FileContent[],
   tree: TreeEntry[],
-  repoInfo: RepoInfo
+  repoInfo: RepoInfo,
 ): CategoryResult {
   const signals: Signal[] = [];
   const treePaths = new Set(tree.map((e) => e.path));
 
   // License file exists
   const hasLicenseFile =
-    treePaths.has('LICENSE') || treePaths.has('LICENSE.md') || treePaths.has('LICENSE.txt') ||
-    treePaths.has('COPYING') || treePaths.has('LICENCE');
+    treePaths.has('LICENSE') ||
+    treePaths.has('LICENSE.md') ||
+    treePaths.has('LICENSE.txt') ||
+    treePaths.has('COPYING') ||
+    treePaths.has('LICENCE');
   signals.push({ name: 'License file exists', found: hasLicenseFile });
 
   // License detected by GitHub
@@ -53,7 +64,7 @@ export function analyzeLicense(
     key: 'license',
     label: 'License',
     score: Math.min(100, score),
-    weight: 0.10,
+    weight: 0.1,
     signals,
   };
 }

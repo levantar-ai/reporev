@@ -1,4 +1,11 @@
-import type { FileContent, TreeEntry, RepoInfo, ContributorFriendliness, Signal, ChecklistItem } from '../../types';
+import type {
+  FileContent,
+  TreeEntry,
+  RepoInfo,
+  ContributorFriendliness,
+  Signal,
+  ChecklistItem,
+} from '../../types';
 import { ISSUE_TEMPLATE_DIR, PR_TEMPLATE, PR_TEMPLATE_ALT } from '../../utils/constants';
 
 /**
@@ -8,7 +15,7 @@ import { ISSUE_TEMPLATE_DIR, PR_TEMPLATE, PR_TEMPLATE_ALT } from '../../utils/co
 export function analyzeContributorFriendliness(
   files: FileContent[],
   tree: TreeEntry[],
-  _repoInfo: RepoInfo
+  _repoInfo: RepoInfo, // eslint-disable-line @typescript-eslint/no-unused-vars -- kept for API compatibility
 ): ContributorFriendliness {
   const signals: Signal[] = [];
   const fileMap = new Map(files.map((f) => [f.path, f]));
@@ -30,7 +37,7 @@ export function analyzeContributorFriendliness(
 
   // 2. Issue templates
   const issueTemplates = tree.filter(
-    (e) => e.type === 'blob' && e.path.startsWith(ISSUE_TEMPLATE_DIR)
+    (e) => e.type === 'blob' && e.path.startsWith(ISSUE_TEMPLATE_DIR),
   );
   const issueTemplateCount = issueTemplates.length;
   signals.push({
@@ -41,21 +48,26 @@ export function analyzeContributorFriendliness(
 
   // 3. PR template
   const hasPRTemplate =
-    treePaths.has(PR_TEMPLATE) || treePaths.has(PR_TEMPLATE_ALT) ||
-    treePaths.has('.github/PULL_REQUEST_TEMPLATE.md') || treePaths.has('PULL_REQUEST_TEMPLATE.md');
+    treePaths.has(PR_TEMPLATE) ||
+    treePaths.has(PR_TEMPLATE_ALT) ||
+    treePaths.has('.github/PULL_REQUEST_TEMPLATE.md') ||
+    treePaths.has('PULL_REQUEST_TEMPLATE.md');
   signals.push({ name: 'PR template', found: hasPRTemplate });
 
   // 4. Code of Conduct
   const hasCOC =
-    fileMap.has('CODE_OF_CONDUCT.md') || fileMap.has('.github/CODE_OF_CONDUCT.md') ||
-    treePaths.has('CODE_OF_CONDUCT.md') || treePaths.has('.github/CODE_OF_CONDUCT.md');
+    fileMap.has('CODE_OF_CONDUCT.md') ||
+    fileMap.has('.github/CODE_OF_CONDUCT.md') ||
+    treePaths.has('CODE_OF_CONDUCT.md') ||
+    treePaths.has('.github/CODE_OF_CONDUCT.md');
   signals.push({ name: 'Code of Conduct', found: hasCOC });
 
   // 5. Good first issue mentioned in templates
   const hasGoodFirstIssue = files.some(
     (f) =>
       f.path.startsWith(ISSUE_TEMPLATE_DIR) &&
-      (f.content.toLowerCase().includes('good first issue') || f.content.toLowerCase().includes('good-first-issue'))
+      (f.content.toLowerCase().includes('good first issue') ||
+        f.content.toLowerCase().includes('good-first-issue')),
   );
   signals.push({ name: 'Good first issue label in templates', found: hasGoodFirstIssue });
 
@@ -66,8 +78,7 @@ export function analyzeContributorFriendliness(
 
   // 7. Setup instructions in README
   const readmeContent = readme?.content ?? '';
-  const hasSetupInstructions =
-    /^#{1,3}\s+(install|setup|getting\s+started)/im.test(readmeContent);
+  const hasSetupInstructions = /^#{1,3}\s+(install|setup|getting\s+started)/im.test(readmeContent);
   signals.push({ name: 'Setup instructions in README', found: hasSetupInstructions });
 
   // 8. Funding configured
@@ -76,8 +87,10 @@ export function analyzeContributorFriendliness(
 
   // 9. SUPPORT.md exists
   const hasSupport =
-    fileMap.has('.github/SUPPORT.md') || fileMap.has('SUPPORT.md') ||
-    treePaths.has('.github/SUPPORT.md') || treePaths.has('SUPPORT.md');
+    fileMap.has('.github/SUPPORT.md') ||
+    fileMap.has('SUPPORT.md') ||
+    treePaths.has('.github/SUPPORT.md') ||
+    treePaths.has('SUPPORT.md');
   signals.push({ name: 'SUPPORT.md', found: hasSupport });
 
   // Calculate score
@@ -104,7 +117,8 @@ export function analyzeContributorFriendliness(
     {
       label: 'Issue templates',
       passed: issueTemplateCount > 0,
-      description: 'Structured issue templates in .github/ISSUE_TEMPLATE/ for bug reports and feature requests',
+      description:
+        'Structured issue templates in .github/ISSUE_TEMPLATE/ for bug reports and feature requests',
     },
     {
       label: 'PR template',
@@ -119,7 +133,8 @@ export function analyzeContributorFriendliness(
     {
       label: 'Setup instructions',
       passed: hasSetupInstructions,
-      description: 'Clear instructions in the README for installing and running the project locally',
+      description:
+        'Clear instructions in the README for installing and running the project locally',
     },
     {
       label: 'Contributing section in README',

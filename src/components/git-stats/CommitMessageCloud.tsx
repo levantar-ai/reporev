@@ -30,13 +30,20 @@ export function CommitMessageCloud({ wordFrequency }: Props) {
       const maxCount = Math.max(...wordFrequency.map((w) => w.count));
       const words = wordFrequency.slice(0, 60);
 
-      const fontScale = d3.scaleLinear()
+      const fontScale = d3
+        .scaleLinear()
         .domain([1, maxCount])
         .range([12, Math.min(60, width / 8)]);
 
       const colorScale = d3.scaleOrdinal([
-        '#22d3ee', '#34d399', '#a3e635', '#fbbf24',
-        '#fb923c', '#f87171', '#a78bfa', '#f472b6',
+        '#22d3ee',
+        '#34d399',
+        '#a3e635',
+        '#fbbf24',
+        '#fb923c',
+        '#f87171',
+        '#a78bfa',
+        '#f472b6',
       ]);
 
       const layout = cloud<WordInput>()
@@ -52,9 +59,7 @@ export function CommitMessageCloud({ wordFrequency }: Props) {
         .rotate(() => (Math.random() > 0.7 ? 90 : 0))
         .fontSize((d) => d.size!)
         .on('end', (placedWords) => {
-          const g = sel
-            .append('g')
-            .attr('transform', `translate(${width / 2},${height / 2})`);
+          const g = sel.append('g').attr('transform', `translate(${width / 2},${height / 2})`);
 
           g.selectAll('text')
             .data(placedWords as PlacedWord[])

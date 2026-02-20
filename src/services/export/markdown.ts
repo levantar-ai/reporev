@@ -28,10 +28,15 @@ export function reportToMarkdown(report: AnalysisReport): string {
   lines.push('|---|---|---|');
   for (const cat of report.categories) {
     const catGrade =
-      cat.score >= 85 ? 'A' :
-      cat.score >= 70 ? 'B' :
-      cat.score >= 55 ? 'C' :
-      cat.score >= 40 ? 'D' : 'F';
+      cat.score >= 85
+        ? 'A'
+        : cat.score >= 70
+          ? 'B'
+          : cat.score >= 55
+            ? 'C'
+            : cat.score >= 40
+              ? 'D'
+              : 'F';
     lines.push(`| ${cat.label} | ${cat.score}/100 | ${catGrade} |`);
   }
   lines.push('');

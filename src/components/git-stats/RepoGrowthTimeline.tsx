@@ -18,14 +18,17 @@ export function RepoGrowthTimeline({ repoGrowth }: Props) {
     return {
       tooltip: {
         trigger: 'axis' as const,
-        formatter: (params: Array<{ seriesName: string; value: number; axisValueLabel: string }>) => {
+        formatter: (
+          params: Array<{ seriesName: string; value: number; axisValueLabel: string }>,
+        ) => {
           let html = `<b>${params[0].axisValueLabel}</b>`;
           for (const p of params) {
-            const val = p.value >= 1000000
-              ? `${(p.value / 1000000).toFixed(1)}M`
-              : p.value >= 1000
-                ? `${(p.value / 1000).toFixed(0)}K`
-                : p.value.toLocaleString();
+            const val =
+              p.value >= 1000000
+                ? `${(p.value / 1000000).toFixed(1)}M`
+                : p.value >= 1000
+                  ? `${(p.value / 1000).toFixed(0)}K`
+                  : p.value.toLocaleString();
             html += `<br/>${p.seriesName}: ${val}`;
           }
           return html;

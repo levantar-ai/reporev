@@ -57,12 +57,23 @@ function evaluateScoreRule(rule: PolicyRule, score: number, label: string): Poli
   let passed = false;
 
   switch (rule.operator) {
-    case '>=': passed = score >= threshold; break;
-    case '>':  passed = score > threshold;  break;
-    case '<=': passed = score <= threshold; break;
-    case '<':  passed = score < threshold;  break;
-    case '==': passed = score === threshold; break;
-    default:   passed = false;
+    case '>=':
+      passed = score >= threshold;
+      break;
+    case '>':
+      passed = score > threshold;
+      break;
+    case '<=':
+      passed = score <= threshold;
+      break;
+    case '<':
+      passed = score < threshold;
+      break;
+    case '==':
+      passed = score === threshold;
+      break;
+    default:
+      passed = false;
   }
 
   return {
@@ -79,9 +90,7 @@ function evaluateSignalRule(rule: PolicyRule, report: AnalysisReport): PolicyRul
   // Search through all category signals for the signal name
   let signalFound = false;
   for (const category of report.categories) {
-    const signal = category.signals.find(
-      (s) => s.name.toLowerCase() === signalName.toLowerCase()
-    );
+    const signal = category.signals.find((s) => s.name.toLowerCase() === signalName.toLowerCase());
     if (signal) {
       signalFound = signal.found;
       break;
@@ -144,7 +153,8 @@ export const DEFAULT_POLICIES: PolicySet[] = [
   {
     id: 'production-ready',
     name: 'Production Ready',
-    description: 'Requirements for production-grade repositories: strong scores across all categories, CI, tests, and license.',
+    description:
+      'Requirements for production-grade repositories: strong scores across all categories, CI, tests, and license.',
     rules: [
       {
         id: 'pr-overall',
@@ -258,7 +268,8 @@ export const DEFAULT_POLICIES: PolicySet[] = [
   {
     id: 'security-focused',
     name: 'Security Focused',
-    description: 'Strict security requirements: high security score, Dependabot, SECURITY.md, CODEOWNERS, and CodeQL.',
+    description:
+      'Strict security requirements: high security score, Dependabot, SECURITY.md, CODEOWNERS, and CodeQL.',
     rules: [
       {
         id: 'sf-score',

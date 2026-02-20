@@ -1,4 +1,10 @@
-export function Spinner({ size = 'md', label = 'Loading' }: { size?: 'sm' | 'md' | 'lg'; label?: string }) {
+export function Spinner({
+  size = 'md',
+  label = 'Loading',
+}: {
+  size?: 'sm' | 'md' | 'lg';
+  label?: string;
+}) {
   const sizeClass = { sm: 'h-5 w-5', md: 'h-8 w-8', lg: 'h-12 w-12' }[size];
 
   return (
@@ -10,7 +16,14 @@ export function Spinner({ size = 'md', label = 'Loading' }: { size?: 'sm' | 'md'
         viewBox="0 0 24 24"
         aria-hidden="true"
       >
-        <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <circle
+          className="opacity-20"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          strokeWidth="4"
+        />
         <path
           className="opacity-80"
           fill="currentColor"

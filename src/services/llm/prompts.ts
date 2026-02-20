@@ -2,7 +2,10 @@ import type { AnalysisReport } from '../../types';
 
 export function buildAnalysisPrompt(report: AnalysisReport): string {
   const categoryLines = report.categories
-    .map((c) => `- ${c.label}: ${c.score}/100 (${c.signals.filter((s) => s.found).length}/${c.signals.length} signals)`)
+    .map(
+      (c) =>
+        `- ${c.label}: ${c.score}/100 (${c.signals.filter((s) => s.found).length}/${c.signals.length} signals)`,
+    )
     .join('\n');
 
   const techStackLine = report.techStack.map((t) => t.name).join(', ');

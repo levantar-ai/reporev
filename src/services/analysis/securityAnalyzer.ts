@@ -1,9 +1,6 @@
 import type { CategoryResult, FileContent, TreeEntry, Signal } from '../../types';
 
-export function analyzeSecurity(
-  files: FileContent[],
-  tree: TreeEntry[]
-): CategoryResult {
+export function analyzeSecurity(files: FileContent[], tree: TreeEntry[]): CategoryResult {
   const signals: Signal[] = [];
   const fileMap = new Map(files.map((f) => [f.path, f]));
   const treePaths = new Set(tree.map((e) => e.path));
@@ -15,17 +12,24 @@ export function analyzeSecurity(
   });
 
   // CODEOWNERS
-  const hasCODEOWNERS = fileMap.has('CODEOWNERS') || fileMap.has('.github/CODEOWNERS') ||
-    treePaths.has('CODEOWNERS') || treePaths.has('.github/CODEOWNERS');
+  const hasCODEOWNERS =
+    fileMap.has('CODEOWNERS') ||
+    fileMap.has('.github/CODEOWNERS') ||
+    treePaths.has('CODEOWNERS') ||
+    treePaths.has('.github/CODEOWNERS');
   signals.push({ name: 'CODEOWNERS', found: hasCODEOWNERS });
 
   // Dependabot config
-  const hasDependabot = fileMap.has('.github/dependabot.yml') || fileMap.has('.github/dependabot.yaml');
+  const hasDependabot =
+    fileMap.has('.github/dependabot.yml') || fileMap.has('.github/dependabot.yaml');
   signals.push({ name: 'Dependabot configured', found: hasDependabot });
 
   // CodeQL / security scanning
   const hasCodeQL = files.some(
-    (f) => f.path.includes('codeql') || f.content.includes('codeql-analysis') || f.content.includes('CodeQL')
+    (f) =>
+      f.path.includes('codeql') ||
+      f.content.includes('codeql-analysis') ||
+      f.content.includes('CodeQL'),
   );
   signals.push({ name: 'CodeQL / security scanning', found: hasCodeQL });
 
@@ -33,7 +37,7 @@ export function analyzeSecurity(
   const hasPRWorkflow = files.some(
     (f) =>
       f.path.startsWith('.github/workflows/') &&
-      (f.content.includes('pull_request') || f.content.includes('pull-request'))
+      (f.content.includes('pull_request') || f.content.includes('pull-request')),
   );
   signals.push({ name: 'PR-triggered workflows', found: hasPRWorkflow });
 
@@ -45,7 +49,7 @@ export function analyzeSecurity(
   const suspiciousFiles = tree.some(
     (e) =>
       e.type === 'blob' &&
-      (/\.env$/.test(e.path) || /credentials/i.test(e.path) || /secret/i.test(e.path))
+      (/\.env$/.test(e.path) || /credentials/i.test(e.path) || /secret/i.test(e.path)),
   );
   signals.push({ name: 'No exposed secret files', found: !suspiciousFiles });
 

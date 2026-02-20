@@ -11,10 +11,7 @@ export function cloneAndExtract(
   onProgress: (step: string, percent: number, message: string) => void,
 ): Promise<GitStatsRawData> {
   return new Promise((resolve, reject) => {
-    const worker = new Worker(
-      new URL('./git.worker.ts', import.meta.url),
-      { type: 'module' },
-    );
+    const worker = new Worker(new URL('./git.worker.ts', import.meta.url), { type: 'module' });
 
     const timeout = setTimeout(() => {
       worker.terminate();

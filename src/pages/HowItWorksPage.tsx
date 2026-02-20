@@ -11,14 +11,17 @@ function Section({ id, title, children }: SectionProps) {
         <span className="h-1 w-6 bg-neon rounded-full" />
         {title}
       </h2>
-      <div className="text-text-secondary leading-relaxed space-y-4 text-base">
-        {children}
-      </div>
+      <div className="text-text-secondary leading-relaxed space-y-4 text-base">{children}</div>
     </section>
   );
 }
 
-function CategoryDoc({ name, weight, description, signals }: {
+function CategoryDoc({
+  name,
+  weight,
+  description,
+  signals,
+}: {
   name: string;
   weight: string;
   description: string;
@@ -59,7 +62,12 @@ export function HowItWorksPage({ onBack }: Props) {
           className="inline-flex items-center gap-2 text-sm text-text-muted hover:text-neon transition-colors mb-6"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
           Back to analyzer
         </button>
@@ -67,13 +75,16 @@ export function HowItWorksPage({ onBack }: Props) {
           How <span className="text-neon neon-text">RepoRev</span> Works
         </h1>
         <p className="text-lg text-text-secondary mt-3 max-w-2xl leading-relaxed">
-          A complete guide to the analysis methodology, scoring system, and what each category measures.
+          A complete guide to the analysis methodology, scoring system, and what each category
+          measures.
         </p>
       </div>
 
       {/* Table of Contents */}
       <nav className="mb-12 p-5 rounded-xl bg-surface-alt border border-border">
-        <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">Contents</h3>
+        <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
+          Contents
+        </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {[
             ['overview', 'Overview'],
@@ -97,25 +108,26 @@ export function HowItWorksPage({ onBack }: Props) {
       </nav>
 
       <div className="space-y-12">
-
         {/* Overview */}
         <Section id="overview" title="Overview">
           <p>
-            RepoRev is a fully client-side tool that analyzes public GitHub repositories for engineering best
-            practices. It produces a "report card" with a letter grade (A through F) based on 7 categories:
-            documentation, security, CI/CD, dependencies, code quality, license, and community health.
+            RepoRev is a fully client-side tool that analyzes public GitHub repositories for
+            engineering best practices. It produces a "report card" with a letter grade (A through
+            F) based on 7 categories: documentation, security, CI/CD, dependencies, code quality,
+            license, and community health.
           </p>
           <p>
-            Everything runs in your browser. RepoRev makes direct calls to the GitHub REST API to fetch
-            repository metadata and files, then runs heuristic analysis locally. No data is sent to any
-            backend server. The only external call is an optional AI enrichment step using the Anthropic
-            API if you provide your own key.
+            Everything runs in your browser. RepoRev makes direct calls to the GitHub REST API to
+            fetch repository metadata and files, then runs heuristic analysis locally. No data is
+            sent to any backend server. The only external call is an optional AI enrichment step
+            using the Anthropic API if you provide your own key.
           </p>
           <p>
-            The analysis is <strong className="text-text">deterministic</strong> — the same repo state will always produce
-            the same score. It is <strong className="text-text">heuristic-based</strong>, meaning it checks for the presence of
-            known-good patterns (config files, directory structures, CI workflows) rather than executing
-            or evaluating actual code.
+            The analysis is <strong className="text-text">deterministic</strong> — the same repo
+            state will always produce the same score. It is{' '}
+            <strong className="text-text">heuristic-based</strong>, meaning it checks for the
+            presence of known-good patterns (config files, directory structures, CI workflows)
+            rather than executing or evaluating actual code.
           </p>
         </Section>
 
@@ -124,17 +136,56 @@ export function HowItWorksPage({ onBack }: Props) {
           <p>When you enter a GitHub URL, RepoRev executes these steps in sequence:</p>
           <div className="space-y-3 mt-2">
             {[
-              { step: '1', title: 'Parse URL', desc: 'Extracts owner, repo name, and optional branch from the input. Supports full URLs (https://github.com/owner/repo), shorthand (owner/repo), and branch-specific URLs (/tree/branch).' },
-              { step: '2', title: 'Fetch Repository Info', desc: 'One API call to GET /repos/{owner}/{repo}. Returns metadata: default branch, stars, forks, language, license SPDX ID, topics, description, and archive status.' },
-              { step: '3', title: 'Fetch Recursive File Tree', desc: 'One API call to GET /repos/{owner}/{repo}/git/trees/{branch}?recursive=1. Returns every file and directory path in the repo in a single response. This is the key optimization — we get the full manifest without traversing directories.' },
-              { step: '4', title: 'Filter Target Files', desc: 'A pure function that selects which files to download for content analysis. Prioritizes key config files (README, LICENSE, package.json, CI configs) over dynamic matches (workflow files, issue templates). Caps at 25 files total.' },
-              { step: '5', title: 'Fetch File Contents', desc: 'Sequential API calls to download each selected file. Files are fetched one at a time with a 100ms delay between calls to respect GitHub\'s abuse detection. Content arrives base64-encoded and is decoded locally.' },
-              { step: '6', title: 'Run 7 Analyzers', desc: 'Seven pure, synchronous analyzer functions examine the file tree and contents. Each produces a 0-100 score and a list of signals (what was found vs. what was missing). This step does not make any network calls.' },
-              { step: '7', title: 'Compute Final Score', desc: 'Category scores are combined using a weighted average. The overall score maps to a letter grade. Strengths, risks, and next-step recommendations are generated from the signal data.' },
-              { step: '8', title: 'AI Enrichment (Optional)', desc: 'If enabled, sends the analysis summary to the Anthropic API using your key. Returns an executive summary, risk analysis, and actionable recommendations. This is the only step that sends data outside your browser.' },
-              { step: '9', title: 'Cache & Display', desc: 'The report is saved to IndexedDB for offline access. The repo is added to your recent analyses list. The full report card renders with all scores, signals, and visualizations.' },
+              {
+                step: '1',
+                title: 'Parse URL',
+                desc: 'Extracts owner, repo name, and optional branch from the input. Supports full URLs (https://github.com/owner/repo), shorthand (owner/repo), and branch-specific URLs (/tree/branch).',
+              },
+              {
+                step: '2',
+                title: 'Fetch Repository Info',
+                desc: 'One API call to GET /repos/{owner}/{repo}. Returns metadata: default branch, stars, forks, language, license SPDX ID, topics, description, and archive status.',
+              },
+              {
+                step: '3',
+                title: 'Fetch Recursive File Tree',
+                desc: 'One API call to GET /repos/{owner}/{repo}/git/trees/{branch}?recursive=1. Returns every file and directory path in the repo in a single response. This is the key optimization — we get the full manifest without traversing directories.',
+              },
+              {
+                step: '4',
+                title: 'Filter Target Files',
+                desc: 'A pure function that selects which files to download for content analysis. Prioritizes key config files (README, LICENSE, package.json, CI configs) over dynamic matches (workflow files, issue templates). Caps at 25 files total.',
+              },
+              {
+                step: '5',
+                title: 'Fetch File Contents',
+                desc: "Sequential API calls to download each selected file. Files are fetched one at a time with a 100ms delay between calls to respect GitHub's abuse detection. Content arrives base64-encoded and is decoded locally.",
+              },
+              {
+                step: '6',
+                title: 'Run 7 Analyzers',
+                desc: 'Seven pure, synchronous analyzer functions examine the file tree and contents. Each produces a 0-100 score and a list of signals (what was found vs. what was missing). This step does not make any network calls.',
+              },
+              {
+                step: '7',
+                title: 'Compute Final Score',
+                desc: 'Category scores are combined using a weighted average. The overall score maps to a letter grade. Strengths, risks, and next-step recommendations are generated from the signal data.',
+              },
+              {
+                step: '8',
+                title: 'AI Enrichment (Optional)',
+                desc: 'If enabled, sends the analysis summary to the Anthropic API using your key. Returns an executive summary, risk analysis, and actionable recommendations. This is the only step that sends data outside your browser.',
+              },
+              {
+                step: '9',
+                title: 'Cache & Display',
+                desc: 'The report is saved to IndexedDB for offline access. The repo is added to your recent analyses list. The full report card renders with all scores, signals, and visualizations.',
+              },
             ].map((item) => (
-              <div key={item.step} className="flex gap-4 p-4 rounded-lg bg-surface-alt border border-border">
+              <div
+                key={item.step}
+                className="flex gap-4 p-4 rounded-lg bg-surface-alt border border-border"
+              >
                 <div className="h-8 w-8 rounded-lg bg-neon/15 flex items-center justify-center shrink-0">
                   <span className="text-sm font-bold text-neon">{item.step}</span>
                 </div>
@@ -150,8 +201,8 @@ export function HowItWorksPage({ onBack }: Props) {
         {/* The 7 Categories */}
         <Section id="categories" title="The 7 Categories">
           <p>
-            Each category examines a different aspect of repository health. Scores are based on
-            the presence or absence of specific files, configurations, and patterns — called "signals."
+            Each category examines a different aspect of repository health. Scores are based on the
+            presence or absence of specific files, configurations, and patterns — called "signals."
             Every signal is binary (found or not found) and contributes a fixed number of points to
             the category score.
           </p>
@@ -261,8 +312,9 @@ export function HowItWorksPage({ onBack }: Props) {
         {/* Scoring */}
         <Section id="scoring" title="Scoring & Grading">
           <p>
-            Each category produces a score from 0 to 100. The overall score is a <strong className="text-text">weighted average</strong> of
-            all category scores using the weights shown above.
+            Each category produces a score from 0 to 100. The overall score is a{' '}
+            <strong className="text-text">weighted average</strong> of all category scores using the
+            weights shown above.
           </p>
 
           <div className="overflow-x-auto mt-4">
@@ -278,17 +330,23 @@ export function HowItWorksPage({ onBack }: Props) {
                 <tr className="border-b border-border">
                   <td className="py-3 px-4 text-grade-a font-bold text-lg">A</td>
                   <td className="py-3 px-4">85 — 100</td>
-                  <td className="py-3 px-4">Excellent. Follows nearly all best practices across categories.</td>
+                  <td className="py-3 px-4">
+                    Excellent. Follows nearly all best practices across categories.
+                  </td>
                 </tr>
                 <tr className="border-b border-border">
                   <td className="py-3 px-4 text-grade-b font-bold text-lg">B</td>
                   <td className="py-3 px-4">70 — 84</td>
-                  <td className="py-3 px-4">Good. Most practices in place with a few areas for improvement.</td>
+                  <td className="py-3 px-4">
+                    Good. Most practices in place with a few areas for improvement.
+                  </td>
                 </tr>
                 <tr className="border-b border-border">
                   <td className="py-3 px-4 text-grade-c font-bold text-lg">C</td>
                   <td className="py-3 px-4">55 — 69</td>
-                  <td className="py-3 px-4">Fair. Some practices present but significant gaps exist.</td>
+                  <td className="py-3 px-4">
+                    Fair. Some practices present but significant gaps exist.
+                  </td>
                 </tr>
                 <tr className="border-b border-border">
                   <td className="py-3 px-4 text-grade-d font-bold text-lg">D</td>
@@ -305,22 +363,26 @@ export function HowItWorksPage({ onBack }: Props) {
           </div>
 
           <p className="mt-4">
-            The formula is: <code className="px-2 py-1 rounded bg-surface-alt border border-border text-neon text-sm">
-              overall = (doc * 0.20) + (sec * 0.15) + (ci * 0.15) + (deps * 0.15) + (quality * 0.15) + (license * 0.10) + (community * 0.10)
+            The formula is:{' '}
+            <code className="px-2 py-1 rounded bg-surface-alt border border-border text-neon text-sm">
+              overall = (doc * 0.20) + (sec * 0.15) + (ci * 0.15) + (deps * 0.15) + (quality * 0.15)
+              + (license * 0.10) + (community * 0.10)
             </code>
           </p>
           <p>
-            <strong className="text-text">Strengths</strong> are auto-generated from categories scoring 80+.{' '}
-            <strong className="text-text">Risks</strong> come from categories scoring below 40.{' '}
-            <strong className="text-text">Next Steps</strong> take the 3 weakest categories and suggest adding their first missing signal.
+            <strong className="text-text">Strengths</strong> are auto-generated from categories
+            scoring 80+. <strong className="text-text">Risks</strong> come from categories scoring
+            below 40. <strong className="text-text">Next Steps</strong> take the 3 weakest
+            categories and suggest adding their first missing signal.
           </p>
         </Section>
 
         {/* GitHub API */}
         <Section id="github-api" title="GitHub API Usage">
           <p>
-            RepoRev uses the GitHub REST API v3. A typical analysis requires <strong className="text-text">2 + N</strong> API calls,
-            where N is the number of files selected for content analysis (typically 15-25).
+            RepoRev uses the GitHub REST API v3. A typical analysis requires{' '}
+            <strong className="text-text">2 + N</strong> API calls, where N is the number of files
+            selected for content analysis (typically 15-25).
           </p>
 
           <div className="overflow-x-auto mt-4">
@@ -340,12 +402,16 @@ export function HowItWorksPage({ onBack }: Props) {
                 </tr>
                 <tr className="border-b border-border">
                   <td className="py-3 px-4">2</td>
-                  <td className="py-3 px-4 font-mono text-xs text-neon">GET /repos/:owner/:repo/git/trees/:branch?recursive=1</td>
+                  <td className="py-3 px-4 font-mono text-xs text-neon">
+                    GET /repos/:owner/:repo/git/trees/:branch?recursive=1
+                  </td>
                   <td className="py-3 px-4">Full file tree in one call</td>
                 </tr>
                 <tr>
                   <td className="py-3 px-4">3-N</td>
-                  <td className="py-3 px-4 font-mono text-xs text-neon">GET /repos/:owner/:repo/contents/:path</td>
+                  <td className="py-3 px-4 font-mono text-xs text-neon">
+                    GET /repos/:owner/:repo/contents/:path
+                  </td>
                   <td className="py-3 px-4">Individual file contents (base64)</td>
                 </tr>
               </tbody>
@@ -353,24 +419,29 @@ export function HowItWorksPage({ onBack }: Props) {
           </div>
 
           <p className="mt-4">
-            <strong className="text-text">Rate limits:</strong> Without authentication, GitHub allows 60 requests per hour.
-            With a personal access token (entered in Settings), this increases to 5,000 per hour. RepoRev
-            tracks your remaining quota in the header and warns you when running low.
+            <strong className="text-text">Rate limits:</strong> Without authentication, GitHub
+            allows 60 requests per hour. With a personal access token (entered in Settings), this
+            increases to 5,000 per hour. RepoRev tracks your remaining quota in the header and warns
+            you when running low.
           </p>
         </Section>
 
         {/* File Selection */}
         <Section id="file-selection" title="File Selection Strategy">
           <p>
-            After fetching the full tree (which can contain thousands of entries), RepoRev selects
-            a maximum of 25 files to download for content analysis. Files are prioritized in two tiers:
+            After fetching the full tree (which can contain thousands of entries), RepoRev selects a
+            maximum of 25 files to download for content analysis. Files are prioritized in two
+            tiers:
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div className="p-5 rounded-xl bg-surface-alt border border-border">
-              <h4 className="text-base font-semibold text-text mb-2">High Priority (exact matches)</h4>
+              <h4 className="text-base font-semibold text-text mb-2">
+                High Priority (exact matches)
+              </h4>
               <p className="text-sm text-text-secondary mb-3">
-                ~55 hardcoded paths that are critical for analysis. These are always fetched if they exist.
+                ~55 hardcoded paths that are critical for analysis. These are always fetched if they
+                exist.
               </p>
               <div className="text-sm text-text-muted space-y-1">
                 <p>README.md, LICENSE, SECURITY.md</p>
@@ -382,7 +453,9 @@ export function HowItWorksPage({ onBack }: Props) {
               </div>
             </div>
             <div className="p-5 rounded-xl bg-surface-alt border border-border">
-              <h4 className="text-base font-semibold text-text mb-2">Lower Priority (dynamic matches)</h4>
+              <h4 className="text-base font-semibold text-text mb-2">
+                Lower Priority (dynamic matches)
+              </h4>
               <p className="text-sm text-text-secondary mb-3">
                 Pattern-matched files that fill the remaining budget after exact matches.
               </p>
@@ -397,33 +470,42 @@ export function HowItWorksPage({ onBack }: Props) {
 
           <p className="mt-4">
             This priority system ensures that a repo with 50 workflow files (like large monorepos)
-            doesn't crowd out essential files like README.md or package.json. The tree itself (file paths
-            and directory structure) is always fully available for analysis — only content downloads are capped.
+            doesn't crowd out essential files like README.md or package.json. The tree itself (file
+            paths and directory structure) is always fully available for analysis — only content
+            downloads are capped.
           </p>
         </Section>
 
         {/* AI Enrichment */}
         <Section id="ai-enrichment" title="AI Enrichment (Optional)">
           <p>
-            When enabled in Settings, RepoRev sends a structured summary of the analysis results to the
-            Anthropic Messages API. This is the only step that transmits data outside your browser.
+            When enabled in Settings, RepoRev sends a structured summary of the analysis results to
+            the Anthropic Messages API. This is the only step that transmits data outside your
+            browser.
           </p>
           <p>
-            The prompt includes: repo name, description, overall grade, all category scores with signal
-            counts, tech stack, and the heuristic-generated strengths and risks. It does <strong className="text-text">not</strong> send
-            any actual file contents or source code.
+            The prompt includes: repo name, description, overall grade, all category scores with
+            signal counts, tech stack, and the heuristic-generated strengths and risks. It does{' '}
+            <strong className="text-text">not</strong> send any actual file contents or source code.
           </p>
-          <p>
-            The AI returns a JSON object with three fields:
-          </p>
+          <p>The AI returns a JSON object with three fields:</p>
           <ul className="list-disc list-inside space-y-1 text-text-secondary ml-2">
-            <li><strong className="text-text">Executive summary</strong> — 2-3 sentences on the repo's health and maturity</li>
-            <li><strong className="text-text">Risks</strong> — 3 specific, concrete concerns based on the data</li>
-            <li><strong className="text-text">Recommendations</strong> — 3 actionable steps to improve the repository</li>
+            <li>
+              <strong className="text-text">Executive summary</strong> — 2-3 sentences on the repo's
+              health and maturity
+            </li>
+            <li>
+              <strong className="text-text">Risks</strong> — 3 specific, concrete concerns based on
+              the data
+            </li>
+            <li>
+              <strong className="text-text">Recommendations</strong> — 3 actionable steps to improve
+              the repository
+            </li>
           </ul>
           <p>
-            This step requires a BYO (bring your own) Anthropic API key. The key is stored in browser
-            memory only and is never persisted to disk or IndexedDB.
+            This step requires a BYO (bring your own) Anthropic API key. The key is stored in
+            browser memory only and is never persisted to disk or IndexedDB.
           </p>
         </Section>
 
@@ -431,15 +513,35 @@ export function HowItWorksPage({ onBack }: Props) {
         <Section id="privacy" title="Privacy & Security">
           <p>RepoRev is designed with privacy as a core constraint:</p>
           <ul className="list-disc list-inside space-y-2 text-text-secondary ml-2">
-            <li><strong className="text-text">No backend</strong> — There is no server. The app is static HTML/JS/CSS served from your origin.</li>
-            <li><strong className="text-text">Browser-only analysis</strong> — All heuristic analysis runs locally in your browser. File contents never leave the tab.</li>
-            <li><strong className="text-text">Secrets in memory only</strong> — GitHub tokens and Anthropic API keys are stored in React state. They are never written to localStorage, IndexedDB, cookies, or any persistent storage. They are lost on page refresh.</li>
-            <li><strong className="text-text">IndexedDB for reports only</strong> — Analysis results and settings (theme, LLM mode) are cached locally. No credentials are persisted.</li>
-            <li><strong className="text-text">Public repos only</strong> — RepoRev only works with public GitHub repositories. It cannot access private repos even with a token (the token only increases rate limits).</li>
-            <li><strong className="text-text">AI enrichment is opt-in</strong> — The Anthropic API call is the only external data transmission, and it only sends analysis metadata (scores and signals), not source code. It requires explicit opt-in and a BYO key.</li>
+            <li>
+              <strong className="text-text">No backend</strong> — There is no server. The app is
+              static HTML/JS/CSS served from your origin.
+            </li>
+            <li>
+              <strong className="text-text">Browser-only analysis</strong> — All heuristic analysis
+              runs locally in your browser. File contents never leave the tab.
+            </li>
+            <li>
+              <strong className="text-text">Secrets in memory only</strong> — GitHub tokens and
+              Anthropic API keys are stored in React state. They are never written to localStorage,
+              IndexedDB, cookies, or any persistent storage. They are lost on page refresh.
+            </li>
+            <li>
+              <strong className="text-text">IndexedDB for reports only</strong> — Analysis results
+              and settings (theme, LLM mode) are cached locally. No credentials are persisted.
+            </li>
+            <li>
+              <strong className="text-text">Public repos only</strong> — RepoRev only works with
+              public GitHub repositories. It cannot access private repos even with a token (the
+              token only increases rate limits).
+            </li>
+            <li>
+              <strong className="text-text">AI enrichment is opt-in</strong> — The Anthropic API
+              call is the only external data transmission, and it only sends analysis metadata
+              (scores and signals), not source code. It requires explicit opt-in and a BYO key.
+            </li>
           </ul>
         </Section>
-
       </div>
     </div>
   );

@@ -1,8 +1,4 @@
-const DANGEROUS_PATTERNS = [
-  /<script\b[^>]*>/gi,
-  /on\w+\s*=/gi,
-  /javascript:/gi,
-];
+const DANGEROUS_PATTERNS = [/<script\b[^>]*>/gi, /on\w+\s*=/gi, /javascript:/gi];
 
 export function sanitizeText(input: string): string {
   let safe = input;

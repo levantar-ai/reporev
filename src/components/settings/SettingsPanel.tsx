@@ -21,9 +21,12 @@ function GitHubTokenField() {
 
   return (
     <div className="mb-8">
-      <label htmlFor="github-token" className="block text-sm font-semibold text-text mb-1.5">GitHub Token</label>
+      <label htmlFor="github-token" className="block text-sm font-semibold text-text mb-1.5">
+        GitHub Token
+      </label>
       <p id="github-token-desc" className="text-sm text-text-muted mb-3 leading-relaxed">
-        Optional. Used as fallback when clone fails. Saved securely in your browser's password manager.
+        Optional. Used as fallback when clone fails. Saved securely in your browser's password
+        manager.
       </p>
       <div className="flex gap-2">
         <input
@@ -60,7 +63,8 @@ function GitHubTokenField() {
       </div>
       {saveStatus === 'unsupported' && (
         <p className="text-xs text-grade-c mt-2">
-          Your browser doesn't support the Credential Management API. Token will be kept in memory only.
+          Your browser doesn't support the Credential Management API. Token will be kept in memory
+          only.
         </p>
       )}
     </div>
@@ -96,7 +100,7 @@ export function SettingsPanel() {
       // Focus trap
       if (e.key === 'Tab' && panelRef.current) {
         const focusable = panelRef.current.querySelectorAll<HTMLElement>(
-          'button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          'button, input, select, textarea, [tabindex]:not([tabindex="-1"])',
         );
         if (focusable.length === 0) return;
 
@@ -145,15 +149,28 @@ export function SettingsPanel() {
       >
         <div className="p-8">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-bold text-text" id="settings-title">Settings</h2>
+            <h2 className="text-xl font-bold text-text" id="settings-title">
+              Settings
+            </h2>
             <button
               ref={closeButtonRef}
               onClick={handleClose}
               className="p-2 rounded-lg hover:bg-surface-hover text-text-secondary hover:text-neon transition-all duration-200"
               aria-label="Close settings"
             >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -183,9 +200,15 @@ export function SettingsPanel() {
           <fieldset className="mb-8">
             <legend className="block text-sm font-semibold text-text mb-1.5">AI Enrichment</legend>
             <p id="llm-mode-desc" className="text-sm text-text-muted mb-3 leading-relaxed">
-              Uses your Anthropic API key to generate AI-powered executive summary, risks, and recommendations.
+              Uses your Anthropic API key to generate AI-powered executive summary, risks, and
+              recommendations.
             </p>
-            <div className="flex gap-2" role="radiogroup" aria-describedby="llm-mode-desc" aria-label="AI enrichment mode">
+            <div
+              className="flex gap-2"
+              role="radiogroup"
+              aria-describedby="llm-mode-desc"
+              aria-label="AI enrichment mode"
+            >
               {(['off', 'enriched'] as AppSettings['llmMode'][]).map((mode) => (
                 <button
                   key={mode}
@@ -203,7 +226,12 @@ export function SettingsPanel() {
           {/* Anthropic API Key */}
           {state.settings.llmMode === 'enriched' && (
             <div className="mb-8">
-              <label htmlFor="anthropic-key" className="block text-sm font-semibold text-text mb-1.5">Anthropic API Key</label>
+              <label
+                htmlFor="anthropic-key"
+                className="block text-sm font-semibold text-text mb-1.5"
+              >
+                Anthropic API Key
+              </label>
               <p id="anthropic-key-desc" className="text-sm text-text-muted mb-3 leading-relaxed">
                 Your key is kept in memory only and never persisted.
               </p>
@@ -233,16 +261,34 @@ export function SettingsPanel() {
 
           {/* Rate limit info */}
           {state.rateLimit && (
-            <div className="p-5 rounded-xl bg-surface-alt border border-border" role="status" aria-label="API rate limit information">
+            <div
+              className="p-5 rounded-xl bg-surface-alt border border-border"
+              role="status"
+              aria-label="API rate limit information"
+            >
               <h3 className="text-sm font-semibold text-text mb-2">API Rate Limit</h3>
               <div className="text-sm text-text-muted space-y-1">
-                <p>Used: <span className="text-text-secondary">{state.rateLimit.used}/{state.rateLimit.limit}</span></p>
-                <p>Remaining: <span className="text-text-secondary">{state.rateLimit.remaining}</span></p>
-                <p>Resets: <span className="text-text-secondary">{new Date(state.rateLimit.reset * 1000).toLocaleTimeString()}</span></p>
+                <p>
+                  Used:{' '}
+                  <span className="text-text-secondary">
+                    {state.rateLimit.used}/{state.rateLimit.limit}
+                  </span>
+                </p>
+                <p>
+                  Remaining:{' '}
+                  <span className="text-text-secondary">{state.rateLimit.remaining}</span>
+                </p>
+                <p>
+                  Resets:{' '}
+                  <span className="text-text-secondary">
+                    {new Date(state.rateLimit.reset * 1000).toLocaleTimeString()}
+                  </span>
+                </p>
               </div>
               {!state.githubToken && state.rateLimit.remaining < 20 && (
                 <p className="text-sm text-grade-c mt-3 font-medium" role="alert">
-                  Running low on unauthenticated requests. Add a GitHub token above for 5,000 req/hr.
+                  Running low on unauthenticated requests. Add a GitHub token above for 5,000
+                  req/hr.
                 </p>
               )}
             </div>

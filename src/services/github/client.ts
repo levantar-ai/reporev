@@ -25,7 +25,7 @@ export function extractRateLimit(headers: Headers): RateLimitInfo {
 export async function githubFetch<T>(
   path: string,
   token?: string,
-  onRateLimit?: (info: RateLimitInfo) => void
+  onRateLimit?: (info: RateLimitInfo) => void,
 ): Promise<T> {
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github.v3+json',
@@ -47,13 +47,21 @@ export async function githubFetch<T>(
       throw new GitHubApiError(
         `GitHub API rate limit exceeded. Resets at ${resetDate.toLocaleTimeString()}.`,
         403,
-        rateLimit
+        rateLimit,
       );
     }
     if (res.status === 404) {
-      throw new GitHubApiError('Repository not found. Check the URL and ensure it is public.', 404, rateLimit);
+      throw new GitHubApiError(
+        'Repository not found. Check the URL and ensure it is public.',
+        404,
+        rateLimit,
+      );
     }
-    throw new GitHubApiError(`GitHub API error: ${res.status} ${res.statusText}`, res.status, rateLimit);
+    throw new GitHubApiError(
+      `GitHub API error: ${res.status} ${res.statusText}`,
+      res.status,
+      rateLimit,
+    );
   }
 
   return res.json();

@@ -17,9 +17,7 @@ export function BusFactor({ busFactor }: Props) {
       const w = width - margin.left - margin.right;
       const h = height - margin.top - margin.bottom;
 
-      const g = sel
-        .append('g')
-        .attr('transform', `translate(${margin.left},${margin.top})`);
+      const g = sel.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
       const n = busFactor.cumulativeContributors.length;
       if (n === 0) return;
@@ -32,13 +30,23 @@ export function BusFactor({ busFactor }: Props) {
       // Axes
       g.append('g')
         .attr('transform', `translate(0,${h})`)
-        .call(d3.axisBottom(xScale).ticks(5).tickFormat((d) => `${d}%`))
+        .call(
+          d3
+            .axisBottom(xScale)
+            .ticks(5)
+            .tickFormat((d) => `${d}%`),
+        )
         .selectAll('text')
         .style('fill', '#64748b')
         .style('font-size', '10px');
 
       g.append('g')
-        .call(d3.axisLeft(yScale).ticks(5).tickFormat((d) => `${d}%`))
+        .call(
+          d3
+            .axisLeft(yScale)
+            .ticks(5)
+            .tickFormat((d) => `${d}%`),
+        )
         .selectAll('text')
         .style('fill', '#64748b')
         .style('font-size', '10px');
@@ -84,7 +92,8 @@ export function BusFactor({ busFactor }: Props) {
       }
 
       // Area between equality line and curve (inequality area)
-      const area = d3.area<[number, number]>()
+      const area = d3
+        .area<[number, number]>()
         .x((d) => xScale(d[0]))
         .y0((d) => yScale(d[0])) // equality line
         .y1((d) => yScale(d[1]))
@@ -97,7 +106,8 @@ export function BusFactor({ busFactor }: Props) {
         .style('stroke', 'none');
 
       // Lorenz curve line
-      const line = d3.line<[number, number]>()
+      const line = d3
+        .line<[number, number]>()
         .x((d) => xScale(d[0]))
         .y((d) => yScale(d[1]))
         .curve(d3.curveMonotoneX);
@@ -179,10 +189,12 @@ export function BusFactor({ busFactor }: Props) {
           <span className="h-0.5 w-4 bg-neon inline-block" /> Lorenz Curve
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-0.5 w-4 inline-block" style={{ borderTop: '1px dashed #475569' }} /> Perfect Equality
+          <span className="h-0.5 w-4 inline-block" style={{ borderTop: '1px dashed #475569' }} />{' '}
+          Perfect Equality
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-0.5 w-4 inline-block" style={{ borderTop: '1px dashed #fbbf24' }} /> 50% Threshold
+          <span className="h-0.5 w-4 inline-block" style={{ borderTop: '1px dashed #fbbf24' }} />{' '}
+          50% Threshold
         </span>
       </div>
       <D3Container render={render} height={350} />

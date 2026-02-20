@@ -46,8 +46,18 @@ export function CommitHeatmap({ commitActivity }: Props) {
         pieces: [
           { min: 0, max: 0, color: '#1e293b', label: '0' },
           { min: 1, max: Math.ceil(maxVal * 0.25), color: '#0e4d5c', label: 'Low' },
-          { min: Math.ceil(maxVal * 0.25) + 1, max: Math.ceil(maxVal * 0.5), color: '#0891b2', label: 'Med' },
-          { min: Math.ceil(maxVal * 0.5) + 1, max: Math.ceil(maxVal * 0.75), color: '#22d3ee', label: 'High' },
+          {
+            min: Math.ceil(maxVal * 0.25) + 1,
+            max: Math.ceil(maxVal * 0.5),
+            color: '#0891b2',
+            label: 'Med',
+          },
+          {
+            min: Math.ceil(maxVal * 0.5) + 1,
+            max: Math.ceil(maxVal * 0.75),
+            color: '#22d3ee',
+            label: 'High',
+          },
           { min: Math.ceil(maxVal * 0.75) + 1, max: maxVal, color: '#67e8f9', label: 'Max' },
         ],
         textStyle: { color: '#64748b', fontSize: 10 },
@@ -76,11 +86,13 @@ export function CommitHeatmap({ commitActivity }: Props) {
         },
         yearLabel: { show: false },
       },
-      series: [{
-        type: 'heatmap',
-        coordinateSystem: 'calendar',
-        data,
-      }],
+      series: [
+        {
+          type: 'heatmap',
+          coordinateSystem: 'calendar',
+          data,
+        },
+      ],
     };
   }, [commitActivity]);
 

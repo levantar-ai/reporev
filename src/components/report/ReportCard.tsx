@@ -53,7 +53,10 @@ export function ReportCard({ report, onNewAnalysis }: Props) {
   }
 
   return (
-    <article className="w-full px-8 lg:px-12 xl:px-16 py-10" aria-label={`Report card for ${report.repo.owner}/${report.repo.repo}`}>
+    <article
+      className="w-full px-8 lg:px-12 xl:px-16 py-10"
+      aria-label={`Report card for ${report.repo.owner}/${report.repo.repo}`}
+    >
       {/* Header */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-10">
         <div>
@@ -61,15 +64,23 @@ export function ReportCard({ report, onNewAnalysis }: Props) {
             {report.repo.owner}/<span className="text-neon">{report.repo.repo}</span>
           </h1>
           {report.repoInfo.description && (
-            <p className="text-lg text-text-secondary mt-2 max-w-2xl">{report.repoInfo.description}</p>
+            <p className="text-lg text-text-secondary mt-2 max-w-2xl">
+              {report.repoInfo.description}
+            </p>
           )}
           <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-text-muted">
             <span>{formatNumber(report.repoInfo.stars)} stars</span>
-            <span className="text-border" aria-hidden="true">|</span>
+            <span className="text-border" aria-hidden="true">
+              |
+            </span>
             <span>{formatNumber(report.repoInfo.forks)} forks</span>
-            <span className="text-border" aria-hidden="true">|</span>
+            <span className="text-border" aria-hidden="true">
+              |
+            </span>
             <span>{formatNumber(report.repoInfo.openIssues)} issues</span>
-            <span className="text-border" aria-hidden="true">|</span>
+            <span className="text-border" aria-hidden="true">
+              |
+            </span>
             <span>Analyzed {formatDate(report.analyzedAt)}</span>
           </div>
         </div>
@@ -83,7 +94,9 @@ export function ReportCard({ report, onNewAnalysis }: Props) {
 
       {/* Grade + Radar + Categories */}
       <section aria-labelledby="scores-heading" className="mb-10">
-        <h2 id="scores-heading" className="sr-only">Overall Score and Category Breakdown</h2>
+        <h2 id="scores-heading" className="sr-only">
+          Overall Score and Category Breakdown
+        </h2>
         <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-10">
           <div className="flex flex-col items-center gap-6 lg:pt-2">
             <LetterGrade grade={report.grade} score={report.overallScore} />
@@ -105,8 +118,14 @@ export function ReportCard({ report, onNewAnalysis }: Props) {
 
       {/* Trend Chart (only if we have history) */}
       {trendData.length > 1 && (
-        <section className="mb-10 p-6 rounded-xl bg-surface-alt border border-border" aria-labelledby="trend-heading">
-          <h2 id="trend-heading" className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">
+        <section
+          className="mb-10 p-6 rounded-xl bg-surface-alt border border-border"
+          aria-labelledby="trend-heading"
+        >
+          <h2
+            id="trend-heading"
+            className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4"
+          >
             Score History
           </h2>
           <TrendChart entries={trendData} height={200} />
@@ -114,7 +133,10 @@ export function ReportCard({ report, onNewAnalysis }: Props) {
       )}
 
       {/* Export & Badge Row */}
-      <section className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 mb-10" aria-label="Export and badge options">
+      <section
+        className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 mb-10"
+        aria-label="Export and badge options"
+      >
         <EnhancedExport report={report} />
         <BadgeGenerator
           owner={report.repo.owner}
@@ -126,14 +148,22 @@ export function ReportCard({ report, onNewAnalysis }: Props) {
 
       {/* Tech Stack */}
       {report.techStack.length > 0 && (
-        <section className="mb-10 p-6 rounded-xl bg-surface-alt border border-border" aria-labelledby="techstack-heading">
-          <h2 id="techstack-heading" className="sr-only">Tech Stack</h2>
+        <section
+          className="mb-10 p-6 rounded-xl bg-surface-alt border border-border"
+          aria-labelledby="techstack-heading"
+        >
+          <h2 id="techstack-heading" className="sr-only">
+            Tech Stack
+          </h2>
           <TechStack items={report.techStack} />
         </section>
       )}
 
       {/* Insights Grid */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-10" aria-label="Analysis insights">
+      <section
+        className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-10"
+        aria-label="Analysis insights"
+      >
         <InsightsList title="Strengths" items={report.strengths} icon="check" color="green" />
         <InsightsList title="Risks" items={report.risks} icon="warning" color="yellow" />
         <InsightsList title="Next Steps" items={report.nextSteps} icon="arrow" color="blue" />
@@ -165,7 +195,10 @@ export function ReportCard({ report, onNewAnalysis }: Props) {
 
       {/* Repo Structure Diagram */}
       <section className="mb-10" aria-labelledby="structure-heading">
-        <h2 id="structure-heading" className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4">
+        <h2
+          id="structure-heading"
+          className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4"
+        >
           Repository Structure
           <span className="text-text-muted font-normal ml-2 normal-case tracking-normal">
             {report.treeEntryCount} entries
@@ -178,9 +211,13 @@ export function ReportCard({ report, onNewAnalysis }: Props) {
 
       {/* Footer metadata */}
       <footer className="text-sm text-text-muted border-t border-border pt-5 flex flex-wrap gap-x-4 gap-y-1">
-        <span>{report.fileCount} files analyzed of {report.treeEntryCount} tree entries</span>
+        <span>
+          {report.fileCount} files analyzed of {report.treeEntryCount} tree entries
+        </span>
         {report.repoInfo.archived && (
-          <span className="text-grade-c font-semibold" role="alert">This repository is archived.</span>
+          <span className="text-grade-c font-semibold" role="alert">
+            This repository is archived.
+          </span>
         )}
       </footer>
     </article>

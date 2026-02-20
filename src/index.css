@@ -1,10 +1,12 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   /* ── Typography ─────────────────────────────────────── */
-  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  --font-sans:
+    'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
 
   /* ── Brand Accent ─────────────────────────────────────── */
   --color-primary-50: #ecfeff;
@@ -170,7 +172,10 @@ body {
 /* ── Card hover ──────────────────────────────────────────── */
 
 .card-glow {
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 }
 .card-glow:hover {
   transform: translateY(-2px);
@@ -259,7 +264,9 @@ body {
   .print-break {
     page-break-before: always;
   }
-  .neon-glow, .neon-glow-strong, .card-glow {
+  .neon-glow,
+  .neon-glow-strong,
+  .card-glow {
     box-shadow: none;
   }
   .neon-text {

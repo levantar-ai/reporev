@@ -1,19 +1,33 @@
 import type { CategoryResult, FileContent, TreeEntry, Signal, TechStackItem } from '../../types';
 
 const MANIFEST_FILES = [
-  'package.json', 'Cargo.toml', 'go.mod', 'requirements.txt',
-  'Pipfile', 'pyproject.toml', 'setup.py', 'setup.cfg',
-  'Gemfile', 'composer.json', 'pom.xml', 'build.gradle', 'build.gradle.kts',
+  'package.json',
+  'Cargo.toml',
+  'go.mod',
+  'requirements.txt',
+  'Pipfile',
+  'pyproject.toml',
+  'setup.py',
+  'setup.cfg',
+  'Gemfile',
+  'composer.json',
+  'pom.xml',
+  'build.gradle',
+  'build.gradle.kts',
 ];
 
 const LOCKFILES = [
-  'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
-  'Cargo.lock', 'go.sum', 'Gemfile.lock',
+  'package-lock.json',
+  'yarn.lock',
+  'pnpm-lock.yaml',
+  'Cargo.lock',
+  'go.sum',
+  'Gemfile.lock',
 ];
 
 export function analyzeDependencies(
   files: FileContent[],
-  tree: TreeEntry[]
+  tree: TreeEntry[],
 ): { result: CategoryResult; techStack: TechStackItem[] } {
   const signals: Signal[] = [];
   const fileMap = new Map(files.map((f) => [f.path, f]));
@@ -46,21 +60,24 @@ export function analyzeDependencies(
       depCount = Object.keys(deps).length;
 
       // Detect frameworks
-      if (deps['react'] || deps['react-dom']) techStack.push({ name: 'React', category: 'framework' });
+      if (deps['react'] || deps['react-dom'])
+        techStack.push({ name: 'React', category: 'framework' });
       if (deps['vue']) techStack.push({ name: 'Vue', category: 'framework' });
       if (deps['@angular/core']) techStack.push({ name: 'Angular', category: 'framework' });
       if (deps['svelte']) techStack.push({ name: 'Svelte', category: 'framework' });
       if (deps['next']) techStack.push({ name: 'Next.js', category: 'framework' });
       if (deps['express']) techStack.push({ name: 'Express', category: 'framework' });
       if (deps['fastify']) techStack.push({ name: 'Fastify', category: 'framework' });
-      if (deps['nestjs'] || deps['@nestjs/core']) techStack.push({ name: 'NestJS', category: 'framework' });
+      if (deps['nestjs'] || deps['@nestjs/core'])
+        techStack.push({ name: 'NestJS', category: 'framework' });
 
       // Tools
       if (deps['typescript']) techStack.push({ name: 'TypeScript', category: 'language' });
       if (deps['tailwindcss']) techStack.push({ name: 'Tailwind CSS', category: 'tool' });
       if (deps['webpack']) techStack.push({ name: 'Webpack', category: 'tool' });
       if (deps['vite']) techStack.push({ name: 'Vite', category: 'tool' });
-      if (deps['jest'] || deps['vitest'] || deps['mocha']) techStack.push({ name: 'Test Framework', category: 'tool' });
+      if (deps['jest'] || deps['vitest'] || deps['mocha'])
+        techStack.push({ name: 'Test Framework', category: 'tool' });
     } catch {
       // Invalid JSON
     }
@@ -69,12 +86,20 @@ export function analyzeDependencies(
   // Detect from other manifests
   if (treePaths.has('Cargo.toml')) techStack.push({ name: 'Rust', category: 'language' });
   if (treePaths.has('go.mod')) techStack.push({ name: 'Go', category: 'language' });
-  if (treePaths.has('requirements.txt') || treePaths.has('pyproject.toml') || treePaths.has('Pipfile')) {
+  if (
+    treePaths.has('requirements.txt') ||
+    treePaths.has('pyproject.toml') ||
+    treePaths.has('Pipfile')
+  ) {
     techStack.push({ name: 'Python', category: 'language' });
   }
   if (treePaths.has('Gemfile')) techStack.push({ name: 'Ruby', category: 'language' });
   if (treePaths.has('composer.json')) techStack.push({ name: 'PHP', category: 'language' });
-  if (treePaths.has('pom.xml') || treePaths.has('build.gradle') || treePaths.has('build.gradle.kts')) {
+  if (
+    treePaths.has('pom.xml') ||
+    treePaths.has('build.gradle') ||
+    treePaths.has('build.gradle.kts')
+  ) {
     techStack.push({ name: 'Java/JVM', category: 'language' });
   }
   if (treePaths.has('Dockerfile')) techStack.push({ name: 'Docker', category: 'platform' });

@@ -1,4 +1,11 @@
-import { createContext, useContext, useReducer, useEffect, useCallback, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  useCallback,
+  type ReactNode,
+} from 'react';
 import type { AppSettings, RateLimitInfo, RecentRepo } from '../types';
 import { loadSettings, saveSettings } from '../services/persistence/settingsStore';
 import { loadRecentRepos, saveRecentRepo } from '../services/persistence/repoCache';
@@ -54,7 +61,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, recentRepos: action.repos };
     case 'ADD_RECENT_REPO': {
       const filtered = state.recentRepos.filter(
-        (r) => !(r.owner === action.repo.owner && r.repo === action.repo.repo)
+        (r) => !(r.owner === action.repo.owner && r.repo === action.repo.repo),
       );
       return { ...state, recentRepos: [action.repo, ...filtered].slice(0, 10) };
     }
@@ -138,12 +145,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AppContext.Provider value={{ state, dispatch, addRecentRepo }}>
-      {children}
-    </AppContext.Provider>
+    <AppContext.Provider value={{ state, dispatch, addRecentRepo }}>{children}</AppContext.Provider>
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useApp() {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error('useApp must be used within AppProvider');

@@ -8,7 +8,7 @@ interface Props {
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const HOUR_LABELS = Array.from({ length: 24 }, (_, i) =>
-  i === 0 ? '12a' : i < 12 ? `${i}a` : i === 12 ? '12p' : `${i - 12}p`
+  i === 0 ? '12a' : i < 12 ? `${i}a` : i === 12 ? '12p' : `${i - 12}p`,
 );
 
 export function PunchCard({ punchCard }: Props) {
@@ -44,23 +44,25 @@ export function PunchCard({ punchCard }: Props) {
         axisLabel: { color: '#94a3b8', fontSize: 11 },
         splitLine: { show: false },
       },
-      series: [{
-        type: 'scatter',
-        data,
-        symbolSize: (val: number[]) => {
-          return Math.max(4, (val[2] / maxCommits) * 30);
-        },
-        itemStyle: {
-          color: (params: { value: number[] }) => {
-            const ratio = params.value[2] / maxCommits;
-            if (ratio === 0) return '#1e293b';
-            if (ratio < 0.25) return '#0e4d5c';
-            if (ratio < 0.5) return '#0891b2';
-            if (ratio < 0.75) return '#22d3ee';
-            return '#67e8f9';
+      series: [
+        {
+          type: 'scatter',
+          data,
+          symbolSize: (val: number[]) => {
+            return Math.max(4, (val[2] / maxCommits) * 30);
+          },
+          itemStyle: {
+            color: (params: { value: number[] }) => {
+              const ratio = params.value[2] / maxCommits;
+              if (ratio === 0) return '#1e293b';
+              if (ratio < 0.25) return '#0e4d5c';
+              if (ratio < 0.5) return '#0891b2';
+              if (ratio < 0.75) return '#22d3ee';
+              return '#67e8f9';
+            },
           },
         },
-      }],
+      ],
     };
   }, [punchCard]);
 

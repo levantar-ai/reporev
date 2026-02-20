@@ -1,17 +1,12 @@
 import type { CategoryResult, FileContent, TreeEntry, Signal } from '../../types';
 import { WORKFLOW_DIR } from '../../utils/constants';
 
-export function analyzeCicd(
-  files: FileContent[],
-  tree: TreeEntry[]
-): CategoryResult {
+export function analyzeCicd(files: FileContent[], tree: TreeEntry[]): CategoryResult {
   const signals: Signal[] = [];
 
   // GitHub Actions workflows
   const workflows = files.filter((f) => f.path.startsWith(WORKFLOW_DIR));
-  const workflowPaths = tree.filter(
-    (e) => e.type === 'blob' && e.path.startsWith(WORKFLOW_DIR)
-  );
+  const workflowPaths = tree.filter((e) => e.type === 'blob' && e.path.startsWith(WORKFLOW_DIR));
   signals.push({
     name: 'GitHub Actions workflows',
     found: workflowPaths.length > 0,
@@ -22,7 +17,7 @@ export function analyzeCicd(
   const hasCi = workflows.some(
     (f) =>
       (f.content.includes('push') || f.content.includes('pull_request')) &&
-      (f.content.includes('test') || f.content.includes('build') || f.content.includes('ci'))
+      (f.content.includes('test') || f.content.includes('build') || f.content.includes('ci')),
   );
   signals.push({ name: 'CI workflow (test/build)', found: hasCi });
 
@@ -32,7 +27,7 @@ export function analyzeCicd(
       f.path.toLowerCase().includes('deploy') ||
       f.path.toLowerCase().includes('release') ||
       f.content.includes('deploy') ||
-      f.content.includes('publish')
+      f.content.includes('publish'),
   );
   signals.push({ name: 'Deploy / release workflow', found: hasDeploy });
 
@@ -42,15 +37,14 @@ export function analyzeCicd(
 
   // Dockerfile
   const hasDocker = tree.some(
-    (e) => e.type === 'blob' && (e.path === 'Dockerfile' || e.path.endsWith('/Dockerfile'))
+    (e) => e.type === 'blob' && (e.path === 'Dockerfile' || e.path.endsWith('/Dockerfile')),
   );
   signals.push({ name: 'Dockerfile', found: hasDocker });
 
   // Docker Compose
   const hasCompose = tree.some(
     (e) =>
-      e.type === 'blob' &&
-      (e.path === 'docker-compose.yml' || e.path === 'docker-compose.yaml')
+      e.type === 'blob' && (e.path === 'docker-compose.yml' || e.path === 'docker-compose.yaml'),
   );
   signals.push({ name: 'Docker Compose', found: hasCompose });
 

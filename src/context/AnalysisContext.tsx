@@ -22,7 +22,12 @@ const initialState: AnalysisState = {
 function analysisReducer(state: AnalysisState, action: AnalysisAction): AnalysisState {
   switch (action.type) {
     case 'SET_STEP':
-      return { ...state, step: action.step, progress: action.progress ?? state.progress, error: null };
+      return {
+        ...state,
+        step: action.step,
+        progress: action.progress ?? state.progress,
+        error: null,
+      };
     case 'SET_PROGRESS':
       return { ...state, progress: action.progress };
     case 'SET_FILES_TOTAL':
@@ -51,12 +56,11 @@ export function AnalysisProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(analysisReducer, initialState);
 
   return (
-    <AnalysisContext.Provider value={{ state, dispatch }}>
-      {children}
-    </AnalysisContext.Provider>
+    <AnalysisContext.Provider value={{ state, dispatch }}>{children}</AnalysisContext.Provider>
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAnalysisContext() {
   const ctx = useContext(AnalysisContext);
   if (!ctx) throw new Error('useAnalysisContext must be used within AnalysisProvider');

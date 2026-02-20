@@ -22,7 +22,10 @@ export function CategoryScores({ categories }: Props) {
                   {Math.round(cat.weight * 100)}% weight
                 </span>
               </div>
-              <span className="text-lg font-bold" style={{ color, textShadow: `0 0 10px ${color}30` }}>
+              <span
+                className="text-lg font-bold"
+                style={{ color, textShadow: `0 0 10px ${color}30` }}
+              >
                 {cat.score}
               </span>
             </div>
@@ -45,12 +48,34 @@ export function CategoryScores({ categories }: Props) {
               {cat.signals.map((signal) => (
                 <div key={signal.name} className="flex items-center gap-2 text-sm">
                   {signal.found ? (
-                    <svg className="h-4 w-4 text-grade-a shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="h-4 w-4 text-grade-a shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2.5}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   ) : (
-                    <svg className="h-4 w-4 text-grade-f/50 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      className="h-4 w-4 text-grade-f/50 shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2.5}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   )}
                   <span className={signal.found ? 'text-text-secondary' : 'text-text-muted'}>

@@ -10,9 +10,7 @@ export function CodeFrequencyChart({ codeFrequency }: Props) {
   const option = useMemo(() => {
     if (!codeFrequency || codeFrequency.length === 0) return {};
 
-    const dates = codeFrequency.map(([ts]) =>
-      new Date(ts * 1000).toISOString().split('T')[0]
-    );
+    const dates = codeFrequency.map(([ts]) => new Date(ts * 1000).toISOString().split('T')[0]);
     const additions = codeFrequency.map(([, a]) => a);
     const deletions = codeFrequency.map(([, , d]) => Math.abs(d));
 

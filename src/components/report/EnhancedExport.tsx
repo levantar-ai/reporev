@@ -39,7 +39,12 @@ export function EnhancedExport({ report }: Props) {
       description: 'Copy the full report as Markdown text.',
       icon: (
         <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
         </svg>
       ),
       action: () => copy(reportToMarkdown(report)),
@@ -51,7 +56,12 @@ export function EnhancedExport({ report }: Props) {
       description: 'Copy category scores and signals as CSV.',
       icon: (
         <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+          />
         </svg>
       ),
       action: () => copy(reportToCsv(report)),
@@ -63,7 +73,12 @@ export function EnhancedExport({ report }: Props) {
       description: 'Copy the raw report data as JSON.',
       icon: (
         <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+          />
         </svg>
       ),
       action: () => copy(JSON.stringify(report, null, 2)),
@@ -75,7 +90,12 @@ export function EnhancedExport({ report }: Props) {
       description: 'Download a CycloneDX-style software bill of materials.',
       icon: (
         <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+          />
         </svg>
       ),
       action: () => {
@@ -90,7 +110,12 @@ export function EnhancedExport({ report }: Props) {
       description: 'Print the report or save as PDF via browser.',
       icon: (
         <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+          />
         </svg>
       ),
       action: () => window.print(),
@@ -111,7 +136,9 @@ export function EnhancedExport({ report }: Props) {
           >
             <div className="mb-4">
               <div className="flex items-center gap-3 mb-2">
-                <div className="text-neon-dim" aria-hidden="true">{opt.icon}</div>
+                <div className="text-neon-dim" aria-hidden="true">
+                  {opt.icon}
+                </div>
                 <span className="text-sm font-semibold text-text">{opt.title}</span>
               </div>
               <p className="text-xs text-text-muted leading-relaxed">{opt.description}</p>
@@ -122,7 +149,9 @@ export function EnhancedExport({ report }: Props) {
               aria-label={`${opt.actionLabel} ${opt.title} export`}
             >
               {copied && (opt.id === 'markdown' || opt.id === 'csv' || opt.id === 'json') ? (
-                <span className="text-grade-a" role="status">Copied!</span>
+                <span className="text-grade-a" role="status">
+                  Copied!
+                </span>
               ) : (
                 opt.actionLabel
               )}

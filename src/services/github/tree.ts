@@ -7,12 +7,12 @@ export async function fetchTree(
   repo: string,
   branch: string,
   token?: string,
-  onRateLimit?: (info: RateLimitInfo) => void
+  onRateLimit?: (info: RateLimitInfo) => void,
 ): Promise<TreeEntry[]> {
   const data = await githubFetch<GitHubTreeResponse>(
     `/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
     token,
-    onRateLimit
+    onRateLimit,
   );
 
   return data.tree.map((entry) => ({

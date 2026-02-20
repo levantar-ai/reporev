@@ -28,7 +28,7 @@ const SIGNAL_FIX_PATHS: Record<string, { path: string; why: string }> = {
     path: 'CONTRIBUTING.md',
     why: 'Contribution guidelines encourage community involvement and set clear expectations.',
   },
-  'LICENSE': {
+  LICENSE: {
     path: 'LICENSE',
     why: 'A license file clarifies how others can use, modify, and distribute your code.',
   },
@@ -44,7 +44,7 @@ const SIGNAL_FIX_PATHS: Record<string, { path: string; why: string }> = {
     path: 'CHANGELOG.md',
     why: 'A changelog helps users track changes between releases.',
   },
-  'CODEOWNERS': {
+  CODEOWNERS: {
     path: '.github/CODEOWNERS',
     why: 'CODEOWNERS ensures the right people review changes to critical files.',
   },
@@ -108,15 +108,24 @@ export function FixItLinks({ report, owner, repo, branch }: Props) {
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <svg className="h-4 w-4 text-grade-f/60 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="h-4 w-4 text-grade-f/60 shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                   <span className="text-sm font-medium text-text">{item.name}</span>
                   <span className="text-xs text-text-muted">{item.category}</span>
                 </div>
-                {info && (
-                  <p className="text-xs text-text-muted ml-6">{info.why}</p>
-                )}
+                {info && <p className="text-xs text-text-muted ml-6">{info.why}</p>}
               </div>
               <a
                 href={item.fixUrl}
@@ -124,8 +133,19 @@ export function FixItLinks({ report, owner, repo, branch }: Props) {
                 rel="noopener noreferrer"
                 className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-neon/25 bg-neon/10 text-neon hover:bg-neon/20 transition-colors"
               >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                <svg
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
                 </svg>
                 Create on GitHub
                 <span className="sr-only">for {item.name} (opens in new tab)</span>

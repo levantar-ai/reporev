@@ -48,25 +48,25 @@ export function ContributorBreakdown({ contributors }: Props) {
           overflow: 'truncate' as const,
         },
       },
-      series: [{
-        type: 'bar',
-        data: commits.reverse(),
-        barMaxWidth: 24,
-        itemStyle: {
-          color: (params: { dataIndex: number }) => {
-            return CHART_COLORS[params.dataIndex % CHART_COLORS.length];
+      series: [
+        {
+          type: 'bar',
+          data: commits.reverse(),
+          barMaxWidth: 24,
+          itemStyle: {
+            color: (params: { dataIndex: number }) => {
+              return CHART_COLORS[params.dataIndex % CHART_COLORS.length];
+            },
+            borderRadius: [0, 4, 4, 0],
           },
-          borderRadius: [0, 4, 4, 0],
         },
-      }],
+      ],
     };
   }, [contributors]);
 
   const pieOption = useMemo(() => {
     const top10 = contributors.slice(0, 10);
-    const othersCommits = contributors
-      .slice(10)
-      .reduce((sum, c) => sum + c.totalCommits, 0);
+    const othersCommits = contributors.slice(10).reduce((sum, c) => sum + c.totalCommits, 0);
 
     const data = top10.map((c) => ({
       name: c.login,
@@ -82,26 +82,28 @@ export function ContributorBreakdown({ contributors }: Props) {
         trigger: 'item' as const,
         formatter: '{b}: {c} ({d}%)',
       },
-      series: [{
-        type: 'pie',
-        radius: ['40%', '70%'],
-        center: ['50%', '50%'],
-        avoidLabelOverlap: true,
-        itemStyle: {
-          borderColor: '#0f172a',
-          borderWidth: 2,
-          borderRadius: 4,
+      series: [
+        {
+          type: 'pie',
+          radius: ['40%', '70%'],
+          center: ['50%', '50%'],
+          avoidLabelOverlap: true,
+          itemStyle: {
+            borderColor: '#0f172a',
+            borderWidth: 2,
+            borderRadius: 4,
+          },
+          label: {
+            color: '#94a3b8',
+            fontSize: 11,
+            formatter: '{b}\n{d}%',
+          },
+          labelLine: {
+            lineStyle: { color: '#475569' },
+          },
+          data,
         },
-        label: {
-          color: '#94a3b8',
-          fontSize: 11,
-          formatter: '{b}\n{d}%',
-        },
-        labelLine: {
-          lineStyle: { color: '#475569' },
-        },
-        data,
-      }],
+      ],
     };
   }, [contributors]);
 
@@ -110,7 +112,9 @@ export function ContributorBreakdown({ contributors }: Props) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2">
-        <h4 className="text-sm font-semibold text-text-secondary mb-3">Top Contributors (by commits)</h4>
+        <h4 className="text-sm font-semibold text-text-secondary mb-3">
+          Top Contributors (by commits)
+        </h4>
         <EChartsWrapper
           option={barOption}
           height={`${Math.max(300, Math.min(contributors.length, 15) * 30)}px`}

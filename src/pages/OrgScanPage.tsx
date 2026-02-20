@@ -10,7 +10,12 @@ import type {
   ParsedRepo,
   RepoInfo,
 } from '../types';
-import { GITHUB_API_BASE, CATEGORY_WEIGHTS, CATEGORY_LABELS, GRADE_THRESHOLDS } from '../utils/constants';
+import {
+  GITHUB_API_BASE,
+  CATEGORY_WEIGHTS,
+  CATEGORY_LABELS,
+  GRADE_THRESHOLDS,
+} from '../utils/constants';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
@@ -113,7 +118,13 @@ function analyzeDocumentation(paths: Set<string>): { score: number; signals: Sig
   if (hasDocs) score += 15;
   signals.push({ name: 'docs/ directory', found: hasDocs });
 
-  const hasLicense = hasAnyPath(paths, ['LICENSE', 'LICENSE.md', 'LICENSE.txt', 'LICENCE', 'LICENCE.md']);
+  const hasLicense = hasAnyPath(paths, [
+    'LICENSE',
+    'LICENSE.md',
+    'LICENSE.txt',
+    'LICENCE',
+    'LICENCE.md',
+  ]);
   if (hasLicense) score += 20;
   signals.push({ name: 'LICENSE file', found: hasLicense });
 
@@ -154,7 +165,11 @@ function analyzeCicd(paths: Set<string>): { score: number; signals: Signal[] } {
   const workflowCount = countPrefix(paths, '.github/workflows/');
   const hasWorkflows = workflowCount > 0;
   if (hasWorkflows) score += 35;
-  signals.push({ name: 'GitHub Actions workflows', found: hasWorkflows, details: hasWorkflows ? `${workflowCount} found` : undefined });
+  signals.push({
+    name: 'GitHub Actions workflows',
+    found: hasWorkflows,
+    details: hasWorkflows ? `${workflowCount} found` : undefined,
+  });
 
   const hasDockerfile = hasPath(paths, 'Dockerfile');
   if (hasDockerfile) score += 20;
@@ -164,36 +179,70 @@ function analyzeCicd(paths: Set<string>): { score: number; signals: Signal[] } {
   if (hasMakefile) score += 15;
   signals.push({ name: 'Makefile', found: hasMakefile });
 
-  const hasCompose = hasAnyPath(paths, ['docker-compose.yml', 'docker-compose.yaml', 'compose.yml', 'compose.yaml']);
+  const hasCompose = hasAnyPath(paths, [
+    'docker-compose.yml',
+    'docker-compose.yaml',
+    'compose.yml',
+    'compose.yaml',
+  ]);
   if (hasCompose) score += 15;
   signals.push({ name: 'Docker Compose', found: hasCompose });
 
   const hasMultipleWorkflows = workflowCount > 1;
   if (hasMultipleWorkflows) score += 15;
-  signals.push({ name: 'Multiple workflows', found: hasMultipleWorkflows, details: hasMultipleWorkflows ? `${workflowCount} workflows` : undefined });
+  signals.push({
+    name: 'Multiple workflows',
+    found: hasMultipleWorkflows,
+    details: hasMultipleWorkflows ? `${workflowCount} workflows` : undefined,
+  });
 
   return { score: cap100(score), signals };
 }
 
-function analyzeDependencies(paths: Set<string>, treeSize: number): { score: number; signals: Signal[] } {
+function analyzeDependencies(
+  paths: Set<string>,
+  treeSize: number,
+): { score: number; signals: Signal[] } {
   let score = 0;
   const signals: Signal[] = [];
 
   const manifests = [
-    'package.json', 'Cargo.toml', 'go.mod', 'requirements.txt',
-    'Pipfile', 'pyproject.toml', 'setup.py', 'Gemfile',
-    'composer.json', 'pom.xml', 'build.gradle', 'build.gradle.kts',
-    'setup.cfg', 'mix.exs', 'pubspec.yaml', 'build.sbt',
+    'package.json',
+    'Cargo.toml',
+    'go.mod',
+    'requirements.txt',
+    'Pipfile',
+    'pyproject.toml',
+    'setup.py',
+    'Gemfile',
+    'composer.json',
+    'pom.xml',
+    'build.gradle',
+    'build.gradle.kts',
+    'setup.cfg',
+    'mix.exs',
+    'pubspec.yaml',
+    'build.sbt',
   ];
   const foundManifests = manifests.filter((m) => hasPath(paths, m));
   const hasManifest = foundManifests.length > 0;
   if (hasManifest) score += 30;
-  signals.push({ name: 'Dependency manifest', found: hasManifest, details: hasManifest ? foundManifests.join(', ') : undefined });
+  signals.push({
+    name: 'Dependency manifest',
+    found: hasManifest,
+    details: hasManifest ? foundManifests.join(', ') : undefined,
+  });
 
   const lockfiles = [
-    'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
-    'Cargo.lock', 'go.sum', 'Gemfile.lock', 'composer.lock',
-    'Pipfile.lock', 'poetry.lock',
+    'package-lock.json',
+    'yarn.lock',
+    'pnpm-lock.yaml',
+    'Cargo.lock',
+    'go.sum',
+    'Gemfile.lock',
+    'composer.lock',
+    'Pipfile.lock',
+    'poetry.lock',
   ];
   const hasLockfile = hasAnyPath(paths, lockfiles);
   if (hasLockfile) score += 25;
@@ -201,7 +250,11 @@ function analyzeDependencies(paths: Set<string>, treeSize: number): { score: num
 
   const reasonableSize = treeSize > 5 && treeSize < 50000;
   if (reasonableSize) score += 20;
-  signals.push({ name: 'Reasonable tree size', found: reasonableSize, details: `${treeSize} entries` });
+  signals.push({
+    name: 'Reasonable tree size',
+    found: reasonableSize,
+    details: `${treeSize} entries`,
+  });
 
   const hasMultipleManifestTypes = foundManifests.length > 1;
   if (hasMultipleManifestTypes) score += 25;
@@ -215,21 +268,39 @@ function analyzeCodeQuality(paths: Set<string>): { score: number; signals: Signa
   const signals: Signal[] = [];
 
   const linters = [
-    '.eslintrc.json', '.eslintrc.js', '.eslintrc.yml', '.eslintrc',
-    'eslint.config.js', 'eslint.config.mjs', 'eslint.config.ts',
-    '.flake8', '.pylintrc', 'pylintrc', '.rubocop.yml',
-    '.golangci.yml', '.golangci.yaml', 'clippy.toml',
-    'biome.json', 'biome.jsonc',
+    '.eslintrc.json',
+    '.eslintrc.js',
+    '.eslintrc.yml',
+    '.eslintrc',
+    'eslint.config.js',
+    'eslint.config.mjs',
+    'eslint.config.ts',
+    '.flake8',
+    '.pylintrc',
+    'pylintrc',
+    '.rubocop.yml',
+    '.golangci.yml',
+    '.golangci.yaml',
+    'clippy.toml',
+    'biome.json',
+    'biome.jsonc',
   ];
   const hasLinter = hasAnyPath(paths, linters);
   if (hasLinter) score += 25;
   signals.push({ name: 'Linter configured', found: hasLinter });
 
   const formatters = [
-    '.prettierrc', '.prettierrc.json', '.prettierrc.js', '.prettierrc.yml',
-    'prettier.config.js', 'prettier.config.mjs',
-    'rustfmt.toml', '.rustfmt.toml',
-    '.clang-format', '.yapfcfg', '.style.yapf',
+    '.prettierrc',
+    '.prettierrc.json',
+    '.prettierrc.js',
+    '.prettierrc.yml',
+    'prettier.config.js',
+    'prettier.config.mjs',
+    'rustfmt.toml',
+    '.rustfmt.toml',
+    '.clang-format',
+    '.yapfcfg',
+    '.style.yapf',
     'biome.json',
   ];
   const hasFormatter = hasAnyPath(paths, formatters);
@@ -240,7 +311,11 @@ function analyzeCodeQuality(paths: Set<string>): { score: number; signals: Signa
   if (hasTsconfig) score += 15;
   signals.push({ name: 'tsconfig.json', found: hasTsconfig });
 
-  const hasTests = hasDir(paths, 'test') || hasDir(paths, 'tests') || hasDir(paths, '__tests__') || hasDir(paths, 'spec');
+  const hasTests =
+    hasDir(paths, 'test') ||
+    hasDir(paths, 'tests') ||
+    hasDir(paths, '__tests__') ||
+    hasDir(paths, 'spec');
   if (hasTests) score += 25;
   signals.push({ name: 'Test directory', found: hasTests });
 
@@ -251,21 +326,40 @@ function analyzeCodeQuality(paths: Set<string>): { score: number; signals: Signa
   return { score: cap100(score), signals };
 }
 
-function analyzeLicense(paths: Set<string>, repoLicense: string | null): { score: number; signals: Signal[] } {
+function analyzeLicense(
+  paths: Set<string>,
+  repoLicense: string | null,
+): { score: number; signals: Signal[] } {
   let score = 0;
   const signals: Signal[] = [];
 
-  const hasLicenseFile = hasAnyPath(paths, ['LICENSE', 'LICENCE', 'LICENSE.md', 'LICENSE.txt', 'LICENCE.md', 'LICENCE.txt']);
+  const hasLicenseFile = hasAnyPath(paths, [
+    'LICENSE',
+    'LICENCE',
+    'LICENSE.md',
+    'LICENSE.txt',
+    'LICENCE.md',
+    'LICENCE.txt',
+  ]);
   if (hasLicenseFile) score += 50;
   signals.push({ name: 'LICENSE file exists', found: hasLicenseFile });
 
-  const hasExtension = hasAnyPath(paths, ['LICENSE.md', 'LICENSE.txt', 'LICENCE.md', 'LICENCE.txt']);
+  const hasExtension = hasAnyPath(paths, [
+    'LICENSE.md',
+    'LICENSE.txt',
+    'LICENCE.md',
+    'LICENCE.txt',
+  ]);
   if (hasExtension) score += 10;
   signals.push({ name: 'Known file extension (.md/.txt)', found: hasExtension });
 
   const detectedByApi = !!repoLicense;
   if (detectedByApi) score += 40;
-  signals.push({ name: 'Detected by GitHub API', found: detectedByApi, details: repoLicense ?? undefined });
+  signals.push({
+    name: 'Detected by GitHub API',
+    found: detectedByApi,
+    details: repoLicense ?? undefined,
+  });
 
   return { score: cap100(score), signals };
 }
@@ -278,12 +372,13 @@ function analyzeCommunity(paths: Set<string>): { score: number; signals: Signal[
   if (hasIssueTemplates) score += 25;
   signals.push({ name: 'Issue templates', found: hasIssueTemplates });
 
-  const hasPrTemplate = hasAnyPath(paths, [
-    '.github/PULL_REQUEST_TEMPLATE.md',
-    '.github/pull_request_template.md',
-    'PULL_REQUEST_TEMPLATE.md',
-    '.github/PULL_REQUEST_TEMPLATE/',
-  ]) || hasPrefix(paths, '.github/PULL_REQUEST_TEMPLATE/');
+  const hasPrTemplate =
+    hasAnyPath(paths, [
+      '.github/PULL_REQUEST_TEMPLATE.md',
+      '.github/pull_request_template.md',
+      'PULL_REQUEST_TEMPLATE.md',
+      '.github/PULL_REQUEST_TEMPLATE/',
+    ]) || hasPrefix(paths, '.github/PULL_REQUEST_TEMPLATE/');
   if (hasPrTemplate) score += 20;
   signals.push({ name: 'PR template', found: hasPrTemplate });
 
@@ -316,32 +411,79 @@ function runLightAnalysis(
   const comm = analyzeCommunity(treePaths);
 
   const categories: CategoryResult[] = [
-    { key: 'documentation', label: CATEGORY_LABELS.documentation, score: doc.score, weight: CATEGORY_WEIGHTS.documentation, signals: doc.signals },
-    { key: 'security', label: CATEGORY_LABELS.security, score: sec.score, weight: CATEGORY_WEIGHTS.security, signals: sec.signals },
-    { key: 'cicd', label: CATEGORY_LABELS.cicd, score: ci.score, weight: CATEGORY_WEIGHTS.cicd, signals: ci.signals },
-    { key: 'dependencies', label: CATEGORY_LABELS.dependencies, score: deps.score, weight: CATEGORY_WEIGHTS.dependencies, signals: deps.signals },
-    { key: 'codeQuality', label: CATEGORY_LABELS.codeQuality, score: quality.score, weight: CATEGORY_WEIGHTS.codeQuality, signals: quality.signals },
-    { key: 'license', label: CATEGORY_LABELS.license, score: lic.score, weight: CATEGORY_WEIGHTS.license, signals: lic.signals },
-    { key: 'community', label: CATEGORY_LABELS.community, score: comm.score, weight: CATEGORY_WEIGHTS.community, signals: comm.signals },
+    {
+      key: 'documentation',
+      label: CATEGORY_LABELS.documentation,
+      score: doc.score,
+      weight: CATEGORY_WEIGHTS.documentation,
+      signals: doc.signals,
+    },
+    {
+      key: 'security',
+      label: CATEGORY_LABELS.security,
+      score: sec.score,
+      weight: CATEGORY_WEIGHTS.security,
+      signals: sec.signals,
+    },
+    {
+      key: 'cicd',
+      label: CATEGORY_LABELS.cicd,
+      score: ci.score,
+      weight: CATEGORY_WEIGHTS.cicd,
+      signals: ci.signals,
+    },
+    {
+      key: 'dependencies',
+      label: CATEGORY_LABELS.dependencies,
+      score: deps.score,
+      weight: CATEGORY_WEIGHTS.dependencies,
+      signals: deps.signals,
+    },
+    {
+      key: 'codeQuality',
+      label: CATEGORY_LABELS.codeQuality,
+      score: quality.score,
+      weight: CATEGORY_WEIGHTS.codeQuality,
+      signals: quality.signals,
+    },
+    {
+      key: 'license',
+      label: CATEGORY_LABELS.license,
+      score: lic.score,
+      weight: CATEGORY_WEIGHTS.license,
+      signals: lic.signals,
+    },
+    {
+      key: 'community',
+      label: CATEGORY_LABELS.community,
+      score: comm.score,
+      weight: CATEGORY_WEIGHTS.community,
+      signals: comm.signals,
+    },
   ];
 
-  const overallScore = Math.round(
-    categories.reduce((acc, c) => acc + c.score * c.weight, 0)
-  );
+  const overallScore = Math.round(categories.reduce((acc, c) => acc + c.score * c.weight, 0));
 
   const grade = scoreToGrade(overallScore);
 
   // Detect tech stack from manifests
   const techStack: TechStackItem[] = [];
   if (hasPath(treePaths, 'package.json')) techStack.push({ name: 'Node.js', category: 'platform' });
-  if (hasPath(treePaths, 'tsconfig.json')) techStack.push({ name: 'TypeScript', category: 'language' });
+  if (hasPath(treePaths, 'tsconfig.json'))
+    techStack.push({ name: 'TypeScript', category: 'language' });
   if (hasPath(treePaths, 'Cargo.toml')) techStack.push({ name: 'Rust', category: 'language' });
   if (hasPath(treePaths, 'go.mod')) techStack.push({ name: 'Go', category: 'language' });
-  if (hasAnyPath(treePaths, ['requirements.txt', 'pyproject.toml', 'setup.py', 'Pipfile'])) techStack.push({ name: 'Python', category: 'language' });
-  if (hasAnyPath(treePaths, ['Gemfile', 'Rakefile'])) techStack.push({ name: 'Ruby', category: 'language' });
+  if (hasAnyPath(treePaths, ['requirements.txt', 'pyproject.toml', 'setup.py', 'Pipfile']))
+    techStack.push({ name: 'Python', category: 'language' });
+  if (hasAnyPath(treePaths, ['Gemfile', 'Rakefile']))
+    techStack.push({ name: 'Ruby', category: 'language' });
   if (hasPath(treePaths, 'Dockerfile')) techStack.push({ name: 'Docker', category: 'tool' });
-  if (hasAnyPath(treePaths, ['pom.xml', 'build.gradle', 'build.gradle.kts'])) techStack.push({ name: 'Java/JVM', category: 'language' });
-  if (repoInfo.language && !techStack.some((t) => t.name.toLowerCase() === repoInfo.language!.toLowerCase())) {
+  if (hasAnyPath(treePaths, ['pom.xml', 'build.gradle', 'build.gradle.kts']))
+    techStack.push({ name: 'Java/JVM', category: 'language' });
+  if (
+    repoInfo.language &&
+    !techStack.some((t) => t.name.toLowerCase() === repoInfo.language!.toLowerCase())
+  ) {
     techStack.push({ name: repoInfo.language, category: 'language' });
   }
 
@@ -408,7 +550,9 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
       const res = await fetch(url, { headers, signal });
       if (!res.ok) {
         if (res.status === 403 && res.headers.get('X-RateLimit-Remaining') === '0') {
-          throw new Error('GitHub API rate limit exceeded. Add a token in Settings for 5,000 req/hr.');
+          throw new Error(
+            'GitHub API rate limit exceeded. Add a token in Settings for 5,000 req/hr.',
+          );
         }
         if (res.status === 404) {
           throw new Error(`Not found: ${url}`);
@@ -459,13 +603,13 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
 
       // Take up to 20 repos (non-archived, non-fork preferred but include all)
       const repoList = reposJson
-        .filter((r: any) => !r.archived && !r.fork)
+        .filter((r: Record<string, unknown>) => !r.archived && !r.fork)
         .slice(0, 20);
 
       // If too few after filtering, include forks
       const finalList =
         repoList.length < 5
-          ? reposJson.filter((r: any) => !r.archived).slice(0, 20)
+          ? reposJson.filter((r: Record<string, unknown>) => !r.archived).slice(0, 20)
           : repoList;
 
       setScan((s) => ({
@@ -516,9 +660,12 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
           // Run light analysis
           const report = runLightAnalysis(repoInfo, treePaths, treeEntries.length);
           results.push(report);
-        } catch (err: any) {
+        } catch (err: unknown) {
           // Skip repos that fail (e.g. empty repos with no tree)
-          console.warn(`Failed to analyze ${org}/${repoName}:`, err.message);
+          console.warn(
+            `Failed to analyze ${org}/${repoName}:`,
+            err instanceof Error ? err.message : err,
+          );
         }
 
         setScan((s) => ({
@@ -535,12 +682,12 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
         analyzedCount: results.length,
         currentRepo: '',
       }));
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       setScan((s) => ({
         ...s,
         phase: 'error',
-        error: err.message || 'An unexpected error occurred.',
+        error: err instanceof Error ? err.message : 'An unexpected error occurred.',
       }));
     }
   }, [orgInput, ghFetch]);
@@ -608,7 +755,15 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
     }
 
     const catAverages: Record<string, number> = {};
-    const catKeys: CategoryKey[] = ['documentation', 'security', 'cicd', 'dependencies', 'codeQuality', 'license', 'community'];
+    const catKeys: CategoryKey[] = [
+      'documentation',
+      'security',
+      'cicd',
+      'dependencies',
+      'codeQuality',
+      'license',
+      'community',
+    ];
     for (const key of catKeys) {
       const sum = scan.repos.reduce((s, r) => {
         const cat = r.categories.find((c) => c.key === key);
@@ -626,10 +781,19 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
     if (scan.repos.length === 0) return;
 
     const headers = [
-      'Repo Name', 'Grade', 'Overall Score',
-      'Documentation', 'Security', 'CI/CD',
-      'Dependencies', 'Code Quality', 'License', 'Community',
-      'Language', 'Stars', 'Forks',
+      'Repo Name',
+      'Grade',
+      'Overall Score',
+      'Documentation',
+      'Security',
+      'CI/CD',
+      'Dependencies',
+      'Code Quality',
+      'License',
+      'Community',
+      'Language',
+      'Stars',
+      'Forks',
     ];
 
     const rows = sortedRepos.map((r) => {
@@ -663,7 +827,15 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
 
   // ── Render: Sort header helper ───────────────────────────────────────────
 
-  const SortHeader = ({ field, label, className = '' }: { field: SortField; label: string; className?: string }) => (
+  const SortHeader = ({
+    field,
+    label,
+    className = '',
+  }: {
+    field: SortField;
+    label: string;
+    className?: string;
+  }) => (
     <th
       className={`py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-text-secondary cursor-pointer select-none hover:text-neon transition-colors whitespace-nowrap ${className}`}
       onClick={() => toggleSort(field)}
@@ -673,9 +845,19 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
         {sortField === field && (
           <svg className="h-3 w-3 text-neon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             {sortDir === 'desc' ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M19 9l-7 7-7-7"
+              />
             ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M5 15l7-7 7 7"
+              />
             )}
           </svg>
         )}
@@ -712,8 +894,7 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
       {/* Header */}
       <div className="text-center mb-10">
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-text tracking-tight">
-          Organization{' '}
-          <span className="text-neon neon-text">Scanner</span>
+          Organization <span className="text-neon neon-text">Scanner</span>
         </h1>
         <p className="mt-4 text-lg text-text-secondary max-w-2xl mx-auto leading-relaxed">
           Scan all public repositories in a GitHub organization. Get a bird's-eye view of
@@ -727,8 +908,18 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
           <div className="flex gap-3">
             <div className="relative flex-1">
               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                <svg
+                  className="h-5 w-5 text-text-muted"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                  />
                 </svg>
               </div>
               <input
@@ -750,15 +941,25 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
           </div>
           {!githubToken && (
             <p className="text-xs text-text-muted mt-3 text-center">
-              Scanning uses ~1 + N API calls (N = repos). Without a token you have 60 req/hr.
-              Add a GitHub token in Settings for 5,000 req/hr.
+              Scanning uses ~1 + N API calls (N = repos). Without a token you have 60 req/hr. Add a
+              GitHub token in Settings for 5,000 req/hr.
             </p>
           )}
           {scan.phase === 'error' && scan.error && (
             <div className="mt-6 px-5 py-4 rounded-xl bg-grade-f/10 border border-grade-f/25 text-sm text-grade-f">
               <div className="flex items-start gap-3">
-                <svg className="h-5 w-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="h-5 w-5 shrink-0 mt-0.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
                 <div>
                   <p className="font-medium">Scan failed</p>
@@ -798,243 +999,291 @@ export function OrgScanPage({ onBack, onAnalyze, githubToken }: Props) {
       )}
 
       {/* Results */}
-      {(scan.phase === 'done' || (scan.phase === 'analyzing' && scan.repos.length > 0)) && summaryStats && (
-        <div>
-          {/* Action bar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-            <h2 className="text-2xl font-bold text-text">
-              Results for{' '}
-              <span className="text-neon">{scan.orgName}</span>
-            </h2>
-            <div className="flex gap-3">
-              <button
-                onClick={exportCsv}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border hover:bg-surface-hover hover:border-border-bright text-text-secondary hover:text-neon transition-all"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Export CSV
-              </button>
-              {scan.phase === 'done' && (
+      {(scan.phase === 'done' || (scan.phase === 'analyzing' && scan.repos.length > 0)) &&
+        summaryStats && (
+          <div>
+            {/* Action bar */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+              <h2 className="text-2xl font-bold text-text">
+                Results for <span className="text-neon">{scan.orgName}</span>
+              </h2>
+              <div className="flex gap-3">
                 <button
-                  onClick={resetScan}
+                  onClick={exportCsv}
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border hover:bg-surface-hover hover:border-border-bright text-text-secondary hover:text-neon transition-all"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
                   </svg>
-                  New Scan
+                  Export CSV
                 </button>
-              )}
-            </div>
-          </div>
-
-          {/* Summary cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-            {/* Total repos */}
-            <div className="p-5 rounded-xl bg-surface-alt border border-border">
-              <div className="text-sm text-text-muted mb-1">Repos Scanned</div>
-              <div className="text-3xl font-bold text-text">{summaryStats.total}</div>
-            </div>
-
-            {/* Average grade */}
-            <div className="p-5 rounded-xl bg-surface-alt border border-border">
-              <div className="text-sm text-text-muted mb-1">Average Grade</div>
-              <div className={`text-3xl font-bold ${gradeTextClass(summaryStats.avgGrade)}`}>
-                {summaryStats.avgGrade}
-              </div>
-              <div className="text-sm text-text-muted mt-0.5">{summaryStats.avgScore}/100</div>
-            </div>
-
-            {/* Grade distribution */}
-            <div className="p-5 rounded-xl bg-surface-alt border border-border col-span-2">
-              <div className="text-sm text-text-muted mb-3">Grade Distribution</div>
-              <div className="flex items-end gap-2 h-12">
-                {(['A', 'B', 'C', 'D', 'F'] as LetterGrade[]).map((g) => {
-                  const count = summaryStats.distribution[g];
-                  const maxCount = Math.max(1, ...Object.values(summaryStats.distribution));
-                  const pct = (count / maxCount) * 100;
-                  return (
-                    <div key={g} className="flex-1 flex flex-col items-center gap-1">
-                      <div
-                        className={`w-full rounded-t-sm transition-all duration-500 ${
-                          g === 'A' ? 'bg-grade-a' :
-                          g === 'B' ? 'bg-grade-b' :
-                          g === 'C' ? 'bg-grade-c' :
-                          g === 'D' ? 'bg-grade-d' :
-                          'bg-grade-f'
-                        }`}
-                        style={{ height: `${Math.max(4, pct)}%`, opacity: count > 0 ? 1 : 0.2 }}
+                {scan.phase === 'done' && (
+                  <button
+                    onClick={resetScan}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border hover:bg-surface-hover hover:border-border-bright text-text-secondary hover:text-neon transition-all"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                       />
-                      <div className="flex flex-col items-center">
-                        <span className={`text-xs font-bold ${gradeTextClass(g)}`}>{g}</span>
-                        <span className="text-xs text-text-muted">{count}</span>
+                    </svg>
+                    New Scan
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Summary cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+              {/* Total repos */}
+              <div className="p-5 rounded-xl bg-surface-alt border border-border">
+                <div className="text-sm text-text-muted mb-1">Repos Scanned</div>
+                <div className="text-3xl font-bold text-text">{summaryStats.total}</div>
+              </div>
+
+              {/* Average grade */}
+              <div className="p-5 rounded-xl bg-surface-alt border border-border">
+                <div className="text-sm text-text-muted mb-1">Average Grade</div>
+                <div className={`text-3xl font-bold ${gradeTextClass(summaryStats.avgGrade)}`}>
+                  {summaryStats.avgGrade}
+                </div>
+                <div className="text-sm text-text-muted mt-0.5">{summaryStats.avgScore}/100</div>
+              </div>
+
+              {/* Grade distribution */}
+              <div className="p-5 rounded-xl bg-surface-alt border border-border col-span-2">
+                <div className="text-sm text-text-muted mb-3">Grade Distribution</div>
+                <div className="flex items-end gap-2 h-12">
+                  {(['A', 'B', 'C', 'D', 'F'] as LetterGrade[]).map((g) => {
+                    const count = summaryStats.distribution[g];
+                    const maxCount = Math.max(1, ...Object.values(summaryStats.distribution));
+                    const pct = (count / maxCount) * 100;
+                    return (
+                      <div key={g} className="flex-1 flex flex-col items-center gap-1">
+                        <div
+                          className={`w-full rounded-t-sm transition-all duration-500 ${
+                            g === 'A'
+                              ? 'bg-grade-a'
+                              : g === 'B'
+                                ? 'bg-grade-b'
+                                : g === 'C'
+                                  ? 'bg-grade-c'
+                                  : g === 'D'
+                                    ? 'bg-grade-d'
+                                    : 'bg-grade-f'
+                          }`}
+                          style={{ height: `${Math.max(4, pct)}%`, opacity: count > 0 ? 1 : 0.2 }}
+                        />
+                        <div className="flex flex-col items-center">
+                          <span className={`text-xs font-bold ${gradeTextClass(g)}`}>{g}</span>
+                          <span className="text-xs text-text-muted">{count}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Category averages */}
+            <div className="mb-8 p-5 rounded-xl bg-surface-alt border border-border">
+              <div className="text-sm font-semibold text-text mb-4">
+                Category Averages Across Organization
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
+                {(Object.entries(summaryStats.catAverages) as [string, number][]).map(
+                  ([key, avg]) => {
+                    const label = CATEGORY_LABELS[key as CategoryKey] || key;
+                    return (
+                      <div key={key} className="text-center">
+                        <div className={`text-2xl font-bold ${scoreColorClass(avg)}`}>{avg}</div>
+                        <div className="text-xs text-text-muted mt-1 leading-tight">{label}</div>
+                      </div>
+                    );
+                  },
+                )}
+              </div>
+            </div>
+
+            {/* Results table */}
+            <div className="rounded-xl border border-border overflow-hidden neon-glow">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-surface-alt border-b border-border">
+                      <SortHeader
+                        field="name"
+                        label="Repository"
+                        className="min-w-[180px] sticky left-0 bg-surface-alt z-10"
+                      />
+                      <SortHeader field="grade" label="Grade" />
+                      <SortHeader field="overall" label="Score" />
+                      <SortHeader field="documentation" label="Docs" />
+                      <SortHeader field="security" label="Security" />
+                      <SortHeader field="cicd" label="CI/CD" />
+                      <SortHeader field="dependencies" label="Deps" />
+                      <SortHeader field="codeQuality" label="Quality" />
+                      <SortHeader field="license" label="License" />
+                      <SortHeader field="community" label="Community" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedRepos.map((r, idx) => {
+                      const catScore = (key: CategoryKey) => {
+                        const cat = r.categories.find((c) => c.key === key);
+                        return cat?.score ?? 0;
+                      };
+
+                      const ScoreCell = ({ score }: { score: number }) => (
+                        <td className={`py-3 px-3 font-medium ${scoreColorClass(score)}`}>
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded-md text-xs font-semibold ${scoreBgClass(score)} ${scoreColorClass(score)}`}
+                          >
+                            {score}
+                          </span>
+                        </td>
+                      );
+
+                      return (
+                        <tr
+                          key={`${r.repo.owner}/${r.repo.repo}`}
+                          className={`border-b border-border hover:bg-surface-hover transition-colors ${
+                            idx % 2 === 0 ? '' : 'bg-surface-alt/30'
+                          }`}
+                        >
+                          {/* Repo name - sticky on mobile */}
+                          <td className="py-3 px-3 sticky left-0 bg-inherit z-10">
+                            <button
+                              onClick={() =>
+                                onAnalyze(`https://github.com/${r.repo.owner}/${r.repo.repo}`)
+                              }
+                              className="text-neon hover:underline font-medium text-left"
+                              title={`Full analysis: ${r.repo.owner}/${r.repo.repo}`}
+                            >
+                              {r.repo.repo}
+                            </button>
+                            {r.repoInfo.language && (
+                              <span className="ml-2 text-xs text-text-muted">
+                                {r.repoInfo.language}
+                              </span>
+                            )}
+                          </td>
+                          {/* Grade */}
+                          <td className={`py-3 px-3 font-bold text-lg ${gradeTextClass(r.grade)}`}>
+                            {r.grade}
+                          </td>
+                          {/* Overall */}
+                          <ScoreCell score={r.overallScore} />
+                          {/* Category scores */}
+                          <ScoreCell score={catScore('documentation')} />
+                          <ScoreCell score={catScore('security')} />
+                          <ScoreCell score={catScore('cicd')} />
+                          <ScoreCell score={catScore('dependencies')} />
+                          <ScoreCell score={catScore('codeQuality')} />
+                          <ScoreCell score={catScore('license')} />
+                          <ScoreCell score={catScore('community')} />
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Mobile-friendly card list (visible on small screens only) */}
+            <div className="sm:hidden mt-6 space-y-3">
+              <p className="text-xs text-text-muted">
+                Scroll table horizontally to see all columns, or view repo cards below:
+              </p>
+              {sortedRepos.map((r) => {
+                const catScore = (key: CategoryKey) => {
+                  const cat = r.categories.find((c) => c.key === key);
+                  return cat?.score ?? 0;
+                };
+
+                return (
+                  <div
+                    key={`card-${r.repo.owner}/${r.repo.repo}`}
+                    className="p-4 rounded-xl bg-surface-alt border border-border"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <button
+                        onClick={() =>
+                          onAnalyze(`https://github.com/${r.repo.owner}/${r.repo.repo}`)
+                        }
+                        className="text-neon hover:underline font-semibold text-left text-sm"
+                      >
+                        {r.repo.repo}
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xl font-bold ${gradeTextClass(r.grade)}`}>
+                          {r.grade}
+                        </span>
+                        <span className={`text-sm font-medium ${scoreColorClass(r.overallScore)}`}>
+                          {r.overallScore}
+                        </span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Category averages */}
-          <div className="mb-8 p-5 rounded-xl bg-surface-alt border border-border">
-            <div className="text-sm font-semibold text-text mb-4">Category Averages Across Organization</div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
-              {(Object.entries(summaryStats.catAverages) as [string, number][]).map(([key, avg]) => {
-                const label = CATEGORY_LABELS[key as CategoryKey] || key;
-                return (
-                  <div key={key} className="text-center">
-                    <div className={`text-2xl font-bold ${scoreColorClass(avg)}`}>{avg}</div>
-                    <div className="text-xs text-text-muted mt-1 leading-tight">{label}</div>
+                    <div className="grid grid-cols-4 gap-2 text-center">
+                      {(
+                        [
+                          ['documentation', 'Docs'],
+                          ['security', 'Sec'],
+                          ['cicd', 'CI'],
+                          ['dependencies', 'Deps'],
+                          ['codeQuality', 'Qual'],
+                          ['license', 'Lic'],
+                          ['community', 'Comm'],
+                        ] as [CategoryKey, string][]
+                      ).map(([key, label]) => {
+                        const s = catScore(key);
+                        return (
+                          <div key={key}>
+                            <div className={`text-xs font-bold ${scoreColorClass(s)}`}>{s}</div>
+                            <div className="text-[10px] text-text-muted">{label}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })}
             </div>
           </div>
-
-          {/* Results table */}
-          <div className="rounded-xl border border-border overflow-hidden neon-glow">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-surface-alt border-b border-border">
-                    <SortHeader field="name" label="Repository" className="min-w-[180px] sticky left-0 bg-surface-alt z-10" />
-                    <SortHeader field="grade" label="Grade" />
-                    <SortHeader field="overall" label="Score" />
-                    <SortHeader field="documentation" label="Docs" />
-                    <SortHeader field="security" label="Security" />
-                    <SortHeader field="cicd" label="CI/CD" />
-                    <SortHeader field="dependencies" label="Deps" />
-                    <SortHeader field="codeQuality" label="Quality" />
-                    <SortHeader field="license" label="License" />
-                    <SortHeader field="community" label="Community" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedRepos.map((r, idx) => {
-                    const catScore = (key: CategoryKey) => {
-                      const cat = r.categories.find((c) => c.key === key);
-                      return cat?.score ?? 0;
-                    };
-
-                    const ScoreCell = ({ score }: { score: number }) => (
-                      <td className={`py-3 px-3 font-medium ${scoreColorClass(score)}`}>
-                        <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-semibold ${scoreBgClass(score)} ${scoreColorClass(score)}`}>
-                          {score}
-                        </span>
-                      </td>
-                    );
-
-                    return (
-                      <tr
-                        key={`${r.repo.owner}/${r.repo.repo}`}
-                        className={`border-b border-border hover:bg-surface-hover transition-colors ${
-                          idx % 2 === 0 ? '' : 'bg-surface-alt/30'
-                        }`}
-                      >
-                        {/* Repo name - sticky on mobile */}
-                        <td className="py-3 px-3 sticky left-0 bg-inherit z-10">
-                          <button
-                            onClick={() => onAnalyze(`https://github.com/${r.repo.owner}/${r.repo.repo}`)}
-                            className="text-neon hover:underline font-medium text-left"
-                            title={`Full analysis: ${r.repo.owner}/${r.repo.repo}`}
-                          >
-                            {r.repo.repo}
-                          </button>
-                          {r.repoInfo.language && (
-                            <span className="ml-2 text-xs text-text-muted">{r.repoInfo.language}</span>
-                          )}
-                        </td>
-                        {/* Grade */}
-                        <td className={`py-3 px-3 font-bold text-lg ${gradeTextClass(r.grade)}`}>
-                          {r.grade}
-                        </td>
-                        {/* Overall */}
-                        <ScoreCell score={r.overallScore} />
-                        {/* Category scores */}
-                        <ScoreCell score={catScore('documentation')} />
-                        <ScoreCell score={catScore('security')} />
-                        <ScoreCell score={catScore('cicd')} />
-                        <ScoreCell score={catScore('dependencies')} />
-                        <ScoreCell score={catScore('codeQuality')} />
-                        <ScoreCell score={catScore('license')} />
-                        <ScoreCell score={catScore('community')} />
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Mobile-friendly card list (visible on small screens only) */}
-          <div className="sm:hidden mt-6 space-y-3">
-            <p className="text-xs text-text-muted">Scroll table horizontally to see all columns, or view repo cards below:</p>
-            {sortedRepos.map((r) => {
-              const catScore = (key: CategoryKey) => {
-                const cat = r.categories.find((c) => c.key === key);
-                return cat?.score ?? 0;
-              };
-
-              return (
-                <div
-                  key={`card-${r.repo.owner}/${r.repo.repo}`}
-                  className="p-4 rounded-xl bg-surface-alt border border-border"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <button
-                      onClick={() => onAnalyze(`https://github.com/${r.repo.owner}/${r.repo.repo}`)}
-                      className="text-neon hover:underline font-semibold text-left text-sm"
-                    >
-                      {r.repo.repo}
-                    </button>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xl font-bold ${gradeTextClass(r.grade)}`}>{r.grade}</span>
-                      <span className={`text-sm font-medium ${scoreColorClass(r.overallScore)}`}>{r.overallScore}</span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2 text-center">
-                    {([
-                      ['documentation', 'Docs'],
-                      ['security', 'Sec'],
-                      ['cicd', 'CI'],
-                      ['dependencies', 'Deps'],
-                      ['codeQuality', 'Qual'],
-                      ['license', 'Lic'],
-                      ['community', 'Comm'],
-                    ] as [CategoryKey, string][]).map(([key, label]) => {
-                      const s = catScore(key);
-                      return (
-                        <div key={key}>
-                          <div className={`text-xs font-bold ${scoreColorClass(s)}`}>{s}</div>
-                          <div className="text-[10px] text-text-muted">{label}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+        )}
 
       {/* Empty idle state hint */}
       {scan.phase === 'idle' && (
         <div className="text-center mt-12">
           <div className="inline-flex items-center justify-center h-20 w-20 rounded-2xl bg-neon/10 border border-neon/20 mb-6">
-            <svg className="h-10 w-10 text-neon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            <svg
+              className="h-10 w-10 text-neon"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+              />
             </svg>
           </div>
           <h3 className="text-lg font-semibold text-text mb-2">Scan a GitHub Organization</h3>
           <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed">
             Enter an org name like <span className="text-neon font-medium">facebook</span>,{' '}
             <span className="text-neon font-medium">vercel</span>, or{' '}
-            <span className="text-neon font-medium">microsoft</span> to analyze up to 20 repos
-            with a lightweight tree-only analysis (2 API calls per repo).
+            <span className="text-neon font-medium">microsoft</span> to analyze up to 20 repos with
+            a lightweight tree-only analysis (2 API calls per repo).
           </p>
         </div>
       )}

@@ -12,7 +12,10 @@ export function RecentReposList({ repos, onSelect, disabled }: Props) {
 
   return (
     <section className="w-full max-w-2xl mx-auto mt-10" aria-labelledby="recent-repos-heading">
-      <h2 id="recent-repos-heading" className="text-xs font-semibold text-text-muted mb-4 uppercase tracking-widest">
+      <h2
+        id="recent-repos-heading"
+        className="text-xs font-semibold text-text-muted mb-4 uppercase tracking-widest"
+      >
         Recent analyses
       </h2>
       <ul className="space-y-2" role="list">
@@ -29,7 +32,10 @@ export function RecentReposList({ repos, onSelect, disabled }: Props) {
               </span>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-text-muted">{repo.overallScore}/100</span>
-                <span className={`text-2xl font-bold ${gradeColorClass(repo.grade)}`} aria-hidden="true">
+                <span
+                  className={`text-2xl font-bold ${gradeColorClass(repo.grade)}`}
+                  aria-hidden="true"
+                >
                   {repo.grade}
                 </span>
               </div>

@@ -37,10 +37,16 @@ export function TrendChart({ entries, height = 200 }: Props) {
   }
 
   // Build accessible description
-  const description = entries.map(e => {
-    const dateStr = new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    return `${dateStr}: score ${e.score}`;
-  }).join(', ');
+  const description = entries
+    .map((e) => {
+      const dateStr = new Date(e.date).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+      return `${dateStr}: score ${e.score}`;
+    })
+    .join(', ');
 
   // Single data point
   if (entries.length === 1) {
@@ -75,15 +81,7 @@ export function TrendChart({ entries, height = 200 }: Props) {
 
         {/* Single dot */}
         <circle cx={x} cy={y} r={6} fill="#22d3ee" />
-        <circle
-          cx={x}
-          cy={y}
-          r={10}
-          fill="none"
-          stroke="#22d3ee"
-          strokeWidth={2}
-          opacity={0.3}
-        />
+        <circle cx={x} cy={y} r={10} fill="none" stroke="#22d3ee" strokeWidth={2} opacity={0.3} />
 
         {/* Score label */}
         <text
@@ -98,13 +96,7 @@ export function TrendChart({ entries, height = 200 }: Props) {
         </text>
 
         {/* "First analysis" note */}
-        <text
-          x={x}
-          y={height - 8}
-          textAnchor="middle"
-          className="fill-text-muted"
-          fontSize={11}
-        >
+        <text x={x} y={height - 8} textAnchor="middle" className="fill-text-muted" fontSize={11}>
           First analysis
         </text>
       </svg>
@@ -112,9 +104,7 @@ export function TrendChart({ entries, height = 200 }: Props) {
   }
 
   // Build line path
-  const linePoints = entries
-    .map((e, i) => `${indexToX(i)},${scoreToY(e.score)}`)
-    .join(' ');
+  const linePoints = entries.map((e, i) => `${indexToX(i)},${scoreToY(e.score)}`).join(' ');
 
   // Build area path
   const areaPath = [
