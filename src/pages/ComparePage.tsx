@@ -14,6 +14,8 @@ import { runLightAnalysis } from '../services/analysis/lightEngine';
 import type { GitHubRepoResponse, GitHubTreeResponse } from '../services/github/types';
 import { scoreToGrade, formatNumber, gradeColorClass } from '../utils/formatters';
 import { CATEGORY_LABELS } from '../utils/constants';
+import { invalidateIfNeitherMatch } from '../services/git/repoCache';
+import { ensureCloned } from '../services/git/cloneService';
 
 // ── Props ──
 
@@ -117,20 +119,38 @@ export function ComparePage({ onBack, githubToken }: Props) {
       token,
     );
     const repoInfo = mapGitHubRepoToRepoInfo(rawRepo);
-    const branch = parsed.branch || repoInfo.defaultBranch;
 
-    setProgress(`Fetching ${label} file tree...`);
-    const treeData = await githubFetch<GitHubTreeResponse>(
-      `/repos/${parsed.owner}/${parsed.repo}/git/trees/${branch}?recursive=1`,
-      token,
-    );
-    const tree: TreeEntry[] = treeData.tree.map((e) => ({
-      path: e.path,
-      mode: e.mode,
-      type: e.type,
-      sha: e.sha,
-      size: e.size,
-    }));
+    let tree: TreeEntry[];
+
+    // Try clone-first approach
+    try {
+      setProgress(`Cloning ${label}...`);
+      const cached = await ensureCloned(parsed.owner, parsed.repo, (_step, _percent, message) => {
+        setProgress(`${label}: ${message}`);
+      });
+      tree = cached.tree;
+    } catch (cloneErr) {
+      // Fallback to API if token available
+      if (token) {
+        console.warn(`Clone failed for ${label}, falling back to API:`, cloneErr);
+        const branch = parsed.branch || repoInfo.defaultBranch;
+
+        setProgress(`Fetching ${label} file tree...`);
+        const treeData = await githubFetch<GitHubTreeResponse>(
+          `/repos/${parsed.owner}/${parsed.repo}/git/trees/${branch}?recursive=1`,
+          token,
+        );
+        tree = treeData.tree.map((e) => ({
+          path: e.path,
+          mode: e.mode,
+          type: e.type,
+          sha: e.sha,
+          size: e.size,
+        }));
+      } else {
+        throw cloneErr;
+      }
+    }
 
     setProgress(`Analyzing ${label}...`);
     return runLightAnalysis(parsed, repoInfo, tree);
@@ -151,6 +171,16 @@ export function ComparePage({ onBack, githubToken }: Props) {
 
     try {
       const setProgress = (msg: string) => setState((prev) => ({ ...prev, progress: msg }));
+
+      // Parse both repos upfront for cache invalidation
+      const parsedA = parseRepoUrl(inputA.trim());
+      const parsedB = parseRepoUrl(inputB.trim());
+      if (parsedA && parsedB) {
+        invalidateIfNeitherMatch([
+          { owner: parsedA.owner, repo: parsedA.repo },
+          { owner: parsedB.owner, repo: parsedB.repo },
+        ]);
+      }
 
       const reportA = await analyzeRepo(inputA.trim(), 'Repo A', setProgress);
       const reportB = await analyzeRepo(inputB.trim(), 'Repo B', setProgress);

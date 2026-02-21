@@ -128,6 +128,7 @@ export type AnalysisStep =
   | 'idle'
   | 'parsing'
   | 'fetching-info'
+  | 'cloning'
   | 'fetching-tree'
   | 'fetching-files'
   | 'analyzing'

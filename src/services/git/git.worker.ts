@@ -13,10 +13,11 @@ import {
   computeWeeklyAggregates,
   sampleIndices,
   countLinesOfCode,
+  isBinary,
 } from './extractors';
 
 export interface CloneMessage {
-  type: 'clone';
+  type: 'clone' | 'clone-cache-only';
   owner: string;
   repo: string;
   corsProxy: string;
@@ -29,9 +30,31 @@ export interface ProgressMessage {
   message: string;
 }
 
+export interface CacheTreeEntry {
+  path: string;
+  mode: string;
+  type: 'blob' | 'tree';
+  sha: string;
+  size: number;
+}
+
+export interface CacheFileContent {
+  path: string;
+  content: string;
+  size: number;
+}
+
 export interface ResultMessage {
   type: 'result';
   data: GitStatsRawData;
+  tree: CacheTreeEntry[];
+  files: CacheFileContent[];
+}
+
+export interface CacheOnlyResultMessage {
+  type: 'cache-only-result';
+  tree: CacheTreeEntry[];
+  files: CacheFileContent[];
 }
 
 export interface ErrorMessage {
@@ -39,13 +62,164 @@ export interface ErrorMessage {
   message: string;
 }
 
-export type WorkerOutMessage = ProgressMessage | ResultMessage | ErrorMessage;
+export type WorkerOutMessage =
+  | ProgressMessage
+  | ResultMessage
+  | CacheOnlyResultMessage
+  | ErrorMessage;
 
 const DIR = '/repo';
+const MAX_TEXT_FILE_SIZE = 512 * 1024; // 512KB
+
+interface HeadWalkResult {
+  fileList: string[];
+  totalLinesOfCode: number;
+  binaryFileCount: number;
+  tree: CacheTreeEntry[];
+  files: CacheFileContent[];
+}
+
+async function walkHead(fs: InstanceType<typeof LightningFS>): Promise<HeadWalkResult> {
+  const headOid = await git.resolveRef({ fs, dir: DIR, ref: 'HEAD' });
+  const fileList: string[] = [];
+  let totalLinesOfCode = 0;
+  let binaryFileCount = 0;
+  const tree: CacheTreeEntry[] = [];
+  const files: CacheFileContent[] = [];
+
+  await git.walk({
+    fs,
+    dir: DIR,
+    trees: [git.TREE({ ref: headOid })],
+    map: async (filepath, entries) => {
+      if (!entries || filepath === '.') return;
+      const [entry] = entries;
+      if (!entry) return;
+      const type = await entry.type();
+
+      if (type === 'tree') {
+        tree.push({
+          path: filepath,
+          mode: '040000',
+          type: 'tree',
+          sha: (await entry.oid()) || '',
+          size: 0,
+        });
+        return;
+      }
+
+      if (type !== 'blob') return;
+
+      const oid = (await entry.oid()) || '';
+      fileList.push(filepath);
+
+      try {
+        const content = await entry.content();
+        if (!content) return;
+
+        const locResult = countLinesOfCode(content);
+        if (locResult.binary) {
+          binaryFileCount++;
+          tree.push({
+            path: filepath,
+            mode: '100644',
+            type: 'blob',
+            sha: oid,
+            size: content.length,
+          });
+        } else {
+          totalLinesOfCode += locResult.lines;
+          tree.push({
+            path: filepath,
+            mode: '100644',
+            type: 'blob',
+            sha: oid,
+            size: content.length,
+          });
+
+          // Capture text file contents for cache (skip large files)
+          if (content.length <= MAX_TEXT_FILE_SIZE && !isBinary(content)) {
+            const decoded = new TextDecoder().decode(content);
+            files.push({ path: filepath, content: decoded, size: content.length });
+          }
+        }
+      } catch {
+        // Skip files that can't be read
+        tree.push({ path: filepath, mode: '100644', type: 'blob', sha: oid, size: 0 });
+      }
+    },
+  });
+
+  return { fileList, totalLinesOfCode, binaryFileCount, tree, files };
+}
 
 self.onmessage = async (e: MessageEvent<CloneMessage>) => {
-  const { owner, repo, corsProxy } = e.data;
+  const { type: msgType, owner, repo, corsProxy } = e.data;
 
+  if (msgType === 'clone-cache-only') {
+    await handleCacheOnlyClone(owner, repo, corsProxy);
+  } else {
+    await handleFullClone(owner, repo, corsProxy);
+  }
+};
+
+async function handleCacheOnlyClone(owner: string, repo: string, corsProxy: string) {
+  try {
+    const fs = new LightningFS('repoguru-cache', { wipe: true });
+    const url = `https://github.com/${owner}/${repo}.git`;
+
+    postProgress('cloning', 0, 'Cloning repository...');
+
+    await git.clone({
+      fs,
+      http,
+      dir: DIR,
+      url,
+      depth: 1,
+      singleBranch: true,
+      noCheckout: true,
+      corsProxy,
+      onProgress: (progress) => {
+        let percent = 0;
+        if (progress.total && progress.total > 0) {
+          percent = Math.round((progress.loaded / progress.total) * 50);
+        } else if (progress.loaded) {
+          percent = Math.min(48, Math.round(progress.loaded / 100000));
+        }
+        const phase = progress.phase || 'Downloading';
+        postProgress('cloning', percent, `${phase}... ${formatBytes(progress.loaded)}`);
+      },
+    });
+
+    postProgress('cloning', 50, 'Clone complete, reading files...');
+
+    const walkResult = await walkHead(fs);
+
+    postProgress('cloning', 95, 'Done');
+
+    const resultMsg: CacheOnlyResultMessage = {
+      type: 'cache-only-result',
+      tree: walkResult.tree,
+      files: walkResult.files,
+    };
+    self.postMessage(resultMsg);
+
+    // Clean up
+    try {
+      await fs.promises.rmdir(DIR, { recursive: true } as unknown as undefined);
+    } catch {
+      // Cleanup failure is non-critical
+    }
+  } catch (err) {
+    const errorMsg: ErrorMessage = {
+      type: 'error',
+      message: err instanceof Error ? err.message : 'Clone failed',
+    };
+    self.postMessage(errorMsg);
+  }
+}
+
+async function handleFullClone(owner: string, repo: string, corsProxy: string) {
   try {
     // Initialize in-memory filesystem
     const fs = new LightningFS('repoguru-clone', { wipe: true });
@@ -168,46 +342,14 @@ self.onmessage = async (e: MessageEvent<CloneMessage>) => {
     // 4. Compute aggregate stats
     postProgress('computing-stats', 80, 'Computing statistics...');
 
-    // Get file list + LOC count from HEAD tree (no checkout needed)
-    const headOid = await git.resolveRef({ fs, dir: DIR, ref: 'HEAD' });
-    const fileList: string[] = [];
-    let totalLinesOfCode = 0;
-    let binaryFileCount = 0;
-
-    await git.walk({
-      fs,
-      dir: DIR,
-      trees: [git.TREE({ ref: headOid })],
-      map: async (filepath, entries) => {
-        if (!entries || filepath === '.') return;
-        const [entry] = entries;
-        if (!entry) return;
-        const type = await entry.type();
-        if (type !== 'blob') return;
-
-        fileList.push(filepath);
-
-        try {
-          const content = await entry.content();
-          if (content) {
-            const result = countLinesOfCode(content);
-            if (result.binary) {
-              binaryFileCount++;
-            } else {
-              totalLinesOfCode += result.lines;
-            }
-          }
-        } catch {
-          // Skip files that can't be read
-        }
-      },
-    });
-    const languages = computeLanguages(fileList);
+    // Get file list + LOC count from HEAD tree (also extracts tree/files for cache)
+    const walkResult = await walkHead(fs);
+    const languages = computeLanguages(walkResult.fileList);
 
     postProgress(
       'computing-stats',
       83,
-      `${totalLinesOfCode.toLocaleString()} lines of code, ${binaryFileCount} binary files`,
+      `${walkResult.totalLinesOfCode.toLocaleString()} lines of code, ${walkResult.binaryFileCount} binary files`,
     );
 
     postProgress('computing-stats', 85, 'Building weekly aggregates...');
@@ -226,11 +368,16 @@ self.onmessage = async (e: MessageEvent<CloneMessage>) => {
       participation: null,
       punchCard: aggregates.punchCard,
       languages,
-      totalLinesOfCode,
-      binaryFileCount,
+      totalLinesOfCode: walkResult.totalLinesOfCode,
+      binaryFileCount: walkResult.binaryFileCount,
     };
 
-    const resultMsg: ResultMessage = { type: 'result', data: rawData };
+    const resultMsg: ResultMessage = {
+      type: 'result',
+      data: rawData,
+      tree: walkResult.tree,
+      files: walkResult.files,
+    };
     self.postMessage(resultMsg);
 
     // 6. Clean up filesystem
@@ -246,7 +393,7 @@ self.onmessage = async (e: MessageEvent<CloneMessage>) => {
     };
     self.postMessage(errorMsg);
   }
-};
+}
 
 function postProgress(step: string, percent: number, message: string) {
   const msg: ProgressMessage = { type: 'progress', step, percent, message };

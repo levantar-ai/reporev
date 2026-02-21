@@ -4,6 +4,7 @@ const STEP_LABELS: Record<AnalysisStep, string> = {
   idle: '',
   parsing: 'Parsing URL...',
   'fetching-info': 'Fetching repository info...',
+  cloning: 'Cloning repository...',
   'fetching-tree': 'Fetching file tree...',
   'fetching-files': 'Downloading files for analysis...',
   analyzing: 'Running heuristic analysis...',

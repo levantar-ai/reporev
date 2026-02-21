@@ -19,6 +19,8 @@ import {
   filterTechFiles,
 } from '../services/analysis/techDetectEngine';
 import { useApp } from '../context/AppContext';
+import { invalidateIfDifferent } from '../services/git/repoCache';
+import { ensureCloned } from '../services/git/cloneService';
 
 type Action =
   | { type: 'RESET' }
@@ -128,57 +130,121 @@ export function useTechDetect() {
         );
         const branch = repoInfo.default_branch;
 
-        // 2. Fetch recursive tree
-        dispatch({
-          type: 'SET_STEP',
-          step: 'fetching-tree',
-          progress: 10,
-          message: 'Fetching file tree...',
-        });
-        const tree = await fetchTree(owner, repo, branch, token, handleRateLimit);
+        let techPaths: string[];
+        let fileInputs: { path: string; content: string }[];
 
-        // 3. Filter to tech-relevant files
-        const techPaths = filterTechFiles(tree);
-        if (techPaths.length === 0) {
+        // Try clone-first approach
+        try {
           dispatch({
-            type: 'DONE',
-            result: {
-              aws: [],
-              azure: [],
-              gcp: [],
-              python: [],
-              node: [],
-              go: [],
-              java: [],
-              php: [],
-              rust: [],
-              ruby: [],
-              manifestFiles: [],
-            },
+            type: 'SET_STEP',
+            step: 'fetching-tree',
+            progress: 10,
+            message: 'Cloning repository...',
           });
-          return;
-        }
+          invalidateIfDifferent(owner, repo);
 
-        // 4. Fetch file contents
-        dispatch({
-          type: 'SET_STEP',
-          step: 'fetching-files',
-          progress: 20,
-          message: `Fetching ${techPaths.length} files...`,
-        });
-        let fetched = 0;
-        const files = await fetchFileContents(
-          owner,
-          repo,
-          branch,
-          techPaths,
-          token,
-          handleRateLimit,
-          () => {
-            fetched++;
-            dispatch({ type: 'FILE_PROGRESS', fetched, total: techPaths.length });
-          },
-        );
+          const cached = await ensureCloned(owner, repo, (_step, percent, message) => {
+            const scaled = 10 + Math.round(percent * 0.4);
+            dispatch({
+              type: 'SET_STEP',
+              step: 'fetching-tree',
+              progress: scaled,
+              message,
+            });
+          });
+
+          // 3. Filter to tech-relevant files using cached tree
+          techPaths = filterTechFiles(cached.tree);
+
+          if (techPaths.length === 0) {
+            dispatch({
+              type: 'DONE',
+              result: {
+                aws: [],
+                azure: [],
+                gcp: [],
+                python: [],
+                node: [],
+                go: [],
+                java: [],
+                php: [],
+                rust: [],
+                ruby: [],
+                manifestFiles: [],
+              },
+            });
+            return;
+          }
+
+          // 4. Filter cached files by tech paths — instant, no API calls
+          dispatch({
+            type: 'SET_STEP',
+            step: 'fetching-files',
+            progress: 55,
+            message: `Reading ${techPaths.length} files from cache...`,
+          });
+
+          const techPathSet = new Set(techPaths);
+          const matchedFiles = cached.files.filter((f) => techPathSet.has(f.path));
+          fileInputs = matchedFiles.map((f) => ({ path: f.path, content: f.content }));
+        } catch (cloneErr) {
+          // Clone failed — fall back to API path if token available
+          if (token) {
+            console.warn('Clone failed, falling back to API:', cloneErr);
+
+            dispatch({
+              type: 'SET_STEP',
+              step: 'fetching-tree',
+              progress: 10,
+              message: 'Fetching file tree...',
+            });
+            const tree = await fetchTree(owner, repo, branch, token, handleRateLimit);
+
+            techPaths = filterTechFiles(tree);
+            if (techPaths.length === 0) {
+              dispatch({
+                type: 'DONE',
+                result: {
+                  aws: [],
+                  azure: [],
+                  gcp: [],
+                  python: [],
+                  node: [],
+                  go: [],
+                  java: [],
+                  php: [],
+                  rust: [],
+                  ruby: [],
+                  manifestFiles: [],
+                },
+              });
+              return;
+            }
+
+            dispatch({
+              type: 'SET_STEP',
+              step: 'fetching-files',
+              progress: 20,
+              message: `Fetching ${techPaths.length} files...`,
+            });
+            let fetched = 0;
+            const files = await fetchFileContents(
+              owner,
+              repo,
+              branch,
+              techPaths,
+              token,
+              handleRateLimit,
+              () => {
+                fetched++;
+                dispatch({ type: 'FILE_PROGRESS', fetched, total: techPaths.length });
+              },
+            );
+            fileInputs = files.map((f) => ({ path: f.path, content: f.content }));
+          } else {
+            throw cloneErr;
+          }
+        }
 
         // 5. Run analysis
         dispatch({
@@ -189,7 +255,6 @@ export function useTechDetect() {
         });
         await new Promise((resolve) => setTimeout(resolve, 10));
 
-        const fileInputs = files.map((f) => ({ path: f.path, content: f.content }));
         const aws = detectAWS(fileInputs);
         const azure = detectAzure(fileInputs);
         const gcp = detectGCP(fileInputs);
@@ -214,7 +279,7 @@ export function useTechDetect() {
             php,
             rust,
             ruby,
-            manifestFiles: files.map((f) => f.path),
+            manifestFiles: techPaths,
           },
         });
       } catch (err) {

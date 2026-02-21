@@ -9,8 +9,10 @@ import { runAnalysis } from '../services/analysis/engine';
 import { enrichWithLlm } from '../services/llm/client';
 import { saveReport } from '../services/persistence/repoCache';
 import { addHistoryEntry } from '../services/persistence/history';
+import { invalidateIfDifferent } from '../services/git/repoCache';
+import { ensureCloned } from '../services/git/cloneService';
 import type { GitHubRepoResponse } from '../services/github/types';
-import type { RepoInfo, CategoryKey } from '../types';
+import type { RepoInfo, CategoryKey, TreeEntry, FileContent } from '../types';
 
 export function useAnalysis() {
   const { state: appState, dispatch: appDispatch, addRecentRepo } = useApp();
@@ -37,7 +39,7 @@ export function useAnalysis() {
       };
 
       try {
-        // Step 2: Fetch repo info
+        // Step 2: Fetch repo info (stars, forks, topics — not available from clone)
         dispatch({ type: 'SET_STEP', step: 'fetching-info', progress: 10 });
         const raw = await githubFetch<GitHubRepoResponse>(
           `/repos/${parsed.owner}/${parsed.repo}`,
@@ -64,27 +66,61 @@ export function useAnalysis() {
 
         const branch = parsed.branch || repoInfo.defaultBranch;
 
-        // Step 3: Fetch tree
-        dispatch({ type: 'SET_STEP', step: 'fetching-tree', progress: 25 });
-        const tree = await fetchTree(parsed.owner, parsed.repo, branch, token, onRateLimit);
+        let tree: TreeEntry[];
+        let files: FileContent[];
 
-        // Step 4: Filter target files
-        const targetFiles = filterTargetFiles(tree);
-        dispatch({ type: 'SET_FILES_TOTAL', total: targetFiles.length });
+        // Try clone-first approach
+        try {
+          dispatch({ type: 'SET_STEP', step: 'cloning', progress: 20 });
+          invalidateIfDifferent(parsed.owner, parsed.repo);
 
-        // Step 5: Fetch file contents
-        dispatch({ type: 'SET_STEP', step: 'fetching-files', progress: 35 });
-        const files = await fetchFileContents(
-          parsed.owner,
-          parsed.repo,
-          branch,
-          targetFiles,
-          token,
-          onRateLimit,
-          () => {
+          const cached = await ensureCloned(parsed.owner, parsed.repo, (_step, percent) => {
+            // Scale clone progress from 20-60%
+            const scaled = 20 + Math.round(percent * 0.4);
+            dispatch({ type: 'SET_STEP', step: 'cloning', progress: scaled });
+          });
+
+          tree = cached.tree;
+
+          // Filter target files and find their contents from cache
+          const targetPaths = filterTargetFiles(tree);
+          dispatch({ type: 'SET_FILES_TOTAL', total: targetPaths.length });
+
+          const targetPathSet = new Set(targetPaths);
+          files = cached.files.filter((f) => targetPathSet.has(f.path));
+
+          // Count files found for progress
+          dispatch({ type: 'SET_STEP', step: 'fetching-files', progress: 65 });
+          for (let i = 0; i < files.length; i++) {
             dispatch({ type: 'INCREMENT_FILES_FETCHED' });
-          },
-        );
+          }
+        } catch (cloneErr) {
+          // Clone failed — fall back to API path if token available
+          if (token) {
+            console.warn('Clone failed, falling back to API:', cloneErr);
+
+            dispatch({ type: 'SET_STEP', step: 'fetching-tree', progress: 25 });
+            tree = await fetchTree(parsed.owner, parsed.repo, branch, token, onRateLimit);
+
+            const targetFiles = filterTargetFiles(tree);
+            dispatch({ type: 'SET_FILES_TOTAL', total: targetFiles.length });
+
+            dispatch({ type: 'SET_STEP', step: 'fetching-files', progress: 35 });
+            files = await fetchFileContents(
+              parsed.owner,
+              parsed.repo,
+              branch,
+              targetFiles,
+              token,
+              onRateLimit,
+              () => {
+                dispatch({ type: 'INCREMENT_FILES_FETCHED' });
+              },
+            );
+          } else {
+            throw cloneErr;
+          }
+        }
 
         // Step 6: Run analysis
         dispatch({ type: 'SET_STEP', step: 'analyzing', progress: 80 });

@@ -4,6 +4,7 @@ import type { GitStatsState, GitStatsStep } from '../types/gitStats';
 import { fetchGitStatsData } from '../services/github/stats';
 import { cloneAndExtract } from '../services/git/cloneService';
 import { analyzeGitStats } from '../services/analysis/gitStatsAnalyzer';
+import { invalidateIfDifferent } from '../services/git/repoCache';
 import { useApp } from '../context/AppContext';
 
 type Action =
@@ -120,6 +121,9 @@ export function useGitStats() {
 
       const token = appState.githubToken || undefined;
       const { owner, repo } = parsed;
+
+      // Invalidate cache if different repo
+      invalidateIfDifferent(owner, repo);
 
       // Try clone-first approach (no token needed for public repos)
       dispatch({
