@@ -983,18 +983,16 @@ describe('filterTechFiles', () => {
     expect(pkgJsonCount).toBe(1);
   });
 
-  it('respects the overall file limit (MAX_TECH_FILES = 60)', () => {
-    // Create enough entries to exceed the limit
+  it('returns all matching files without artificial cap', () => {
     const tree: TreeEntry[] = [];
     for (let i = 0; i < 100; i++) {
       tree.push(makeEntry(`app${i}.py`, 'blob', 1000));
     }
-    // Also add many terraform files
     for (let i = 0; i < 30; i++) {
       tree.push(makeEntry(`infra/resource${i}.tf`));
     }
     const result = filterTechFiles(tree);
-    expect(result.length).toBeLessThanOrEqual(60);
+    expect(result.length).toBe(130);
   });
 
   it('returns ARM template JSON files', () => {
@@ -1004,14 +1002,14 @@ describe('filterTechFiles', () => {
     expect(result).toContain('arm-template.json');
   });
 
-  it('limits package.json files to 6', () => {
+  it('returns all package.json files (no artificial cap)', () => {
     const tree: TreeEntry[] = [];
     for (let i = 0; i < 10; i++) {
       tree.push(makeEntry(`packages/pkg${i}/package.json`));
     }
     const result = filterTechFiles(tree);
     const pkgJsons = result.filter((p) => p.endsWith('package.json'));
-    expect(pkgJsons.length).toBeLessThanOrEqual(6);
+    expect(pkgJsons.length).toBe(10);
   });
 
   it('returns CloudFormation template files', () => {

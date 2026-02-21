@@ -70,6 +70,23 @@ export type WorkerOutMessage =
 const DIR = '/repo';
 const MAX_TEXT_FILE_SIZE = 512 * 1024; // 512KB
 
+// Directories to skip entirely during walk — never read content, prune subtree
+const SKIP_DIRS = new Set([
+  'node_modules',
+  'vendor',
+  'bower_components',
+  '__pycache__',
+  '.git',
+  '.next',
+  '.nuxt',
+  'dist',
+  'build',
+  '.cache',
+  '.venv',
+  'venv',
+  'env',
+]);
+
 interface HeadWalkResult {
   fileList: string[];
   totalLinesOfCode: number;
@@ -94,6 +111,11 @@ async function walkHead(fs: InstanceType<typeof LightningFS>): Promise<HeadWalkR
     trees: [git.TREE({ ref: headOid })],
     map: async (filepath, entries) => {
       if (!entries || filepath === '.') return;
+
+      // Prune skipped directories — returning null prevents recursion into subtree
+      const segments = filepath.split('/');
+      if (segments.some((seg) => SKIP_DIRS.has(seg))) return null;
+
       const [entry] = entries;
       if (!entry) return;
       const type = await entry.type();

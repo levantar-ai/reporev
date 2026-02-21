@@ -15,6 +15,23 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const SKIP_DIRS = new Set([
+  'node_modules',
+  'vendor',
+  'bower_components',
+  '__pycache__',
+  '.next',
+  '.nuxt',
+  '.cache',
+  '.venv',
+  'venv',
+]);
+
+function isSkippedPath(path: string): boolean {
+  const segments = path.split('/');
+  return segments.some((seg) => SKIP_DIRS.has(seg));
+}
+
 export function filterTargetFiles(tree: TreeEntry[]): string[] {
   // Separate priority: exact target files first, then dynamic matches
   const exactMatches: string[] = [];
@@ -27,6 +44,7 @@ export function filterTargetFiles(tree: TreeEntry[]): string[] {
 
   for (const entry of tree) {
     if (entry.type !== 'blob') continue;
+    if (isSkippedPath(entry.path)) continue;
 
     const pathLower = entry.path.toLowerCase();
 
@@ -64,20 +82,7 @@ export function filterTargetFiles(tree: TreeEntry[]): string[] {
     }
   }
 
-  // Prioritize exact matches, then fill remaining budget with dynamic matches
-  const MAX_WORKFLOWS = 5;
-  const MAX_TEMPLATES = 3;
-  const workflows = dynamicMatches
-    .filter((p) => p.startsWith(WORKFLOW_DIR))
-    .slice(0, MAX_WORKFLOWS);
-  const templates = dynamicMatches
-    .filter((p) => p.startsWith(ISSUE_TEMPLATE_DIR))
-    .slice(0, MAX_TEMPLATES);
-  const others = dynamicMatches.filter(
-    (p) => !p.startsWith(WORKFLOW_DIR) && !p.startsWith(ISSUE_TEMPLATE_DIR),
-  );
-
-  const combined = [...exactMatches, ...workflows, ...templates, ...others];
+  const combined = [...exactMatches, ...dynamicMatches];
   return [...new Set(combined)];
 }
 

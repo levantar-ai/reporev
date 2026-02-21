@@ -1014,17 +1014,37 @@ function isCfnTemplate(path: string): boolean {
   return CFN_PREFIX_PATTERNS.some((p) => p.test(path));
 }
 
-const MAX_TECH_FILES = 60;
+// Directories that should never be scanned for tech files
+const SKIP_TECH_DIRS = new Set([
+  'node_modules',
+  'vendor',
+  'bower_components',
+  '__pycache__',
+  '.git',
+  '.next',
+  '.nuxt',
+  '.cache',
+  '.venv',
+  'venv',
+  'env',
+]);
+
+function isSkippedPath(path: string): boolean {
+  const segments = path.split('/');
+  return segments.some((seg) => SKIP_TECH_DIRS.has(seg));
+}
 
 export function filterTechFiles(tree: TreeEntry[]): string[] {
+  // Pre-filter: exclude entries inside skipped directories
+  const filtered = tree.filter((e) => !isSkippedPath(e.path));
+
   const paths: string[] = [];
 
-  // Package.json files (root + workspace)
-  const packageJsons = tree
+  // Package.json files (sorted by depth — root first)
+  const packageJsons = filtered
     .filter((e) => e.type === 'blob' && e.path.endsWith('package.json'))
     .map((e) => e.path)
-    .sort((a, b) => a.split('/').length - b.split('/').length)
-    .slice(0, 6); // root + up to 5 workspace packages
+    .sort((a, b) => a.split('/').length - b.split('/').length);
   paths.push(...packageJsons);
 
   // Python manifests
@@ -1035,113 +1055,95 @@ export function filterTechFiles(tree: TreeEntry[]): string[] {
     'setup.py',
     'setup.cfg',
   ]);
-  for (const entry of tree) {
+  for (const entry of filtered) {
     if (entry.type !== 'blob') continue;
     const basename = entry.path.split('/').pop() || '';
-    if (pyManifests.has(basename) && entry.path.split('/').length <= 2) {
+    if (pyManifests.has(basename)) {
       if (!paths.includes(entry.path)) paths.push(entry.path);
     }
   }
 
   // requirements/*.txt
-  const reqTxt = tree
+  const reqTxt = filtered
     .filter((e) => e.type === 'blob' && e.path.match(/^requirements\/.*\.txt$/))
-    .map((e) => e.path)
-    .slice(0, 5);
+    .map((e) => e.path);
   paths.push(...reqTxt);
 
   // Terraform files
-  const tfFiles = tree
+  const tfFiles = filtered
     .filter(
       (e) =>
         e.type === 'blob' &&
         e.path.endsWith('.tf') &&
         e.path.match(/^(terraform\/|infra\/|[^/]+\.tf$)/),
     )
-    .map((e) => e.path)
-    .slice(0, 20);
+    .map((e) => e.path);
   paths.push(...tfFiles);
 
   // CloudFormation templates
-  const cfnFiles = tree
+  const cfnFiles = filtered
     .filter((e) => e.type === 'blob' && isCfnTemplate(e.path))
-    .map((e) => e.path)
-    .slice(0, 10);
+    .map((e) => e.path);
   paths.push(...cfnFiles);
 
-  // Python source files (for boto3 detection — limit to a manageable set)
-  const pyFiles = tree
+  // Python source files (for boto3 detection)
+  const pyFiles = filtered
     .filter((e) => e.type === 'blob' && e.path.endsWith('.py') && (e.size ?? 0) < 100_000)
-    .map((e) => e.path)
-    .slice(0, 15);
+    .map((e) => e.path);
   paths.push(...pyFiles);
 
   // Go modules
-  const goMods = tree
-    .filter((e) => e.type === 'blob' && e.path.endsWith('go.mod') && e.path.split('/').length <= 3)
-    .map((e) => e.path)
-    .slice(0, 3);
+  const goMods = filtered
+    .filter((e) => e.type === 'blob' && e.path.endsWith('go.mod'))
+    .map((e) => e.path);
   paths.push(...goMods);
 
   // Java build files
-  const javaBuild = tree
+  const javaBuild = filtered
     .filter(
       (e) =>
         e.type === 'blob' &&
         (e.path.endsWith('pom.xml') ||
           e.path.endsWith('build.gradle') ||
-          e.path.endsWith('build.gradle.kts')) &&
-        e.path.split('/').length <= 3,
+          e.path.endsWith('build.gradle.kts')),
     )
-    .map((e) => e.path)
-    .slice(0, 5);
+    .map((e) => e.path);
   paths.push(...javaBuild);
 
   // PHP composer.json
-  const composerFiles = tree
-    .filter(
-      (e) => e.type === 'blob' && e.path.endsWith('composer.json') && e.path.split('/').length <= 3,
-    )
-    .map((e) => e.path)
-    .slice(0, 3);
+  const composerFiles = filtered
+    .filter((e) => e.type === 'blob' && e.path.endsWith('composer.json'))
+    .map((e) => e.path);
   paths.push(...composerFiles);
 
   // Rust Cargo.toml
-  const cargoFiles = tree
-    .filter(
-      (e) => e.type === 'blob' && e.path.endsWith('Cargo.toml') && e.path.split('/').length <= 3,
-    )
-    .map((e) => e.path)
-    .slice(0, 3);
+  const cargoFiles = filtered
+    .filter((e) => e.type === 'blob' && e.path.endsWith('Cargo.toml'))
+    .map((e) => e.path);
   paths.push(...cargoFiles);
 
   // Ruby Gemfile
-  const gemfiles = tree
-    .filter((e) => e.type === 'blob' && e.path.endsWith('Gemfile') && e.path.split('/').length <= 3)
-    .map((e) => e.path)
-    .slice(0, 2);
+  const gemfiles = filtered
+    .filter((e) => e.type === 'blob' && e.path.endsWith('Gemfile'))
+    .map((e) => e.path);
   paths.push(...gemfiles);
 
   // Bicep files
-  const bicepFiles = tree
-    .filter((e) => e.type === 'blob' && e.path.endsWith('.bicep') && e.path.split('/').length <= 3)
-    .map((e) => e.path)
-    .slice(0, 5);
+  const bicepFiles = filtered
+    .filter((e) => e.type === 'blob' && e.path.endsWith('.bicep'))
+    .map((e) => e.path);
   paths.push(...bicepFiles);
 
   // ARM template JSON files
-  const armFiles = tree
+  const armFiles = filtered
     .filter(
       (e) =>
         e.type === 'blob' &&
         e.path.match(/\.(json)$/) &&
-        (e.path.includes('arm') || e.path.includes('template') || e.path.includes('azuredeploy')) &&
-        e.path.split('/').length <= 3,
+        (e.path.includes('arm') || e.path.includes('template') || e.path.includes('azuredeploy')),
     )
-    .map((e) => e.path)
-    .slice(0, 5);
+    .map((e) => e.path);
   paths.push(...armFiles);
 
-  // Deduplicate and cap
-  return [...new Set(paths)].slice(0, MAX_TECH_FILES);
+  return [...new Set(paths)];
 }
