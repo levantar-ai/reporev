@@ -6,7 +6,7 @@ describe('trackEvent', () => {
 
   beforeEach(() => {
     gtagSpy = vi.fn();
-    window.gtag = gtagSpy;
+    window.gtag = gtagSpy as unknown as typeof window.gtag;
   });
 
   afterEach(() => {
@@ -41,7 +41,7 @@ describe('trackPageView', () => {
 
   beforeEach(() => {
     gtagSpy = vi.fn();
-    window.gtag = gtagSpy;
+    window.gtag = gtagSpy as unknown as typeof window.gtag;
   });
 
   afterEach(() => {
