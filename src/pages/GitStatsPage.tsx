@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { parseErrorWithTip } from '../utils/humanizeError';
 import { useGitStats } from '../hooks/useGitStats';
 import { GitStatsProgress } from '../components/git-stats/GitStatsProgress';
 import { StatsOverviewCards } from '../components/git-stats/StatsOverviewCards';
@@ -22,6 +23,7 @@ import { FileCoupling } from '../components/git-stats/FileCoupling';
 
 interface Props {
   onBack: () => void;
+  initialRepo?: string | null;
 }
 
 function ChartSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -33,9 +35,17 @@ function ChartSection({ title, children }: { title: string; children: React.Reac
   );
 }
 
-export function GitStatsPage({ onBack }: Props) {
-  const [repoInput, setRepoInput] = useState('');
+export function GitStatsPage({ onBack, initialRepo }: Props) {
+  const [repoInput, setRepoInput] = useState(initialRepo ?? '');
   const { state, analyze, reset } = useGitStats();
+  const didAutoStart = useRef(false);
+
+  useEffect(() => {
+    if (initialRepo && !didAutoStart.current) {
+      didAutoStart.current = true;
+      analyze(initialRepo);
+    }
+  }, [initialRepo, analyze]);
 
   const isLoading = state.step !== 'idle' && state.step !== 'done' && state.step !== 'error';
   const hasResults = state.step === 'done' && state.analysis;
@@ -118,7 +128,9 @@ export function GitStatsPage({ onBack }: Props) {
                 />
               </svg>
               <span>
-                Clones the repository in your browser. No API token needed for public repos.
+                Clones the repository entirely in your browser — no server required. Works with
+                public repos out of the box. Add a GitHub token in Settings for private repos and
+                80&times; higher API limits.
               </span>
             </div>
           </div>
@@ -129,37 +141,62 @@ export function GitStatsPage({ onBack }: Props) {
       {isLoading && <GitStatsProgress state={state} />}
 
       {/* Error */}
-      {state.step === 'error' && state.error && (
-        <div className="max-w-2xl mx-auto mb-8">
-          <div className="px-5 py-4 rounded-xl bg-grade-f/10 border border-grade-f/25 text-sm">
-            <div className="flex items-start gap-3">
-              <svg
-                className="h-5 w-5 text-grade-f shrink-0 mt-0.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <div>
-                <p className="font-medium text-grade-f">Analysis failed</p>
-                <p className="mt-1 text-text-secondary">{state.error}</p>
+      {state.step === 'error' &&
+        state.error &&
+        (() => {
+          const { message: errMsg, tip: errTip } = parseErrorWithTip(state.error);
+          return (
+            <div className="max-w-2xl mx-auto mb-8">
+              <div className="px-5 py-4 rounded-xl bg-grade-f/10 border border-grade-f/25 text-sm">
+                <div className="flex items-start gap-3">
+                  <svg
+                    className="h-5 w-5 text-grade-f shrink-0 mt-0.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <div>
+                    <p className="font-medium text-grade-f">Analysis failed</p>
+                    <p className="mt-1 text-text-secondary">{errMsg}</p>
+                  </div>
+                </div>
+                {errTip && (
+                  <div className="mt-3 flex items-start gap-2 px-1 py-2 rounded-lg bg-surface-alt/50 text-xs text-text-secondary">
+                    <svg
+                      className="h-4 w-4 mt-0.5 shrink-0 text-neon"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                      />
+                    </svg>
+                    <p>
+                      <strong>Tip:</strong> {errTip}
+                    </p>
+                  </div>
+                )}
+                <button
+                  onClick={reset}
+                  className="mt-3 text-sm text-neon hover:text-neon/80 transition-colors"
+                >
+                  Try again
+                </button>
               </div>
             </div>
-            <button
-              onClick={reset}
-              className="mt-3 text-sm text-neon hover:text-neon/80 transition-colors"
-            >
-              Try again
-            </button>
-          </div>
-        </div>
-      )}
+          );
+        })()}
 
       {/* Results */}
       {hasResults && state.analysis && (

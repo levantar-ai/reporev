@@ -39,6 +39,33 @@ export interface DetectedPackage {
   source: string;
 }
 
+export interface DetectedFramework {
+  name: string;
+  version?: string;
+  source: string;
+  via: string;
+}
+
+export interface DetectedDatabase {
+  name: string;
+  version?: string;
+  source: string;
+  via: string;
+}
+
+export interface DetectedCicdTool {
+  name: string;
+  source: string;
+  category: 'ci' | 'container' | 'orchestration' | 'build' | 'iac';
+}
+
+export interface DetectedTestingTool {
+  name: string;
+  source: string;
+  via: string;
+  category: 'testing' | 'e2e' | 'linting' | 'formatting' | 'coverage';
+}
+
 export interface TechDetectResult {
   aws: DetectedAWSService[];
   azure: DetectedAzureService[];
@@ -50,15 +77,19 @@ export interface TechDetectResult {
   php: DetectedPackage[];
   rust: DetectedPackage[];
   ruby: DetectedPackage[];
+  frameworks: DetectedFramework[];
+  databases: DetectedDatabase[];
+  cicd: DetectedCicdTool[];
+  testing: DetectedTestingTool[];
+  languages: Record<string, number>;
   manifestFiles: string[];
   totalFiles: number;
-  scanSource: 'clone' | 'api';
-  cloneError?: string;
 }
 
 export interface TechDetectState {
   step: TechDetectStep;
   progress: number;
+  subProgress: number;
   statusMessage: string;
   result: TechDetectResult | null;
   error: string | null;

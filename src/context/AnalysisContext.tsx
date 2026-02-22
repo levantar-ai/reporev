@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer, useMemo, type ReactNode } from '
 import type { AnalysisState, AnalysisReport, AnalysisStep } from '../types';
 
 type AnalysisAction =
-  | { type: 'SET_STEP'; step: AnalysisStep; progress?: number }
+  | { type: 'SET_STEP'; step: AnalysisStep; progress?: number; subProgress?: number }
   | { type: 'SET_PROGRESS'; progress: number }
   | { type: 'SET_FILES_TOTAL'; total: number }
   | { type: 'INCREMENT_FILES_FETCHED' }
@@ -13,6 +13,7 @@ type AnalysisAction =
 const initialState: AnalysisState = {
   step: 'idle',
   progress: 0,
+  subProgress: 0,
   report: null,
   error: null,
   filesTotal: 0,
@@ -26,6 +27,7 @@ function analysisReducer(state: AnalysisState, action: AnalysisAction): Analysis
         ...state,
         step: action.step,
         progress: action.progress ?? state.progress,
+        subProgress: action.subProgress ?? 0,
         error: null,
       };
     case 'SET_PROGRESS':

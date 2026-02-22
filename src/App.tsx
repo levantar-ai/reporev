@@ -1,10 +1,11 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { AnalysisProvider } from './context/AnalysisContext';
 import { Layout } from './components/layout/Layout';
 import { SettingsPanel } from './components/settings/SettingsPanel';
 import { LoadingScreen } from './components/common/LoadingScreen';
 import { HomePage } from './pages/HomePage';
+import { trackPageView } from './utils/analytics';
 import type { PageId } from './types';
 
 // Lazy-load heavier pages for code splitting
@@ -35,33 +36,59 @@ const TechDetectPage = lazy(() =>
 
 function AppContent() {
   const [page, setPage] = useState<PageId>('home');
+  const [pendingRepo, setPendingRepo] = useState<string | null>(null);
   const { state: appState } = useApp();
   const token = appState.githubToken || '';
 
+  const handleNavigate = useCallback((targetPage: PageId) => {
+    setPendingRepo(null);
+    setPage(targetPage);
+  }, []);
+
+  const handleNavigateWithRepo = useCallback((targetPage: PageId, repo: string) => {
+    setPendingRepo(repo);
+    setPage(targetPage);
+  }, []);
+
+  useEffect(() => {
+    trackPageView(page);
+  }, [page]);
+
   return (
-    <Layout onNavigate={setPage} currentPage={page}>
+    <Layout onNavigate={handleNavigate} currentPage={page}>
       <Suspense fallback={<LoadingScreen />}>
-        {page === 'home' && <HomePage onNavigate={setPage} />}
-        {page === 'docs' && <HowItWorksPage onBack={() => setPage('home')} />}
+        {page === 'home' && <HomePage onNavigate={handleNavigate} initialRepo={pendingRepo} />}
+        {page === 'docs' && <HowItWorksPage onBack={() => handleNavigate('home')} />}
         {page === 'org-scan' && (
           <OrgScanPage
-            onBack={() => setPage('home')}
-            onAnalyze={() => setPage('home')}
+            onBack={() => handleNavigate('home')}
+            onAnalyze={() => handleNavigate('home')}
             githubToken={token}
           />
         )}
-        {page === 'compare' && <ComparePage onBack={() => setPage('home')} githubToken={token} />}
+        {page === 'compare' && (
+          <ComparePage onBack={() => handleNavigate('home')} githubToken={token} />
+        )}
         {page === 'portfolio' && (
           <PortfolioPage
-            onBack={() => setPage('home')}
-            onAnalyze={() => setPage('home')}
+            onBack={() => handleNavigate('home')}
+            onAnalyze={() => handleNavigate('home')}
             githubToken={token}
           />
         )}
-        {page === 'discover' && <DiscoverPage onNavigate={setPage as (page: string) => void} />}
-        {page === 'policy' && <PolicyPage onNavigate={setPage as (page: string) => void} />}
-        {page === 'git-stats' && <GitStatsPage onBack={() => setPage('home')} />}
-        {page === 'tech-detect' && <TechDetectPage onBack={() => setPage('home')} />}
+        {page === 'discover' && (
+          <DiscoverPage
+            onNavigate={handleNavigate as (page: string) => void}
+            onSendToTool={handleNavigateWithRepo}
+          />
+        )}
+        {page === 'policy' && <PolicyPage onNavigate={handleNavigate as (page: string) => void} />}
+        {page === 'git-stats' && (
+          <GitStatsPage onBack={() => handleNavigate('home')} initialRepo={pendingRepo} />
+        )}
+        {page === 'tech-detect' && (
+          <TechDetectPage onBack={() => handleNavigate('home')} initialRepo={pendingRepo} />
+        )}
       </Suspense>
     </Layout>
   );

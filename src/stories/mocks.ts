@@ -546,9 +546,31 @@ export function makeTechDetectResult(overrides?: Partial<TechDetectResult>): Tec
     php: [],
     rust: [],
     ruby: [],
+    frameworks: [
+      { name: 'React', version: '^18.2.0', source: 'package.json', via: 'package.json' },
+      { name: 'Express', version: '^4.18.2', source: 'package.json', via: 'package.json' },
+      { name: 'Tailwind CSS', version: '^3.4.0', source: 'package.json', via: 'package.json' },
+    ],
+    databases: [
+      { name: 'PostgreSQL', version: '^8.11.0', source: 'package.json', via: 'npm' },
+      { name: 'Redis', version: '^4.6.0', source: 'package.json', via: 'npm' },
+    ],
+    cicd: [
+      { name: 'GitHub Actions', source: '.github/workflows/ci.yml', category: 'ci' },
+      { name: 'Docker', source: 'Dockerfile', category: 'container' },
+      { name: 'Docker Compose', source: 'docker-compose.yml', category: 'container' },
+      { name: 'Make', source: 'Makefile', category: 'build' },
+    ],
+    testing: [
+      { name: 'Vitest', source: 'package.json', via: 'npm', category: 'testing' },
+      { name: 'Testing Library', source: 'package.json', via: 'npm', category: 'testing' },
+      { name: 'Storybook', source: 'package.json', via: 'npm', category: 'testing' },
+      { name: 'ESLint', source: 'package.json', via: 'npm', category: 'linting' },
+      { name: 'Prettier', source: 'package.json', via: 'npm', category: 'formatting' },
+    ],
+    languages: { TypeScript: 28, JavaScript: 6, CSS: 4, JSON: 3, Markdown: 1 },
     manifestFiles: ['package.json', 'tsconfig.json', 'Dockerfile'],
     totalFiles: 42,
-    scanSource: 'clone' as const,
     ...overrides,
   };
 }

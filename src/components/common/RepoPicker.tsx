@@ -56,7 +56,8 @@ export function RepoPicker({ onSelect, disabled }: Props) {
           </svg>
           <span className="text-text-muted">
             Add a GitHub token in <strong className="text-text-secondary">Settings</strong> (gear
-            icon) to browse your repositories and scan private repos.{' '}
+            icon) to browse your repos, unlock private repo access, and get 80&times; higher API
+            rate limits.{' '}
             <a
               href="https://github.com/settings/personal-access-tokens/new"
               target="_blank"

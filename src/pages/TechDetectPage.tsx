@@ -1,10 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { parseErrorWithTip } from '../utils/humanizeError';
 import { useTechDetect } from '../hooks/useTechDetect';
 import { TechDetectResults } from '../components/tech-detect/TechDetectResults';
 import { RepoPicker } from '../components/common/RepoPicker';
 
 interface Props {
   onBack: () => void;
+  initialRepo?: string | null;
 }
 
 const STEP_LABELS: Record<string, string> = {
@@ -13,9 +15,17 @@ const STEP_LABELS: Record<string, string> = {
   analyzing: 'Analyzing Technologies',
 };
 
-export function TechDetectPage({ onBack }: Props) {
-  const [repoInput, setRepoInput] = useState('');
+export function TechDetectPage({ onBack, initialRepo }: Props) {
+  const [repoInput, setRepoInput] = useState(initialRepo ?? '');
   const { state, analyze, reset } = useTechDetect();
+  const didAutoStart = useRef(false);
+
+  useEffect(() => {
+    if (initialRepo && !didAutoStart.current) {
+      didAutoStart.current = true;
+      analyze(initialRepo);
+    }
+  }, [initialRepo, analyze]);
 
   const isLoading = state.step !== 'idle' && state.step !== 'done' && state.step !== 'error';
   const hasResults = state.step === 'done' && state.result;
@@ -53,8 +63,8 @@ export function TechDetectPage({ onBack }: Props) {
           Tech <span className="text-neon neon-text">Detection</span>
         </h1>
         <p className="mt-4 text-lg text-text-secondary max-w-2xl mx-auto leading-relaxed">
-          Scan a repository to detect cloud services, language dependencies, and
-          infrastructure-as-code.
+          Scan any repository to detect frameworks, databases, cloud services, CI/CD pipelines,
+          testing tools, and language dependencies — all from manifest files and config.
         </p>
       </div>
 
@@ -100,8 +110,9 @@ export function TechDetectPage({ onBack }: Props) {
                 />
               </svg>
               <span>
-                Detects AWS, Azure, and GCP cloud services plus Node, Python, Go, Java, PHP, Rust,
-                and Ruby dependencies from manifests and infrastructure-as-code.
+                Detects frameworks, databases, CI/CD tools, testing tools, and cloud services (AWS,
+                Azure, GCP) across Node, Python, Go, Java, PHP, Rust, and Ruby ecosystems. Works
+                with public repos; add a token for private repos.
               </span>
             </div>
           </div>
@@ -111,9 +122,25 @@ export function TechDetectPage({ onBack }: Props) {
       {/* Progress */}
       {isLoading && (
         <div className="max-w-2xl mx-auto mb-12">
-          <div className="flex items-center justify-between text-sm mb-3">
+          {/* Overall progress */}
+          <div className="flex items-center justify-between text-sm mb-2">
+            <span className="font-medium text-text">Overall Progress</span>
+            <span className="text-neon font-bold tabular-nums">{Math.round(state.progress)}%</span>
+          </div>
+          <div className="h-3 bg-surface-alt rounded-full overflow-hidden border border-border">
+            <div
+              className="h-full bg-gradient-to-r from-primary-500 to-neon rounded-full transition-all duration-300 ease-out"
+              style={{
+                width: `${state.progress}%`,
+                boxShadow: '0 0 12px rgba(56, 189, 248, 0.4)',
+              }}
+            />
+          </div>
+
+          {/* Sub-task progress */}
+          <div className="flex items-center justify-between text-xs text-text-secondary mt-3 mb-1.5">
             <div className="flex items-center gap-2">
-              <svg className="h-4 w-4 text-neon animate-spin" viewBox="0 0 24 24" fill="none">
+              <svg className="h-3.5 w-3.5 text-neon animate-spin" viewBox="0 0 24 24" fill="none">
                 <circle
                   className="opacity-25"
                   cx="12"
@@ -128,55 +155,78 @@ export function TechDetectPage({ onBack }: Props) {
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                 />
               </svg>
-              <span className="font-medium text-text">{STEP_LABELS[state.step] || state.step}</span>
+              <span>{STEP_LABELS[state.step] || state.step}</span>
             </div>
-            <span className="text-neon font-bold tabular-nums">{Math.round(state.progress)}%</span>
+            <span className="tabular-nums">{Math.round(state.subProgress)}%</span>
           </div>
-          <div className="h-3 bg-surface-alt rounded-full overflow-hidden border border-border">
+          <div className="h-1.5 bg-surface-alt rounded-full overflow-hidden border border-border/50">
             <div
-              className="h-full bg-gradient-to-r from-primary-500 to-neon rounded-full transition-all duration-300 ease-out"
-              style={{
-                width: `${state.progress}%`,
-                boxShadow: '0 0 12px rgba(56, 189, 248, 0.4)',
-              }}
+              className="h-full bg-neon/60 rounded-full transition-all duration-200 ease-out"
+              style={{ width: `${state.subProgress}%` }}
             />
           </div>
+
           <p className="text-sm text-text-secondary mt-2">{state.statusMessage}</p>
         </div>
       )}
 
       {/* Error */}
-      {state.step === 'error' && state.error && (
-        <div className="max-w-2xl mx-auto mb-8">
-          <div className="px-5 py-4 rounded-xl bg-grade-f/10 border border-grade-f/25 text-sm">
-            <div className="flex items-start gap-3">
-              <svg
-                className="h-5 w-5 text-grade-f shrink-0 mt-0.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <div>
-                <p className="font-medium text-grade-f">Scan failed</p>
-                <p className="mt-1 text-text-secondary">{state.error}</p>
+      {state.step === 'error' &&
+        state.error &&
+        (() => {
+          const { message: errMsg, tip: errTip } = parseErrorWithTip(state.error);
+          return (
+            <div className="max-w-2xl mx-auto mb-8">
+              <div className="px-5 py-4 rounded-xl bg-grade-f/10 border border-grade-f/25 text-sm">
+                <div className="flex items-start gap-3">
+                  <svg
+                    className="h-5 w-5 text-grade-f shrink-0 mt-0.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <div>
+                    <p className="font-medium text-grade-f">Scan failed</p>
+                    <p className="mt-1 text-text-secondary">{errMsg}</p>
+                  </div>
+                </div>
+                {errTip && (
+                  <div className="mt-3 flex items-start gap-2 px-1 py-2 rounded-lg bg-surface-alt/50 text-xs text-text-secondary">
+                    <svg
+                      className="h-4 w-4 mt-0.5 shrink-0 text-neon"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                      />
+                    </svg>
+                    <p>
+                      <strong>Tip:</strong> {errTip}
+                    </p>
+                  </div>
+                )}
+                <button
+                  onClick={reset}
+                  className="mt-3 text-sm text-neon hover:text-neon/80 transition-colors"
+                >
+                  Try again
+                </button>
               </div>
             </div>
-            <button
-              onClick={reset}
-              className="mt-3 text-sm text-neon hover:text-neon/80 transition-colors"
-            >
-              Try again
-            </button>
-          </div>
-        </div>
-      )}
+          );
+        })()}
 
       {/* Results */}
       {hasResults && state.result && (
@@ -221,8 +271,8 @@ export function TechDetectPage({ onBack }: Props) {
           </div>
           <h3 className="text-lg font-semibold text-text mb-2">Detect Technologies</h3>
           <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed">
-            Enter a repository to scan for AWS services, Python packages, infrastructure-as-code,
-            and SDK usage.
+            Enter a repository to detect its full tech stack — frameworks, databases, cloud
+            services, CI/CD, testing tools, and more.
           </p>
         </div>
       )}

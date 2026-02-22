@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { PageId } from '../types';
 import { useApp } from '../context/AppContext';
 import { useAnalysis } from '../hooks/useAnalysis';
@@ -11,11 +12,20 @@ import { ReportCard } from '../components/report/ReportCard';
 
 interface Props {
   onNavigate: (page: PageId) => void;
+  initialRepo?: string | null;
 }
 
-export function HomePage({ onNavigate }: Props) {
+export function HomePage({ onNavigate, initialRepo }: Props) {
   const { state: appState } = useApp();
   const { state, analyze, reset } = useAnalysis();
+  const didAutoStart = useRef(false);
+
+  useEffect(() => {
+    if (initialRepo && !didAutoStart.current) {
+      didAutoStart.current = true;
+      analyze(initialRepo);
+    }
+  }, [initialRepo, analyze]);
 
   const isLoading = state.step !== 'idle' && state.step !== 'done' && state.step !== 'error';
 
@@ -39,8 +49,9 @@ export function HomePage({ onNavigate }: Props) {
           <span className="text-neon neon-text">Report Card</span>
         </h1>
         <p className="mt-5 text-lg sm:text-xl text-text-secondary max-w-2xl mx-auto leading-relaxed">
-          Analyze any public GitHub repo for security, documentation, CI/CD, dependencies, and more.
-          Get a letter grade instantly — all in your browser.
+          Analyze any GitHub repository — public or private with a token — for security,
+          documentation, CI/CD, dependencies, and more. Instant letter grades, entirely in your
+          browser.
         </p>
         <button
           onClick={() => onNavigate('docs')}
@@ -86,6 +97,7 @@ export function HomePage({ onNavigate }: Props) {
         <ProgressBar
           step={state.step}
           progress={progress}
+          subProgress={state.subProgress}
           filesFetched={state.filesFetched}
           filesTotal={state.filesTotal}
         />

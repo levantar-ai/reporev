@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import type { AppSettings } from '../../types';
 import { saveGithubToken, clearGithubToken } from '../../services/persistence/credentials';
+import { trackEvent } from '../../utils/analytics';
 
 function GitHubTokenField() {
   const { state, dispatch } = useApp();
@@ -11,12 +12,14 @@ function GitHubTokenField() {
     if (!state.githubToken) return;
     const ok = await saveGithubToken(state.githubToken);
     setSaveStatus(ok ? 'saved' : 'unsupported');
+    if (ok) trackEvent('token_added');
     setTimeout(() => setSaveStatus('idle'), 3000);
   };
 
   const handleClear = async () => {
     dispatch({ type: 'SET_GITHUB_TOKEN', token: '' });
     await clearGithubToken();
+    trackEvent('token_removed');
   };
 
   return (

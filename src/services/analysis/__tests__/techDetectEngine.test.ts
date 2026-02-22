@@ -10,6 +10,10 @@ import {
   detectPHP,
   detectRust,
   detectRuby,
+  detectFrameworks,
+  detectDatabases,
+  detectCicd,
+  detectTesting,
   filterTechFiles,
 } from '../techDetectEngine';
 import type { TreeEntry } from '../../../types';
@@ -1163,5 +1167,453 @@ pytest = "*"
     expect(result.length).toBeGreaterThanOrEqual(2);
     expect(result.some((r) => r.name === 'requests')).toBe(true);
     expect(result.some((r) => r.name === 'flask')).toBe(true);
+  });
+});
+
+// ── Framework Detection ──
+
+describe('detectFrameworks', () => {
+  it('detects JS frameworks from package.json', () => {
+    const files = [
+      {
+        path: 'package.json',
+        content: JSON.stringify({
+          dependencies: {
+            react: '^18.0.0',
+            'react-dom': '^18.0.0',
+            next: '^14.0.0',
+            express: '^4.18.0',
+          },
+        }),
+      },
+    ];
+    const result = detectFrameworks(files);
+    expect(result.map((r) => r.name)).toContain('React');
+    expect(result.map((r) => r.name)).toContain('Next.js');
+    expect(result.map((r) => r.name)).toContain('Express');
+  });
+
+  it('deduplicates frameworks (react + react-dom = 1 React)', () => {
+    const files = [
+      {
+        path: 'package.json',
+        content: JSON.stringify({
+          dependencies: { react: '^18.0.0', 'react-dom': '^18.0.0' },
+        }),
+      },
+    ];
+    const result = detectFrameworks(files);
+    const reactCount = result.filter((r) => r.name === 'React').length;
+    expect(reactCount).toBe(1);
+  });
+
+  it('detects Python frameworks from requirements.txt', () => {
+    const files = [
+      {
+        path: 'requirements.txt',
+        content: 'django>=4.0\ncelery>=5.0\nrequests>=2.28\n',
+      },
+    ];
+    const result = detectFrameworks(files);
+    expect(result.map((r) => r.name)).toContain('Django');
+    expect(result.map((r) => r.name)).toContain('Celery');
+    // requests is not a framework
+    expect(result.map((r) => r.name)).not.toContain('Requests');
+  });
+
+  it('detects Ruby frameworks from Gemfile', () => {
+    const files = [
+      {
+        path: 'Gemfile',
+        content: 'source "https://rubygems.org"\ngem "rails", "~> 7.0"\ngem "puma"\n',
+      },
+    ];
+    const result = detectFrameworks(files);
+    expect(result.map((r) => r.name)).toContain('Rails');
+    // puma is not a framework
+    expect(result.map((r) => r.name)).not.toContain('Puma');
+  });
+
+  it('detects Go frameworks from go.mod', () => {
+    const files = [
+      {
+        path: 'go.mod',
+        content:
+          'module example.com/app\n\ngo 1.21\n\nrequire (\n\tgithub.com/gin-gonic/gin v1.9.1\n)\n',
+      },
+    ];
+    const result = detectFrameworks(files);
+    expect(result.map((r) => r.name)).toContain('Gin');
+  });
+
+  it('detects Rust frameworks from Cargo.toml', () => {
+    const files = [
+      {
+        path: 'Cargo.toml',
+        content: '[package]\nname = "myapp"\n\n[dependencies]\nactix-web = "4"\nserde = "1"\n',
+      },
+    ];
+    const result = detectFrameworks(files);
+    expect(result.map((r) => r.name)).toContain('Actix Web');
+    // serde is not a framework
+    expect(result.map((r) => r.name)).not.toContain('Serde');
+  });
+
+  it('detects PHP frameworks from composer.json', () => {
+    const files = [
+      {
+        path: 'composer.json',
+        content: JSON.stringify({
+          require: { 'laravel/framework': '^10.0' },
+        }),
+      },
+    ];
+    const result = detectFrameworks(files);
+    expect(result.map((r) => r.name)).toContain('Laravel');
+  });
+
+  it('returns empty for no matches', () => {
+    const files = [{ path: 'package.json', content: '{"dependencies":{"lodash":"^4.0.0"}}' }];
+    expect(detectFrameworks(files)).toHaveLength(0);
+  });
+
+  it('handles invalid JSON gracefully', () => {
+    const files = [{ path: 'package.json', content: 'broken' }];
+    expect(detectFrameworks(files)).toHaveLength(0);
+  });
+});
+
+// ── Database Detection ──
+
+describe('detectDatabases', () => {
+  it('detects JS database packages from package.json', () => {
+    const files = [
+      {
+        path: 'package.json',
+        content: JSON.stringify({
+          dependencies: { pg: '^8.11.0', redis: '^4.6.0', mongoose: '^7.0.0' },
+        }),
+      },
+    ];
+    const result = detectDatabases(files);
+    expect(result.map((r) => r.name)).toContain('PostgreSQL');
+    expect(result.map((r) => r.name)).toContain('Redis');
+    expect(result.map((r) => r.name)).toContain('MongoDB');
+  });
+
+  it('detects Python database packages from requirements.txt', () => {
+    const files = [
+      {
+        path: 'requirements.txt',
+        content: 'psycopg2-binary>=2.9\nsqlalchemy>=2.0\n',
+      },
+    ];
+    const result = detectDatabases(files);
+    expect(result.map((r) => r.name)).toContain('PostgreSQL');
+    expect(result.map((r) => r.name)).toContain('SQLAlchemy');
+  });
+
+  it('detects Go database packages from go.mod', () => {
+    const files = [
+      {
+        path: 'go.mod',
+        content:
+          'module app\n\nrequire (\n\tgithub.com/jackc/pgx/v5 v5.0.0\n\tgorm.io/gorm v1.25.0\n)\n',
+      },
+    ];
+    const result = detectDatabases(files);
+    expect(result.map((r) => r.name)).toContain('PostgreSQL');
+    expect(result.map((r) => r.name)).toContain('GORM');
+  });
+
+  it('detects Rust database crates from Cargo.toml', () => {
+    const files = [
+      {
+        path: 'Cargo.toml',
+        content:
+          '[dependencies]\ndiesel = { version = "2.1", features = ["postgres"] }\nredis = "0.23"\n',
+      },
+    ];
+    const result = detectDatabases(files);
+    expect(result.map((r) => r.name)).toContain('Diesel');
+    expect(result.map((r) => r.name)).toContain('Redis');
+  });
+
+  it('deduplicates databases (pg + pg-pool = 1 PostgreSQL)', () => {
+    const files = [
+      {
+        path: 'package.json',
+        content: JSON.stringify({
+          dependencies: { pg: '^8.0.0', 'pg-pool': '^3.0.0' },
+        }),
+      },
+    ];
+    const result = detectDatabases(files);
+    const pgCount = result.filter((r) => r.name === 'PostgreSQL').length;
+    expect(pgCount).toBe(1);
+  });
+
+  it('returns empty for no database packages', () => {
+    const files = [
+      { path: 'package.json', content: JSON.stringify({ dependencies: { react: '^18.0.0' } }) },
+    ];
+    expect(detectDatabases(files)).toHaveLength(0);
+  });
+
+  it('detects Ruby database gems from Gemfile', () => {
+    const files = [
+      {
+        path: 'Gemfile',
+        content: 'gem "pg"\ngem "redis"\n',
+      },
+    ];
+    const result = detectDatabases(files);
+    expect(result.map((r) => r.name)).toContain('PostgreSQL');
+    expect(result.map((r) => r.name)).toContain('Redis');
+  });
+
+  it('detects PHP database packages from composer.json', () => {
+    const files = [
+      {
+        path: 'composer.json',
+        content: JSON.stringify({
+          require: { 'doctrine/orm': '^2.0', 'predis/predis': '^2.0' },
+        }),
+      },
+    ];
+    const result = detectDatabases(files);
+    expect(result.map((r) => r.name)).toContain('Doctrine');
+    expect(result.map((r) => r.name)).toContain('Redis');
+  });
+});
+
+// ── CI/CD Detection ──
+
+describe('detectCicd', () => {
+  it('detects GitHub Actions from workflow files', () => {
+    const files = [{ path: '.github/workflows/ci.yml', content: 'name: CI\non: push\n' }];
+    const result = detectCicd(files);
+    expect(result.map((r) => r.name)).toContain('GitHub Actions');
+    expect(result.find((r) => r.name === 'GitHub Actions')?.category).toBe('ci');
+  });
+
+  it('detects Docker from Dockerfile', () => {
+    const files = [{ path: 'Dockerfile', content: 'FROM node:18\n' }];
+    const result = detectCicd(files);
+    expect(result.map((r) => r.name)).toContain('Docker');
+    expect(result.find((r) => r.name === 'Docker')?.category).toBe('container');
+  });
+
+  it('detects Docker Compose', () => {
+    const files = [{ path: 'docker-compose.yml', content: 'version: "3"\n' }];
+    const result = detectCicd(files);
+    expect(result.map((r) => r.name)).toContain('Docker Compose');
+  });
+
+  it('detects Kubernetes manifests', () => {
+    const files = [{ path: 'kubernetes/deployment.yaml', content: 'apiVersion: apps/v1\n' }];
+    const result = detectCicd(files);
+    expect(result.map((r) => r.name)).toContain('Kubernetes');
+    expect(result.find((r) => r.name === 'Kubernetes')?.category).toBe('orchestration');
+  });
+
+  it('detects Helm charts', () => {
+    const files = [{ path: 'Chart.yaml', content: 'apiVersion: v2\n' }];
+    const result = detectCicd(files);
+    expect(result.map((r) => r.name)).toContain('Helm');
+  });
+
+  it('detects Makefile', () => {
+    const files = [{ path: 'Makefile', content: 'build:\n\tgo build\n' }];
+    const result = detectCicd(files);
+    expect(result.map((r) => r.name)).toContain('Make');
+    expect(result.find((r) => r.name === 'Make')?.category).toBe('build');
+  });
+
+  it('detects GitLab CI', () => {
+    const files = [{ path: '.gitlab-ci.yml', content: 'stages:\n  - build\n' }];
+    const result = detectCicd(files);
+    expect(result.map((r) => r.name)).toContain('GitLab CI');
+  });
+
+  it('detects Jenkins', () => {
+    const files = [{ path: 'Jenkinsfile', content: 'pipeline { agent any }' }];
+    const result = detectCicd(files);
+    expect(result.map((r) => r.name)).toContain('Jenkins');
+  });
+
+  it('detects Pulumi', () => {
+    const files = [{ path: 'pulumi.yaml', content: 'name: my-project\n' }];
+    const result = detectCicd(files);
+    expect(result.map((r) => r.name)).toContain('Pulumi');
+    expect(result.find((r) => r.name === 'Pulumi')?.category).toBe('iac');
+  });
+
+  it('deduplicates tools (multiple workflow files = 1 GitHub Actions)', () => {
+    const files = [
+      { path: '.github/workflows/ci.yml', content: '' },
+      { path: '.github/workflows/deploy.yml', content: '' },
+    ];
+    const result = detectCicd(files);
+    const ghCount = result.filter((r) => r.name === 'GitHub Actions').length;
+    expect(ghCount).toBe(1);
+  });
+
+  it('returns empty for no CI/CD files', () => {
+    const files = [{ path: 'package.json', content: '{}' }];
+    expect(detectCicd(files)).toHaveLength(0);
+  });
+
+  it('detects multiple CI/CD tools simultaneously', () => {
+    const files = [
+      { path: '.github/workflows/ci.yml', content: '' },
+      { path: 'Dockerfile', content: '' },
+      { path: 'Makefile', content: '' },
+    ];
+    const result = detectCicd(files);
+    expect(result.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+// ── Testing & Quality Detection ──
+
+describe('detectTesting', () => {
+  it('detects JS testing packages from package.json', () => {
+    const files = [
+      {
+        path: 'package.json',
+        content: JSON.stringify({
+          devDependencies: {
+            vitest: '^1.0.0',
+            eslint: '^8.0.0',
+            prettier: '^3.0.0',
+            '@playwright/test': '^1.40.0',
+          },
+        }),
+      },
+    ];
+    const result = detectTesting(files);
+    expect(result.map((r) => r.name)).toContain('Vitest');
+    expect(result.map((r) => r.name)).toContain('ESLint');
+    expect(result.map((r) => r.name)).toContain('Prettier');
+    expect(result.map((r) => r.name)).toContain('Playwright');
+  });
+
+  it('assigns correct categories', () => {
+    const files = [
+      {
+        path: 'package.json',
+        content: JSON.stringify({
+          devDependencies: {
+            vitest: '^1.0.0',
+            eslint: '^8.0.0',
+            prettier: '^3.0.0',
+            cypress: '^13.0.0',
+            nyc: '^15.0.0',
+          },
+        }),
+      },
+    ];
+    const result = detectTesting(files);
+    expect(result.find((r) => r.name === 'Vitest')?.category).toBe('testing');
+    expect(result.find((r) => r.name === 'ESLint')?.category).toBe('linting');
+    expect(result.find((r) => r.name === 'Prettier')?.category).toBe('formatting');
+    expect(result.find((r) => r.name === 'Cypress')?.category).toBe('e2e');
+    expect(result.find((r) => r.name === 'NYC')?.category).toBe('coverage');
+  });
+
+  it('detects tools from config files', () => {
+    const files = [
+      { path: '.eslintrc.json', content: '{}' },
+      { path: 'vitest.config.ts', content: 'export default {}' },
+      { path: '.prettierrc', content: '{}' },
+    ];
+    const result = detectTesting(files);
+    expect(result.map((r) => r.name)).toContain('ESLint');
+    expect(result.map((r) => r.name)).toContain('Vitest');
+    expect(result.map((r) => r.name)).toContain('Prettier');
+  });
+
+  it('detects Python testing tools from requirements.txt', () => {
+    const files = [
+      {
+        path: 'requirements.txt',
+        content: 'pytest>=7.0\nruff>=0.1.0\nblack>=23.0\nmypy>=1.0\n',
+      },
+    ];
+    const result = detectTesting(files);
+    expect(result.map((r) => r.name)).toContain('pytest');
+    expect(result.map((r) => r.name)).toContain('Ruff');
+    expect(result.map((r) => r.name)).toContain('Black');
+    expect(result.map((r) => r.name)).toContain('mypy');
+  });
+
+  it('detects Ruby testing tools from Gemfile', () => {
+    const files = [
+      {
+        path: 'Gemfile',
+        content: 'gem "rspec-rails"\ngem "rubocop"\ngem "simplecov"\n',
+      },
+    ];
+    const result = detectTesting(files);
+    expect(result.map((r) => r.name)).toContain('RSpec');
+    expect(result.map((r) => r.name)).toContain('RuboCop');
+    expect(result.map((r) => r.name)).toContain('SimpleCov');
+  });
+
+  it('detects Go testing tools from go.mod', () => {
+    const files = [
+      {
+        path: 'go.mod',
+        content: 'module app\n\nrequire (\n\tgithub.com/stretchr/testify v1.8.4\n)\n',
+      },
+    ];
+    const result = detectTesting(files);
+    expect(result.map((r) => r.name)).toContain('Testify');
+  });
+
+  it('deduplicates tools (npm + config file = 1 entry)', () => {
+    const files = [
+      {
+        path: 'package.json',
+        content: JSON.stringify({ devDependencies: { eslint: '^8.0.0' } }),
+      },
+      { path: '.eslintrc.json', content: '{}' },
+    ];
+    const result = detectTesting(files);
+    const eslintCount = result.filter((r) => r.name === 'ESLint').length;
+    expect(eslintCount).toBe(1);
+  });
+
+  it('returns empty for no testing tools', () => {
+    const files = [
+      { path: 'package.json', content: JSON.stringify({ dependencies: { react: '^18.0.0' } }) },
+    ];
+    expect(detectTesting(files)).toHaveLength(0);
+  });
+
+  it('detects Storybook from .storybook directory', () => {
+    const files = [{ path: '.storybook/main.ts', content: 'export default {}' }];
+    const result = detectTesting(files);
+    expect(result.map((r) => r.name)).toContain('Storybook');
+  });
+
+  it('detects Husky from .husky directory', () => {
+    const files = [{ path: '.husky/pre-commit', content: 'npm test' }];
+    const result = detectTesting(files);
+    expect(result.map((r) => r.name)).toContain('Husky');
+  });
+
+  it('detects Java testing tools from pom.xml', () => {
+    const files = [
+      {
+        path: 'pom.xml',
+        content:
+          '<dependency><artifactId>junit-jupiter</artifactId></dependency><dependency><artifactId>mockito-core</artifactId></dependency>',
+      },
+    ];
+    const result = detectTesting(files);
+    expect(result.map((r) => r.name)).toContain('JUnit 5');
+    expect(result.map((r) => r.name)).toContain('Mockito');
   });
 });

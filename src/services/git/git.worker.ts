@@ -22,12 +22,14 @@ export interface CloneMessage {
   corsProxy: string;
   token?: string;
   includeStats?: boolean;
+  depth?: number;
 }
 
 export interface ProgressMessage {
   type: 'progress';
   step: string;
   percent: number;
+  subPercent: number;
   message: string;
 }
 
@@ -91,13 +93,43 @@ interface HeadWalkResult {
   files: CacheFileContent[];
 }
 
-const BLOB_BATCH_SIZE = 50;
+type WalkProgressFn = (percent: number, message: string) => void;
 
-async function walkHead(fs: InstanceType<typeof LightningFS>): Promise<HeadWalkResult> {
+async function walkHead(
+  fs: InstanceType<typeof LightningFS>,
+  onProgress?: WalkProgressFn,
+): Promise<HeadWalkResult> {
   const headOid = await git.resolveRef({ fs, dir: DIR, ref: 'HEAD' });
 
-  // Pass 1: Collect file paths + OIDs (no content reads — fast tree traversal)
-  const fileEntries: { path: string; oid: string }[] = [];
+  // Quick count pass — type checks only, no content reads
+  onProgress?.(0, 'Scanning file tree...');
+  let totalFiles = 0;
+
+  await git.walk({
+    fs,
+    dir: DIR,
+    trees: [git.TREE({ ref: headOid })],
+    map: async (filepath, entries) => {
+      if (!entries || filepath === '.') return;
+      const segments = filepath.split('/');
+      if (segments.some((seg) => SKIP_DIRS.has(seg))) return null;
+      const [entry] = entries;
+      if (!entry) return;
+      const type = await entry.type();
+      if (type === 'blob') totalFiles++;
+    },
+  });
+
+  onProgress?.(5, `Found ${totalFiles} files, reading contents...`);
+
+  // Content pass — reads blobs inline via entry.content() (pack-aware, fast)
+  const fileList: string[] = [];
+  let totalLinesOfCode = 0;
+  let binaryFileCount = 0;
+  const tree: CacheTreeEntry[] = [];
+  const files: CacheFileContent[] = [];
+  const decoder = new TextDecoder();
+  let filesRead = 0;
 
   await git.walk({
     fs,
@@ -117,55 +149,51 @@ async function walkHead(fs: InstanceType<typeof LightningFS>): Promise<HeadWalkR
       // Skip directory tree entries during walk — synthesize from file paths after
       if (type !== 'blob') return;
 
-      const oid = await entry.oid();
-      if (oid) fileEntries.push({ path: filepath, oid });
+      fileList.push(filepath);
+      filesRead++;
+
+      try {
+        const content = await entry.content();
+        if (!content) return;
+
+        const locResult = countLinesOfCode(content);
+        if (locResult.binary) {
+          binaryFileCount++;
+          tree.push({
+            path: filepath,
+            mode: '100644',
+            type: 'blob',
+            sha: '',
+            size: content.length,
+          });
+        } else {
+          totalLinesOfCode += locResult.lines;
+          tree.push({
+            path: filepath,
+            mode: '100644',
+            type: 'blob',
+            sha: '',
+            size: content.length,
+          });
+
+          // Capture text file contents for cache (skip large files)
+          if (content.length <= MAX_TEXT_FILE_SIZE) {
+            files.push({ path: filepath, content: decoder.decode(content), size: content.length });
+          }
+        }
+      } catch {
+        tree.push({ path: filepath, mode: '100644', type: 'blob', sha: '', size: 0 });
+      }
+
+      // Report progress every 20 files
+      if (filesRead % 20 === 0 || filesRead === totalFiles) {
+        const pct = 5 + Math.round((filesRead / totalFiles) * 90);
+        onProgress?.(pct, `Reading files... ${filesRead}/${totalFiles}`);
+      }
     },
   });
 
-  // Pass 2: Read blob contents in parallel batches
-  const fileList: string[] = [];
-  let totalLinesOfCode = 0;
-  let binaryFileCount = 0;
-  const tree: CacheTreeEntry[] = [];
-  const files: CacheFileContent[] = [];
-  const decoder = new TextDecoder();
-
-  for (let i = 0; i < fileEntries.length; i += BLOB_BATCH_SIZE) {
-    const batch = fileEntries.slice(i, i + BLOB_BATCH_SIZE);
-    const results = await Promise.all(
-      batch.map(async ({ path, oid }) => {
-        try {
-          const { blob } = await git.readBlob({ fs, dir: DIR, oid });
-          return { path, content: blob };
-        } catch {
-          return { path, content: null as Uint8Array | null };
-        }
-      }),
-    );
-
-    for (const { path, content } of results) {
-      fileList.push(path);
-
-      if (!content) {
-        tree.push({ path, mode: '100644', type: 'blob', sha: '', size: 0 });
-        continue;
-      }
-
-      const locResult = countLinesOfCode(content);
-      if (locResult.binary) {
-        binaryFileCount++;
-        tree.push({ path, mode: '100644', type: 'blob', sha: '', size: content.length });
-      } else {
-        totalLinesOfCode += locResult.lines;
-        tree.push({ path, mode: '100644', type: 'blob', sha: '', size: content.length });
-
-        // Capture text file contents for cache (skip large files)
-        if (content.length <= MAX_TEXT_FILE_SIZE) {
-          files.push({ path, content: decoder.decode(content), size: content.length });
-        }
-      }
-    }
-  }
+  onProgress?.(98, `${totalLinesOfCode.toLocaleString()} LOC across ${files.length} files`);
 
   // Synthesize directory tree entries from file paths
   const dirSet = new Set<string>();
@@ -189,46 +217,60 @@ self.onmessage = async (e: MessageEvent<CloneMessage>) => {
 };
 
 async function handleClone(msg: CloneMessage) {
-  const { owner, repo, corsProxy, token, includeStats } = msg;
+  const { owner, repo, corsProxy, token, includeStats, depth: cloneDepth } = msg;
 
   try {
     const fs = new LightningFS('repoguru-clone', { wipe: true });
     const url = `https://github.com/${owner}/${repo}.git`;
 
+    // Progress ranges: walkHead gets a big chunk when it's the last phase,
+    // a smaller chunk when commit analysis follows
+    const CLONE_END = 30;
+    const WALK_END = includeStats ? 50 : 95;
+
     // Phase 1: Clone + walkHead (all callers)
-    postProgress('cloning', 0, 'Cloning repository...');
+    highWaterMark = 0;
+    postProgress('cloning', 0, 0, 'Cloning repository...');
+
+    const depth = cloneDepth ?? (includeStats ? 1000 : 1);
 
     await git.clone({
       fs,
       http,
       dir: DIR,
       url,
-      depth: 1000,
+      depth,
       singleBranch: true,
       noCheckout: true,
       noTags: true,
       corsProxy,
       ...(token ? { onAuth: () => ({ username: 'x-access-token', password: token }) } : {}),
       onProgress: (progress) => {
-        let percent = 0;
+        let subPct = 0;
         if (progress.total && progress.total > 0) {
-          percent = Math.round((progress.loaded / progress.total) * 40);
+          subPct = Math.round((progress.loaded / progress.total) * 100);
         } else if (progress.loaded) {
-          percent = Math.min(38, Math.round(progress.loaded / 100000));
+          subPct = Math.min(98, Math.round(progress.loaded / 100000));
         }
+        // Map to overall 0→CLONE_END; high-water mark prevents regression across phases
+        const overall = Math.round((subPct / 100) * CLONE_END);
         const phase = progress.phase || 'Downloading';
-        postProgress('cloning', percent, `${phase}... ${formatBytes(progress.loaded)}`);
+        postProgress('cloning', overall, subPct, `${phase}... ${formatBytes(progress.loaded)}`);
       },
     });
 
-    postProgress('cloning', 40, 'Clone complete, reading files...');
+    postProgress('reading-files', CLONE_END, 0, 'Scanning file tree...');
 
     // When includeStats, run walkHead and git.log in parallel (both read-only)
-    const logPromise = includeStats ? git.log({ fs, dir: DIR, depth: 1000 }) : null;
+    const logPromise = includeStats ? git.log({ fs, dir: DIR, depth }) : null;
 
-    const walkResult = await walkHead(fs);
+    const walkRange = WALK_END - CLONE_END;
+    const walkResult = await walkHead(fs, (pct, msg) => {
+      const overall = CLONE_END + Math.round((pct / 100) * walkRange);
+      postProgress('reading-files', overall, pct, msg);
+    });
 
-    postProgress('cloning', 50, `Done — ${walkResult.files.length} files`);
+    postProgress('reading-files', WALK_END, 100, `Done — ${walkResult.files.length} files`);
 
     // Emit clone-done so non-stats callers can resolve immediately
     const cloneDoneMsg: CloneDoneMessage = {
@@ -240,14 +282,14 @@ async function handleClone(msg: CloneMessage) {
 
     // Phase 2: Commit analysis (git stats only, opt-in)
     if (includeStats) {
-      postProgress('extracting-commits', 52, 'Reading commit history...');
+      postProgress('extracting-commits', 52, 0, 'Reading commit history...');
 
       const logEntries = await logPromise!;
       const commits = logToCommits(logEntries);
 
-      postProgress('extracting-commits', 55, `Found ${logEntries.length} commits`);
+      postProgress('extracting-commits', 55, 100, `Found ${logEntries.length} commits`);
 
-      postProgress('extracting-details', 57, 'Computing file diffs...');
+      postProgress('extracting-details', 57, 0, 'Computing file diffs...');
 
       const BATCH_SIZE = 25;
       const FULL_DIFF_COUNT = 30;
@@ -314,23 +356,25 @@ async function handleClone(msg: CloneMessage) {
         }
 
         completed += batchEnd - batchStart;
-        const percent = 57 + Math.round((completed / totalCommits) * 25);
+        const overall = 57 + Math.round((completed / totalCommits) * 25);
+        const subPct = Math.round((completed / totalCommits) * 100);
         postProgress(
           'extracting-details',
-          percent,
+          overall,
+          subPct,
           `Diffing commits... ${completed}/${totalCommits}`,
         );
       }
 
-      postProgress('computing-stats', 85, 'Computing statistics...');
+      postProgress('computing-stats', 85, 0, 'Computing statistics...');
 
       const languages = computeLanguages(walkResult.fileList);
 
-      postProgress('computing-stats', 90, 'Building weekly aggregates...');
+      postProgress('computing-stats', 90, 50, 'Building weekly aggregates...');
 
       const aggregates = computeWeeklyAggregates(logEntries, diffStatsMap);
 
-      postProgress('computing-stats', 95, 'Assembling results...');
+      postProgress('computing-stats', 95, 90, 'Assembling results...');
 
       const rawData: GitStatsRawData = {
         commits,
@@ -367,8 +411,17 @@ async function handleClone(msg: CloneMessage) {
   }
 }
 
-function postProgress(step: string, percent: number, message: string) {
-  const msg: ProgressMessage = { type: 'progress', step, percent, message };
+let highWaterMark = 0;
+
+function postProgress(step: string, percent: number, subPercent: number, message: string) {
+  highWaterMark = Math.max(highWaterMark, percent);
+  const msg: ProgressMessage = {
+    type: 'progress',
+    step,
+    percent: highWaterMark,
+    subPercent,
+    message,
+  };
   self.postMessage(msg);
 }
 

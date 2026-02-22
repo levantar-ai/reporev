@@ -1,6 +1,4 @@
-import { useState, useCallback } from 'react';
 import type { AnalysisReport } from '../../types';
-import { AnimatedGradeReveal } from './AnimatedGradeReveal';
 import { LetterGrade } from './LetterGrade';
 import { CategoryScores } from './CategoryScores';
 import { TechStack } from './TechStack';
@@ -22,10 +20,6 @@ interface Props {
 }
 
 export function ReportCard({ report, onNewAnalysis }: Props) {
-  const [showReveal, setShowReveal] = useState(true);
-
-  const handleRevealComplete = useCallback(() => setShowReveal(false), []);
-
   // Build radar chart data from categories
   const radarData = report.categories.map((c) => ({
     label: c.label,
@@ -41,16 +35,6 @@ export function ReportCard({ report, onNewAnalysis }: Props) {
   }));
 
   const branch = report.repo.branch || report.repoInfo.defaultBranch;
-
-  if (showReveal) {
-    return (
-      <AnimatedGradeReveal
-        grade={report.grade}
-        score={report.overallScore}
-        onComplete={handleRevealComplete}
-      />
-    );
-  }
 
   return (
     <article

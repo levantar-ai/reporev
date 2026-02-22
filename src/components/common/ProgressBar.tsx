@@ -16,11 +16,12 @@ const STEP_LABELS: Record<AnalysisStep, string> = {
 interface Props {
   step: AnalysisStep;
   progress: number;
+  subProgress?: number;
   filesFetched?: number;
   filesTotal?: number;
 }
 
-export function ProgressBar({ step, progress, filesFetched, filesTotal }: Props) {
+export function ProgressBar({ step, progress, subProgress, filesFetched, filesTotal }: Props) {
   if (step === 'idle') return null;
 
   const label = STEP_LABELS[step];
@@ -28,14 +29,13 @@ export function ProgressBar({ step, progress, filesFetched, filesTotal }: Props)
     step === 'fetching-files' && filesTotal ? ` (${filesFetched}/${filesTotal})` : '';
 
   const roundedProgress = Math.round(progress);
+  const showSubBar = subProgress != null && subProgress > 0 && step === 'cloning';
 
   return (
     <output className="block w-full max-w-2xl mx-auto mt-8" aria-live="polite">
+      {/* Overall progress */}
       <div className="flex justify-between text-sm text-text-secondary mb-2">
-        <span>
-          {label}
-          {fileProgress}
-        </span>
+        <span>Overall Progress</span>
         <span className="text-neon font-medium" aria-hidden="true">
           {roundedProgress}%
         </span>
@@ -47,6 +47,35 @@ export function ProgressBar({ step, progress, filesFetched, filesTotal }: Props)
           aria-hidden="true"
         />
       </div>
+
+      {/* Sub-task progress — shown during clone */}
+      {showSubBar && (
+        <>
+          <div className="flex justify-between text-xs text-text-muted mt-2.5 mb-1">
+            <span>
+              {label}
+              {fileProgress}
+            </span>
+            <span className="tabular-nums">{Math.round(subProgress)}%</span>
+          </div>
+          <div className="h-1.5 bg-surface-alt rounded-full overflow-hidden border border-border/50">
+            <div
+              className="h-full bg-neon/60 rounded-full transition-all duration-200 ease-out"
+              style={{ width: `${subProgress}%` }}
+              aria-hidden="true"
+            />
+          </div>
+        </>
+      )}
+
+      {/* Step label when no sub-bar */}
+      {!showSubBar && (
+        <div className="text-sm text-text-secondary mt-2">
+          {label}
+          {fileProgress}
+        </div>
+      )}
+
       <progress
         className="sr-only"
         value={roundedProgress}

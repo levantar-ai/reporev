@@ -1,10 +1,5 @@
 import { useReducer, useCallback } from 'react';
-import type { RateLimitInfo } from '../types';
 import type { TechDetectState, TechDetectStep, TechDetectResult } from '../types/techDetect';
-import type { GitHubRepoResponse } from '../services/github/types';
-import { githubFetch } from '../services/github/client';
-import { fetchTree } from '../services/github/tree';
-import { fetchFileContents } from '../services/github/contents';
 import {
   detectAWS,
   detectPython,
@@ -16,22 +11,34 @@ import {
   detectPHP,
   detectRust,
   detectRuby,
-  filterTechFiles,
+  detectFrameworks,
+  detectDatabases,
+  detectCicd,
+  detectTesting,
 } from '../services/analysis/techDetectEngine';
 import { useApp } from '../context/AppContext';
 import { invalidateIfDifferent } from '../services/git/repoCache';
 import { ensureCloned } from '../services/git/cloneService';
+import { computeLanguages } from '../services/git/extractors';
+import { humanizeCloneError, formatHumanizedError } from '../utils/humanizeError';
+import { trackEvent } from '../utils/analytics';
 
 type Action =
   | { type: 'RESET' }
-  | { type: 'SET_STEP'; step: TechDetectStep; progress: number; message: string }
-  | { type: 'FILE_PROGRESS'; fetched: number; total: number }
+  | {
+      type: 'SET_STEP';
+      step: TechDetectStep;
+      progress: number;
+      subProgress?: number;
+      message: string;
+    }
   | { type: 'DONE'; result: TechDetectResult }
   | { type: 'ERROR'; error: string };
 
 const initialState: TechDetectState = {
   step: 'idle',
   progress: 0,
+  subProgress: 0,
   statusMessage: '',
   result: null,
   error: null,
@@ -46,17 +53,10 @@ function reducer(state: TechDetectState, action: Action): TechDetectState {
         ...state,
         step: action.step,
         progress: action.progress,
+        subProgress: action.subProgress ?? 0,
         statusMessage: action.message,
         error: null,
       };
-    case 'FILE_PROGRESS': {
-      const pct = 20 + Math.round((action.fetched / action.total) * 50);
-      return {
-        ...state,
-        progress: pct,
-        statusMessage: `Fetching files... ${action.fetched}/${action.total}`,
-      };
-    }
     case 'DONE':
       return {
         ...state,
@@ -95,14 +95,7 @@ function parseOwnerRepo(input: string): { owner: string; repo: string } | null {
 
 export function useTechDetect() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { state: appState, dispatch: appDispatch } = useApp();
-
-  const handleRateLimit = useCallback(
-    (info: RateLimitInfo) => {
-      appDispatch({ type: 'SET_RATE_LIMIT', info });
-    },
-    [appDispatch],
-  );
+  const { state: appState } = useApp();
 
   const analyze = useCallback(
     async (input: string) => {
@@ -114,29 +107,20 @@ export function useTechDetect() {
 
       const token = appState.githubToken || undefined;
       const { owner, repo } = parsed;
+      const startTime = performance.now();
+
+      trackEvent('analysis_start', {
+        tool: 'tech-detect',
+        repo: `${owner}/${repo}`,
+        has_token: !!token,
+      });
 
       try {
-        // 1. Fetch repo info for default branch
-        dispatch({
-          type: 'SET_STEP',
-          step: 'fetching-tree',
-          progress: 5,
-          message: 'Fetching repository info...',
-        });
-        const repoInfo = await githubFetch<GitHubRepoResponse>(
-          `/repos/${owner}/${repo}`,
-          token,
-          handleRateLimit,
-        );
-        const branch = repoInfo.default_branch;
-
         let techPaths: string[];
         let fileInputs: { path: string; content: string }[];
         let totalFiles = 0;
-        let scanSource: 'clone' | 'api' = 'clone';
-        let cloneError: string | undefined;
+        let languages: Record<string, number> = {};
 
-        // Try clone-first approach
         try {
           dispatch({
             type: 'SET_STEP',
@@ -149,12 +133,13 @@ export function useTechDetect() {
           const cached = await ensureCloned(
             owner,
             repo,
-            (_step, percent, message) => {
+            (_step, percent, subPercent, message) => {
               const scaled = 10 + Math.round(percent * 0.4);
               dispatch({
                 type: 'SET_STEP',
                 step: 'fetching-tree',
                 progress: scaled,
+                subProgress: subPercent,
                 message,
               });
             },
@@ -172,71 +157,31 @@ export function useTechDetect() {
 
           techPaths = cached.files.map((f) => f.path);
           fileInputs = cached.files.map((f) => ({ path: f.path, content: f.content }));
+
+          // Compute language breakdown from all blob paths in tree for more complete counts
+          const allBlobPaths = cached.tree.filter((e) => e.type === 'blob').map((e) => e.path);
+          languages = computeLanguages(allBlobPaths);
         } catch (cloneErr) {
-          const errMsg = cloneErr instanceof Error ? cloneErr.message : 'Unknown clone error';
-          console.error('[TechDetect] Clone failed:', errMsg);
-
-          // Clone failed — fall back to API path if token available
-          if (token) {
-            scanSource = 'api';
-            cloneError = errMsg;
-
-            dispatch({
-              type: 'SET_STEP',
-              step: 'fetching-tree',
-              progress: 10,
-              message: `Clone failed, fetching via API...`,
-            });
-            const tree = await fetchTree(owner, repo, branch, token, handleRateLimit);
-
-            totalFiles = tree.filter((e) => e.type === 'blob').length;
-            techPaths = filterTechFiles(tree);
-            if (techPaths.length === 0) {
-              dispatch({
-                type: 'DONE',
-                result: {
-                  aws: [],
-                  azure: [],
-                  gcp: [],
-                  python: [],
-                  node: [],
-                  go: [],
-                  java: [],
-                  php: [],
-                  rust: [],
-                  ruby: [],
-                  manifestFiles: [],
-                  totalFiles,
-                  scanSource,
-                  cloneError,
-                },
-              });
-              return;
-            }
-
-            dispatch({
-              type: 'SET_STEP',
-              step: 'fetching-files',
-              progress: 20,
-              message: `Fetching ${techPaths.length} manifest files via API...`,
-            });
-            let fetched = 0;
-            const files = await fetchFileContents(
-              owner,
-              repo,
-              branch,
-              techPaths,
-              token,
-              handleRateLimit,
-              () => {
-                fetched++;
-                dispatch({ type: 'FILE_PROGRESS', fetched, total: techPaths.length });
-              },
-            );
-            fileInputs = files.map((f) => ({ path: f.path, content: f.content }));
-          } else {
-            throw cloneErr;
-          }
+          const msg = cloneErr instanceof Error ? cloneErr.message : 'Unknown error';
+          const humanized = humanizeCloneError(msg);
+          trackEvent('analysis_error', {
+            tool: 'tech-detect',
+            repo: `${owner}/${repo}`,
+            error_type: humanized.title.includes('too large')
+              ? 'storage'
+              : humanized.title.includes('timed out')
+                ? 'timeout'
+                : humanized.title.includes('not found')
+                  ? 'not-found'
+                  : humanized.title.includes('rate limit')
+                    ? 'rate-limit'
+                    : humanized.title.includes('invalid')
+                      ? 'auth'
+                      : 'unknown',
+            browser: navigator.userAgent,
+          });
+          dispatch({ type: 'ERROR', error: formatHumanizedError(humanized) });
+          return;
         }
 
         // 5. Run analysis
@@ -258,6 +203,18 @@ export function useTechDetect() {
         const php = detectPHP(fileInputs);
         const rust = detectRust(fileInputs);
         const ruby = detectRuby(fileInputs);
+        const frameworks = detectFrameworks(fileInputs);
+        const databases = detectDatabases(fileInputs);
+        const cicd = detectCicd(fileInputs);
+        const testing = detectTesting(fileInputs);
+
+        const duration = Math.round(performance.now() - startTime);
+        trackEvent('analysis_complete', {
+          tool: 'tech-detect',
+          repo: `${owner}/${repo}`,
+          duration_ms: duration,
+          has_token: !!token,
+        });
 
         dispatch({
           type: 'DONE',
@@ -272,20 +229,29 @@ export function useTechDetect() {
             php,
             rust,
             ruby,
+            frameworks,
+            databases,
+            cicd,
+            testing,
+            languages,
             manifestFiles: techPaths,
             totalFiles,
-            scanSource,
-            cloneError,
           },
         });
       } catch (err) {
+        trackEvent('analysis_error', {
+          tool: 'tech-detect',
+          repo: `${owner}/${repo}`,
+          error_type: 'unknown',
+          browser: navigator.userAgent,
+        });
         dispatch({
           type: 'ERROR',
           error: err instanceof Error ? err.message : 'An unexpected error occurred.',
         });
       }
     },
-    [appState.githubToken, handleRateLimit],
+    [appState.githubToken],
   );
 
   const reset = useCallback(() => {

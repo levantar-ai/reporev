@@ -6,7 +6,12 @@ import type {
   DetectedGCPService,
   DetectedPackage,
   DetectedPythonPackage,
+  DetectedFramework,
+  DetectedDatabase,
+  DetectedCicdTool,
+  DetectedTestingTool,
 } from '../../types/techDetect';
+import { TechIcon } from './TechIcon';
 
 interface Props {
   result: TechDetectResult;
@@ -308,31 +313,336 @@ function TextIcon({ label, color }: { label: string; color: string }) {
   );
 }
 
+/* ─── Language Breakdown Table ─── */
+function LanguageTable({ result }: Props) {
+  const entries = useMemo(() => {
+    const total = Object.values(result.languages).reduce((a, b) => a + b, 0);
+    return Object.entries(result.languages)
+      .sort(([, a], [, b]) => b - a)
+      .map(([lang, count]) => ({
+        lang,
+        count,
+        pct: total > 0 ? ((count / total) * 100).toFixed(1) : '0.0',
+      }));
+  }, [result.languages]);
+
+  if (entries.length === 0) return null;
+
+  const total = entries.reduce((s, e) => s + e.count, 0);
+
+  return (
+    <section className="rounded-xl border border-border bg-surface-alt overflow-hidden">
+      <div className="flex items-center gap-3 p-5 border-b border-border">
+        <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-violet-500/10">
+          <span className="text-xs font-bold text-violet-400">{'</>'}</span>
+        </div>
+        <h3 className="text-base font-semibold text-text flex-1">Languages</h3>
+        <span className="shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-500/10 text-violet-400">
+          {entries.length} language{entries.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border/50 text-left text-xs text-text-muted">
+              <th className="px-5 py-2.5 font-medium">Language</th>
+              <th className="px-5 py-2.5 font-medium text-right">Files</th>
+              <th className="px-5 py-2.5 font-medium text-right">%</th>
+              <th className="px-5 py-2.5 font-medium w-1/3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((e) => (
+              <tr
+                key={e.lang}
+                className="border-b border-border/30 last:border-b-0 hover:bg-surface-hover transition-colors"
+              >
+                <td className="px-5 py-2.5 font-medium text-text">
+                  <span className="inline-flex items-center gap-2">
+                    <TechIcon name={e.lang} size={14} />
+                    {e.lang}
+                  </span>
+                </td>
+                <td className="px-5 py-2.5 text-right tabular-nums text-text-secondary">
+                  {e.count}
+                </td>
+                <td className="px-5 py-2.5 text-right tabular-nums text-text-muted">{e.pct}%</td>
+                <td className="px-5 py-2.5">
+                  <div className="h-1.5 rounded-full bg-surface overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-violet-500/60"
+                      style={{ width: `${(e.count / total) * 100}%` }}
+                    />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Chip Grid Section (reused for Frameworks, Databases, CI/CD, Testing) ─── */
+interface ChipGridSectionProps<T extends { name: string; source: string }> {
+  title: string;
+  color: string;
+  items: T[];
+  icon: React.ReactNode;
+  groupBy?: (item: T) => string;
+  countLabel?: string;
+}
+
+function ChipGridSection<T extends { name: string; source: string }>({
+  title,
+  color,
+  items,
+  icon,
+  groupBy,
+  countLabel = 'item',
+}: ChipGridSectionProps<T>) {
+  const groups = useMemo(() => {
+    if (!groupBy) return [{ label: '', items }];
+    const map = new Map<string, T[]>();
+    for (const item of items) {
+      const key = groupBy(item);
+      const list = map.get(key) || [];
+      list.push(item);
+      map.set(key, list);
+    }
+    return [...map.entries()].map(([label, groupItems]) => ({ label, items: groupItems }));
+  }, [items, groupBy]);
+
+  if (items.length === 0) return null;
+
+  return (
+    <section className="rounded-xl border border-border bg-surface-alt overflow-hidden">
+      <div className="flex items-center gap-3 p-5 border-b border-border">
+        <div
+          className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: `${color}20` }}
+        >
+          {icon}
+        </div>
+        <h3 className="text-base font-semibold text-text flex-1">{title}</h3>
+        <span
+          className="shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold"
+          style={{ background: `${color}20`, color }}
+        >
+          {items.length} {countLabel}
+          {items.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+      <div className="p-4 space-y-4">
+        {groups.map((group) => (
+          <div key={group.label || '_'}>
+            {group.label && (
+              <p className="text-[11px] font-medium text-text-muted uppercase tracking-wider mb-2">
+                {group.label}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {group.items.map((item) => (
+                <span
+                  key={item.name}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-surface-hover border border-border text-text-secondary"
+                  title={item.source}
+                >
+                  <TechIcon name={item.name} size={14} />
+                  {item.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ─── Frameworks Section ─── */
+function FrameworksSection({ result }: Props) {
+  return (
+    <ChipGridSection<DetectedFramework>
+      title="Frameworks"
+      color="#8B5CF6"
+      items={result.frameworks}
+      icon={<TextIcon label="Fw" color="#8B5CF6" />}
+      groupBy={(item) => item.via}
+      countLabel="framework"
+    />
+  );
+}
+
+/* ─── Databases Section ─── */
+function DatabasesSection({ result }: Props) {
+  return (
+    <ChipGridSection<DetectedDatabase>
+      title="Databases & ORMs"
+      color="#F59E0B"
+      items={result.databases}
+      icon={<TextIcon label="DB" color="#F59E0B" />}
+      countLabel="database"
+    />
+  );
+}
+
+/* ─── CI/CD & DevOps Section ─── */
+const CICD_CATEGORY_LABELS: Record<string, string> = {
+  ci: 'CI',
+  container: 'Containers',
+  orchestration: 'Orchestration',
+  build: 'Build Tools',
+  iac: 'Infrastructure as Code',
+};
+
+function CicdSection({ result }: Props) {
+  return (
+    <ChipGridSection<DetectedCicdTool>
+      title="CI/CD & DevOps"
+      color="#3B82F6"
+      items={result.cicd}
+      icon={<TextIcon label="CI" color="#3B82F6" />}
+      groupBy={(item) => CICD_CATEGORY_LABELS[item.category] || item.category}
+      countLabel="tool"
+    />
+  );
+}
+
+/* ─── Testing & Quality Section ─── */
+const TESTING_CATEGORY_LABELS: Record<string, string> = {
+  testing: 'Testing',
+  e2e: 'E2E / Integration',
+  linting: 'Linting',
+  formatting: 'Formatting',
+  coverage: 'Coverage',
+};
+
+function TestingSection({ result }: Props) {
+  return (
+    <ChipGridSection<DetectedTestingTool>
+      title="Testing & Quality"
+      color="#10B981"
+      items={result.testing}
+      icon={<TextIcon label="QA" color="#10B981" />}
+      groupBy={(item) => TESTING_CATEGORY_LABELS[item.category] || item.category}
+      countLabel="tool"
+    />
+  );
+}
+
+/* ─── Libraries Table (flattened across all ecosystems) — collapsed by default ─── */
+const ECOSYSTEM_LABELS: Record<string, { label: string; color: string }> = {
+  python: { label: 'Python', color: 'text-[#3776AB]' },
+  node: { label: 'npm', color: 'text-[#339933]' },
+  go: { label: 'Go', color: 'text-[#00ADD8]' },
+  java: { label: 'Java', color: 'text-[#ED8B00]' },
+  php: { label: 'PHP', color: 'text-[#777BB4]' },
+  rust: { label: 'Rust', color: 'text-[#DEA584]' },
+  ruby: { label: 'Ruby', color: 'text-[#CC342D]' },
+};
+
+function LibrariesTable({ result }: Props) {
+  const [open, setOpen] = useState(false);
+
+  const libraries = useMemo(() => {
+    const ecosystems = ['python', 'node', 'go', 'java', 'php', 'rust', 'ruby'] as const;
+    const all: { name: string; version?: string; ecosystem: string; source: string }[] = [];
+    for (const eco of ecosystems) {
+      for (const pkg of result[eco]) {
+        all.push({ name: pkg.name, version: pkg.version, ecosystem: eco, source: pkg.source });
+      }
+    }
+    return all.sort((a, b) => a.name.localeCompare(b.name));
+  }, [result]);
+
+  if (libraries.length === 0) return null;
+
+  return (
+    <section className="rounded-xl border border-border bg-surface-alt overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-3 p-5 w-full text-left"
+      >
+        <ChevronIcon open={open} />
+        <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-emerald-500/10">
+          <svg
+            className="h-5 w-5 text-emerald-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+            />
+          </svg>
+        </div>
+        <h3 className="text-base font-semibold text-text flex-1">All Libraries</h3>
+        <span className="shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400">
+          {libraries.length} package{libraries.length !== 1 ? 's' : ''}
+        </span>
+      </button>
+
+      {open && (
+        <div className="border-t border-border">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/50 text-left text-xs text-text-muted">
+                  <th className="px-5 py-2.5 font-medium">Name</th>
+                  <th className="px-5 py-2.5 font-medium">Version</th>
+                  <th className="px-5 py-2.5 font-medium">Ecosystem</th>
+                  <th className="px-5 py-2.5 font-medium">Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {libraries.map((lib, i) => {
+                  const eco = ECOSYSTEM_LABELS[lib.ecosystem];
+                  return (
+                    <tr
+                      key={`${lib.name}-${lib.ecosystem}-${i}`}
+                      className="border-b border-border/30 last:border-b-0 hover:bg-surface-hover transition-colors"
+                    >
+                      <td className="px-5 py-2.5 font-medium text-text">{lib.name}</td>
+                      <td className="px-5 py-2.5 font-mono text-neon/80 text-xs">
+                        {lib.version || '\u2014'}
+                      </td>
+                      <td className="px-5 py-2.5">
+                        <span className={`text-xs font-medium ${eco?.color ?? 'text-text-muted'}`}>
+                          {eco?.label ?? lib.ecosystem}
+                        </span>
+                      </td>
+                      <td
+                        className="px-5 py-2.5 font-mono text-xs text-text-muted truncate max-w-[200px]"
+                        title={lib.source}
+                      >
+                        {lib.source}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 /* ─── Scan Info + Manifest Files (collapsible) ─── */
 function ManifestFilesSection({ result }: Props) {
   const [open, setOpen] = useState(false);
-  const { manifestFiles, totalFiles, scanSource, cloneError } = result;
+  const { manifestFiles, totalFiles } = result;
 
   if (manifestFiles.length === 0 && totalFiles === 0) return null;
 
   return (
     <section className="rounded-xl border border-border bg-surface-alt overflow-hidden">
-      {cloneError && (
-        <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-yellow-500/5 text-yellow-400 text-xs">
-          <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"
-            />
-          </svg>
-          <span>
-            Clone failed ({cloneError}). Used GitHub API instead — only manifest files were scanned.
-          </span>
-        </div>
-      )}
-
       <button
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 w-full text-left p-5"
@@ -342,9 +652,6 @@ function ManifestFilesSection({ result }: Props) {
           Files Scanned ({manifestFiles.length}
           {totalFiles > manifestFiles.length ? ` of ${totalFiles} in repo` : ''})
         </h3>
-        <span className="ml-auto text-xs text-text-muted">
-          via {scanSource === 'clone' ? 'git clone' : 'GitHub API'}
-        </span>
       </button>
 
       {open && (
@@ -382,6 +689,10 @@ const PythonIcon = () => (
 /* ─── Main Results Component ─── */
 export function TechDetectResults({ result }: Props) {
   const hasCloud = result.aws.length > 0 || result.azure.length > 0 || result.gcp.length > 0;
+  const hasFrameworks = result.frameworks.length > 0;
+  const hasDatabases = result.databases.length > 0;
+  const hasCicd = result.cicd.length > 0;
+  const hasTesting = result.testing.length > 0;
   const langSections: {
     title: string;
     color: string;
@@ -427,7 +738,16 @@ export function TechDetectResults({ result }: Props) {
     },
   ].filter((s) => s.packages.length > 0);
 
-  const noResults = !hasCloud && langSections.length === 0;
+  const hasLanguages = Object.keys(result.languages).length > 0;
+  const hasLibraries = langSections.length > 0;
+  const noResults =
+    !hasCloud &&
+    !hasLanguages &&
+    !hasFrameworks &&
+    !hasDatabases &&
+    !hasCicd &&
+    !hasTesting &&
+    langSections.length === 0;
 
   if (noResults) {
     return (
@@ -463,7 +783,25 @@ export function TechDetectResults({ result }: Props) {
         </div>
       )}
 
-      {/* Language sections */}
+      {/* Language breakdown table */}
+      {hasLanguages && <LanguageTable result={result} />}
+
+      {/* Frameworks */}
+      {hasFrameworks && <FrameworksSection result={result} />}
+
+      {/* Databases */}
+      {hasDatabases && <DatabasesSection result={result} />}
+
+      {/* CI/CD & DevOps */}
+      {hasCicd && <CicdSection result={result} />}
+
+      {/* Testing & Quality */}
+      {hasTesting && <TestingSection result={result} />}
+
+      {/* All libraries table (collapsed by default) */}
+      {hasLibraries && <LibrariesTable result={result} />}
+
+      {/* Per-source package sections */}
       {langSections.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {langSections.map((s) => (

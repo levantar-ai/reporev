@@ -16,6 +16,7 @@ export const FetchingCommits: Story = {
     state: {
       step: 'fetching-commits',
       progress: 35,
+      subProgress: 70,
       commitsFetched: 120,
       detailsFetched: 0,
       statusMessage: 'Fetching commits...',
@@ -31,6 +32,7 @@ export const FetchingDetails: Story = {
     state: {
       step: 'fetching-details',
       progress: 68,
+      subProgress: 45,
       commitsFetched: 350,
       detailsFetched: 240,
       statusMessage: 'Fetching commit details...',
@@ -46,6 +48,7 @@ export const Analyzing: Story = {
     state: {
       step: 'analyzing',
       progress: 90,
+      subProgress: 80,
       commitsFetched: 482,
       detailsFetched: 482,
       statusMessage: 'Computing statistics...',
@@ -61,6 +64,7 @@ export const ErrorState: Story = {
     state: {
       step: 'error',
       progress: 0,
+      subProgress: 0,
       commitsFetched: 0,
       detailsFetched: 0,
       statusMessage: '',

@@ -5,6 +5,10 @@ import type {
   DetectedAzureService,
   DetectedGCPService,
   DetectedPackage,
+  DetectedFramework,
+  DetectedDatabase,
+  DetectedCicdTool,
+  DetectedTestingTool,
 } from '../../types/techDetect';
 
 // ── AWS client-* suffix → friendly service name ──
@@ -998,6 +1002,657 @@ export function detectRuby(files: FileInput[]): DetectedPackage[] {
   return dedupPackages(results);
 }
 
+// ── Framework Detection ──
+
+const JS_FRAMEWORKS: Record<string, string> = {
+  react: 'React',
+  'react-dom': 'React',
+  next: 'Next.js',
+  vue: 'Vue',
+  nuxt: 'Nuxt',
+  '@angular/core': 'Angular',
+  svelte: 'Svelte',
+  '@sveltejs/kit': 'SvelteKit',
+  express: 'Express',
+  '@nestjs/core': 'NestJS',
+  hono: 'Hono',
+  '@remix-run/node': 'Remix',
+  '@remix-run/react': 'Remix',
+  astro: 'Astro',
+  gatsby: 'Gatsby',
+  'solid-js': 'Solid',
+  preact: 'Preact',
+  fastify: 'Fastify',
+  koa: 'Koa',
+  'socket.io': 'Socket.IO',
+  electron: 'Electron',
+  '@tanstack/react-query': 'TanStack Query',
+  'react-router': 'React Router',
+  'react-router-dom': 'React Router',
+  redux: 'Redux',
+  '@reduxjs/toolkit': 'Redux Toolkit',
+  zustand: 'Zustand',
+  'framer-motion': 'Framer Motion',
+  three: 'Three.js',
+  '@trpc/server': 'tRPC',
+  '@trpc/client': 'tRPC',
+  tailwindcss: 'Tailwind CSS',
+  '@emotion/react': 'Emotion',
+  'styled-components': 'styled-components',
+  '@mui/material': 'Material UI',
+  '@chakra-ui/react': 'Chakra UI',
+  'ant-design': 'Ant Design',
+  antd: 'Ant Design',
+};
+
+const PY_FRAMEWORKS: Record<string, string> = {
+  django: 'Django',
+  flask: 'Flask',
+  fastapi: 'FastAPI',
+  starlette: 'Starlette',
+  celery: 'Celery',
+  tornado: 'Tornado',
+  sanic: 'Sanic',
+  aiohttp: 'aiohttp',
+  bottle: 'Bottle',
+  pyramid: 'Pyramid',
+  streamlit: 'Streamlit',
+  gradio: 'Gradio',
+};
+
+const RUBY_FRAMEWORKS: Record<string, string> = {
+  rails: 'Rails',
+  sinatra: 'Sinatra',
+  hanami: 'Hanami',
+};
+
+const PHP_FRAMEWORKS: Record<string, string> = {
+  'laravel/framework': 'Laravel',
+  'symfony/framework-bundle': 'Symfony',
+  'slim/slim': 'Slim',
+  'cakephp/cakephp': 'CakePHP',
+};
+
+const JAVA_FRAMEWORKS: Record<string, string> = {
+  'org.springframework.boot:spring-boot-starter': 'Spring Boot',
+  'org.springframework.boot:spring-boot-starter-web': 'Spring Boot',
+  'org.springframework:spring-core': 'Spring',
+  'io.quarkus:quarkus-core': 'Quarkus',
+  'io.micronaut:micronaut-core': 'Micronaut',
+  'io.vertx:vertx-core': 'Vert.x',
+};
+
+const GO_FRAMEWORKS: Record<string, string> = {
+  'github.com/gin-gonic/gin': 'Gin',
+  'github.com/labstack/echo': 'Echo',
+  'github.com/gofiber/fiber': 'Fiber',
+  'github.com/go-chi/chi': 'Chi',
+  'github.com/gorilla/mux': 'Gorilla Mux',
+  'github.com/beego/beego': 'Beego',
+};
+
+const RUST_FRAMEWORKS: Record<string, string> = {
+  'actix-web': 'Actix Web',
+  axum: 'Axum',
+  rocket: 'Rocket',
+  warp: 'Warp',
+  tide: 'Tide',
+};
+
+function matchManifestDeps(
+  file: FileInput,
+  depMap: Record<string, string>,
+  via: string,
+): DetectedFramework[] {
+  if (!file.path.endsWith('package.json') && !file.path.endsWith('composer.json')) return [];
+  const results: DetectedFramework[] = [];
+  try {
+    const pkg = JSON.parse(file.content);
+    const allDeps = {
+      ...pkg.dependencies,
+      ...pkg.devDependencies,
+      ...pkg.require,
+      ...pkg['require-dev'],
+    };
+    for (const [dep, ver] of Object.entries(allDeps)) {
+      const name = depMap[dep];
+      if (name) {
+        results.push({ name, version: ver as string, source: file.path, via });
+      }
+    }
+  } catch {
+    /* skip */
+  }
+  return results;
+}
+
+export function detectFrameworks(files: FileInput[]): DetectedFramework[] {
+  const seen = new Set<string>();
+  const results: DetectedFramework[] = [];
+
+  function add(item: DetectedFramework) {
+    if (!seen.has(item.name)) {
+      seen.add(item.name);
+      results.push(item);
+    }
+  }
+
+  for (const file of files) {
+    // JS/TS frameworks from package.json
+    for (const f of matchManifestDeps(file, JS_FRAMEWORKS, 'package.json')) add(f);
+
+    // PHP frameworks from composer.json
+    for (const f of matchManifestDeps(file, PHP_FRAMEWORKS, 'composer.json')) add(f);
+
+    // Python frameworks from requirements/pyproject/Pipfile
+    const basename = file.path.split('/').pop() || '';
+    if (
+      basename === 'requirements.txt' ||
+      basename === 'pyproject.toml' ||
+      basename === 'Pipfile' ||
+      basename === 'setup.py' ||
+      basename === 'setup.cfg' ||
+      file.path.match(/requirements\/.*\.txt$/)
+    ) {
+      const content = file.content.toLowerCase();
+      for (const [pkg, name] of Object.entries(PY_FRAMEWORKS)) {
+        if (content.includes(pkg)) {
+          add({ name, source: file.path, via: 'pip' });
+        }
+      }
+    }
+
+    // Ruby frameworks from Gemfile
+    if (basename === 'Gemfile') {
+      const gemPattern = /gem\s+['"]([^'"]+)['"]/g;
+      let match;
+      while ((match = gemPattern.exec(file.content)) !== null) {
+        const name = RUBY_FRAMEWORKS[match[1]];
+        if (name) add({ name, source: file.path, via: 'Gemfile' });
+      }
+      gemPattern.lastIndex = 0;
+    }
+
+    // Java frameworks from pom.xml / build.gradle
+    if (basename === 'pom.xml') {
+      for (const [key, name] of Object.entries(JAVA_FRAMEWORKS)) {
+        if (file.content.includes(key.split(':')[1])) {
+          add({ name, source: file.path, via: 'Maven' });
+        }
+      }
+    }
+    if (basename === 'build.gradle' || basename === 'build.gradle.kts') {
+      for (const [key, name] of Object.entries(JAVA_FRAMEWORKS)) {
+        if (file.content.includes(key)) {
+          add({ name, source: file.path, via: 'Gradle' });
+        }
+      }
+    }
+
+    // Go frameworks from go.mod
+    if (basename === 'go.mod') {
+      for (const [pkg, name] of Object.entries(GO_FRAMEWORKS)) {
+        if (file.content.includes(pkg)) {
+          add({ name, source: file.path, via: 'go.mod' });
+        }
+      }
+    }
+
+    // Rust frameworks from Cargo.toml
+    if (basename === 'Cargo.toml') {
+      for (const [pkg, name] of Object.entries(RUST_FRAMEWORKS)) {
+        const pattern = new RegExp(`^${pkg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*=`, 'm');
+        if (pattern.test(file.content)) {
+          add({ name, source: file.path, via: 'Cargo.toml' });
+        }
+      }
+    }
+  }
+
+  return results.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// ── Database Detection ──
+
+const JS_DB_PACKAGES: Record<string, string> = {
+  pg: 'PostgreSQL',
+  'pg-pool': 'PostgreSQL',
+  mysql2: 'MySQL',
+  mysql: 'MySQL',
+  mongoose: 'MongoDB',
+  mongodb: 'MongoDB',
+  redis: 'Redis',
+  ioredis: 'Redis',
+  prisma: 'Prisma',
+  '@prisma/client': 'Prisma',
+  'drizzle-orm': 'Drizzle',
+  typeorm: 'TypeORM',
+  sequelize: 'Sequelize',
+  knex: 'Knex',
+  'better-sqlite3': 'SQLite',
+  sqlite3: 'SQLite',
+  mssql: 'SQL Server',
+  'cassandra-driver': 'Cassandra',
+  neo4j: 'Neo4j',
+  'neo4j-driver': 'Neo4j',
+  dynamoose: 'DynamoDB',
+  '@elastic/elasticsearch': 'Elasticsearch',
+  'firebase-admin': 'Firebase',
+};
+
+const PY_DB_PACKAGES: Record<string, string> = {
+  psycopg2: 'PostgreSQL',
+  'psycopg2-binary': 'PostgreSQL',
+  asyncpg: 'PostgreSQL',
+  pymongo: 'MongoDB',
+  motor: 'MongoDB',
+  sqlalchemy: 'SQLAlchemy',
+  redis: 'Redis',
+  'django-redis': 'Redis',
+  databases: 'Databases',
+  peewee: 'Peewee',
+  tortoise: 'Tortoise ORM',
+  'tortoise-orm': 'Tortoise ORM',
+  pymysql: 'MySQL',
+  'mysql-connector-python': 'MySQL',
+  cassandra: 'Cassandra',
+  elasticsearch: 'Elasticsearch',
+};
+
+const RUBY_DB_GEMS: Record<string, string> = {
+  pg: 'PostgreSQL',
+  mysql2: 'MySQL',
+  mongoid: 'MongoDB',
+  redis: 'Redis',
+  sequel: 'Sequel',
+  activerecord: 'ActiveRecord',
+};
+
+const PHP_DB_PACKAGES: Record<string, string> = {
+  'doctrine/orm': 'Doctrine',
+  'doctrine/dbal': 'Doctrine',
+  'predis/predis': 'Redis',
+  'mongodb/mongodb': 'MongoDB',
+  'illuminate/database': 'Eloquent',
+};
+
+const JAVA_DB_ARTIFACTS: Record<string, string> = {
+  postgresql: 'PostgreSQL',
+  'mysql-connector': 'MySQL',
+  'hibernate-core': 'Hibernate',
+  'spring-data-jpa': 'Spring Data JPA',
+  'spring-data-mongodb': 'MongoDB',
+  jedis: 'Redis',
+  'mongo-java-driver': 'MongoDB',
+  'elasticsearch-rest-high-level-client': 'Elasticsearch',
+};
+
+const GO_DB_PACKAGES: Record<string, string> = {
+  'github.com/jackc/pgx': 'PostgreSQL',
+  'github.com/lib/pq': 'PostgreSQL',
+  'github.com/go-redis/redis': 'Redis',
+  'github.com/redis/go-redis': 'Redis',
+  'gorm.io/gorm': 'GORM',
+  'go.mongodb.org/mongo-driver': 'MongoDB',
+  'github.com/go-sql-driver/mysql': 'MySQL',
+  'github.com/mattn/go-sqlite3': 'SQLite',
+};
+
+const RUST_DB_CRATES: Record<string, string> = {
+  diesel: 'Diesel',
+  sqlx: 'SQLx',
+  'tokio-postgres': 'PostgreSQL',
+  'sea-orm': 'SeaORM',
+  mongodb: 'MongoDB',
+  redis: 'Redis',
+};
+
+export function detectDatabases(files: FileInput[]): DetectedDatabase[] {
+  const seen = new Set<string>();
+  const results: DetectedDatabase[] = [];
+
+  function add(item: DetectedDatabase) {
+    if (!seen.has(item.name)) {
+      seen.add(item.name);
+      results.push(item);
+    }
+  }
+
+  for (const file of files) {
+    const basename = file.path.split('/').pop() || '';
+
+    // JS from package.json
+    if (basename === 'package.json') {
+      try {
+        const pkg = JSON.parse(file.content);
+        const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+        for (const [dep, ver] of Object.entries(allDeps)) {
+          const name = JS_DB_PACKAGES[dep];
+          if (name) add({ name, version: ver as string, source: file.path, via: 'npm' });
+        }
+      } catch {
+        /* skip */
+      }
+    }
+
+    // Python
+    if (
+      basename === 'requirements.txt' ||
+      basename === 'pyproject.toml' ||
+      basename === 'Pipfile' ||
+      basename === 'setup.py' ||
+      basename === 'setup.cfg' ||
+      file.path.match(/requirements\/.*\.txt$/)
+    ) {
+      const content = file.content.toLowerCase();
+      for (const [pkg, name] of Object.entries(PY_DB_PACKAGES)) {
+        if (content.includes(pkg)) add({ name, source: file.path, via: 'pip' });
+      }
+    }
+
+    // Ruby
+    if (basename === 'Gemfile') {
+      const gemPattern = /gem\s+['"]([^'"]+)['"]/g;
+      let match;
+      while ((match = gemPattern.exec(file.content)) !== null) {
+        const name = RUBY_DB_GEMS[match[1]];
+        if (name) add({ name, source: file.path, via: 'Gemfile' });
+      }
+      gemPattern.lastIndex = 0;
+    }
+
+    // PHP
+    if (basename === 'composer.json') {
+      try {
+        const pkg = JSON.parse(file.content);
+        const allDeps = { ...pkg.require, ...pkg['require-dev'] };
+        for (const [dep, ver] of Object.entries(allDeps)) {
+          const name = PHP_DB_PACKAGES[dep];
+          if (name) add({ name, version: ver as string, source: file.path, via: 'composer' });
+        }
+      } catch {
+        /* skip */
+      }
+    }
+
+    // Java
+    if (basename === 'pom.xml' || basename === 'build.gradle' || basename === 'build.gradle.kts') {
+      for (const [artifact, name] of Object.entries(JAVA_DB_ARTIFACTS)) {
+        if (file.content.includes(artifact)) {
+          add({ name, source: file.path, via: basename === 'pom.xml' ? 'Maven' : 'Gradle' });
+        }
+      }
+    }
+
+    // Go
+    if (basename === 'go.mod') {
+      for (const [pkg, name] of Object.entries(GO_DB_PACKAGES)) {
+        if (file.content.includes(pkg)) add({ name, source: file.path, via: 'go.mod' });
+      }
+    }
+
+    // Rust
+    if (basename === 'Cargo.toml') {
+      for (const [crate, name] of Object.entries(RUST_DB_CRATES)) {
+        const pattern = new RegExp(`^${crate.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*=`, 'm');
+        if (pattern.test(file.content)) {
+          add({ name, source: file.path, via: 'Cargo.toml' });
+        }
+      }
+    }
+  }
+
+  return results.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// ── CI/CD & DevOps Detection ──
+
+interface CicdPattern {
+  pattern: RegExp;
+  name: string;
+  category: DetectedCicdTool['category'];
+}
+
+const CICD_PATH_PATTERNS: CicdPattern[] = [
+  { pattern: /^\.github\/workflows\/.*\.ya?ml$/, name: 'GitHub Actions', category: 'ci' },
+  { pattern: /^\.gitlab-ci\.ya?ml$/, name: 'GitLab CI', category: 'ci' },
+  { pattern: /^\.circleci\//, name: 'CircleCI', category: 'ci' },
+  { pattern: /^Jenkinsfile$/, name: 'Jenkins', category: 'ci' },
+  { pattern: /^\.travis\.yml$/, name: 'Travis CI', category: 'ci' },
+  { pattern: /^azure-pipelines\.ya?ml$/, name: 'Azure Pipelines', category: 'ci' },
+  { pattern: /^bitbucket-pipelines\.yml$/, name: 'Bitbucket Pipelines', category: 'ci' },
+  { pattern: /^\.buildkite\//, name: 'Buildkite', category: 'ci' },
+  { pattern: /^Dockerfile(\..*)?$/, name: 'Docker', category: 'container' },
+  { pattern: /^(.*\/)?Dockerfile(\..*)?$/, name: 'Docker', category: 'container' },
+  { pattern: /^docker-compose\.ya?ml$/, name: 'Docker Compose', category: 'container' },
+  { pattern: /^compose\.ya?ml$/, name: 'Docker Compose', category: 'container' },
+  { pattern: /^\.dockerignore$/, name: 'Docker', category: 'container' },
+  { pattern: /^(kubernetes|k8s)\//, name: 'Kubernetes', category: 'orchestration' },
+  { pattern: /^Chart\.yaml$/, name: 'Helm', category: 'orchestration' },
+  { pattern: /^(charts|helm)\/.*Chart\.yaml$/, name: 'Helm', category: 'orchestration' },
+  { pattern: /^skaffold\.yaml$/, name: 'Skaffold', category: 'orchestration' },
+  { pattern: /^Makefile$/, name: 'Make', category: 'build' },
+  { pattern: /^Taskfile\.ya?ml$/, name: 'Task', category: 'build' },
+  { pattern: /^justfile$/, name: 'Just', category: 'build' },
+  { pattern: /^Earthfile$/, name: 'Earthly', category: 'build' },
+  { pattern: /^pulumi\.ya?ml$/, name: 'Pulumi', category: 'iac' },
+  { pattern: /^Pulumi\.\w+\.ya?ml$/, name: 'Pulumi', category: 'iac' },
+  { pattern: /^serverless\.ya?ml$/, name: 'Serverless Framework', category: 'iac' },
+  { pattern: /^\.terraform\.lock\.hcl$/, name: 'Terraform', category: 'iac' },
+  { pattern: /^terragrunt\.hcl$/, name: 'Terragrunt', category: 'iac' },
+];
+
+export function detectCicd(files: FileInput[]): DetectedCicdTool[] {
+  const seen = new Map<string, DetectedCicdTool>();
+
+  for (const file of files) {
+    for (const { pattern, name, category } of CICD_PATH_PATTERNS) {
+      if (pattern.test(file.path) && !seen.has(name)) {
+        seen.set(name, { name, source: file.path, category });
+      }
+    }
+  }
+
+  return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// ── Testing & Quality Detection ──
+
+const JS_TESTING_PACKAGES: Record<
+  string,
+  { name: string; category: DetectedTestingTool['category'] }
+> = {
+  jest: { name: 'Jest', category: 'testing' },
+  vitest: { name: 'Vitest', category: 'testing' },
+  mocha: { name: 'Mocha', category: 'testing' },
+  ava: { name: 'AVA', category: 'testing' },
+  jasmine: { name: 'Jasmine', category: 'testing' },
+  cypress: { name: 'Cypress', category: 'e2e' },
+  playwright: { name: 'Playwright', category: 'e2e' },
+  '@playwright/test': { name: 'Playwright', category: 'e2e' },
+  puppeteer: { name: 'Puppeteer', category: 'e2e' },
+  '@storybook/react': { name: 'Storybook', category: 'testing' },
+  '@storybook/vue3': { name: 'Storybook', category: 'testing' },
+  '@storybook/svelte': { name: 'Storybook', category: 'testing' },
+  '@testing-library/react': { name: 'Testing Library', category: 'testing' },
+  '@testing-library/jest-dom': { name: 'Testing Library', category: 'testing' },
+  eslint: { name: 'ESLint', category: 'linting' },
+  '@biomejs/biome': { name: 'Biome', category: 'linting' },
+  prettier: { name: 'Prettier', category: 'formatting' },
+  husky: { name: 'Husky', category: 'linting' },
+  'lint-staged': { name: 'lint-staged', category: 'linting' },
+  commitlint: { name: 'commitlint', category: 'linting' },
+  '@commitlint/cli': { name: 'commitlint', category: 'linting' },
+  nyc: { name: 'NYC', category: 'coverage' },
+  c8: { name: 'c8', category: 'coverage' },
+  '@vitest/coverage-v8': { name: 'Vitest Coverage', category: 'coverage' },
+};
+
+const PY_TESTING_PACKAGES: Record<
+  string,
+  { name: string; category: DetectedTestingTool['category'] }
+> = {
+  pytest: { name: 'pytest', category: 'testing' },
+  'pytest-cov': { name: 'pytest-cov', category: 'coverage' },
+  tox: { name: 'tox', category: 'testing' },
+  ruff: { name: 'Ruff', category: 'linting' },
+  black: { name: 'Black', category: 'formatting' },
+  mypy: { name: 'mypy', category: 'linting' },
+  flake8: { name: 'flake8', category: 'linting' },
+  pylint: { name: 'pylint', category: 'linting' },
+  bandit: { name: 'Bandit', category: 'linting' },
+  isort: { name: 'isort', category: 'formatting' },
+  coverage: { name: 'Coverage.py', category: 'coverage' },
+};
+
+const RUBY_TESTING_GEMS: Record<
+  string,
+  { name: string; category: DetectedTestingTool['category'] }
+> = {
+  rspec: { name: 'RSpec', category: 'testing' },
+  'rspec-rails': { name: 'RSpec', category: 'testing' },
+  rubocop: { name: 'RuboCop', category: 'linting' },
+  simplecov: { name: 'SimpleCov', category: 'coverage' },
+  cucumber: { name: 'Cucumber', category: 'e2e' },
+  minitest: { name: 'Minitest', category: 'testing' },
+};
+
+const JAVA_TESTING_ARTIFACTS: Record<
+  string,
+  { name: string; category: DetectedTestingTool['category'] }
+> = {
+  junit: { name: 'JUnit', category: 'testing' },
+  'junit-jupiter': { name: 'JUnit 5', category: 'testing' },
+  mockito: { name: 'Mockito', category: 'testing' },
+  jacoco: { name: 'JaCoCo', category: 'coverage' },
+  spotbugs: { name: 'SpotBugs', category: 'linting' },
+  checkstyle: { name: 'Checkstyle', category: 'linting' },
+};
+
+const GO_TESTING_PACKAGES: Record<
+  string,
+  { name: string; category: DetectedTestingTool['category'] }
+> = {
+  'github.com/stretchr/testify': { name: 'Testify', category: 'testing' },
+  'github.com/onsi/ginkgo': { name: 'Ginkgo', category: 'testing' },
+  'github.com/onsi/gomega': { name: 'Gomega', category: 'testing' },
+  'github.com/golangci/golangci-lint': { name: 'golangci-lint', category: 'linting' },
+};
+
+interface TestingConfigPattern {
+  pattern: RegExp;
+  name: string;
+  category: DetectedTestingTool['category'];
+}
+
+const TESTING_CONFIG_PATTERNS: TestingConfigPattern[] = [
+  { pattern: /^\.eslintrc(\.(js|cjs|mjs|json|ya?ml))?$/, name: 'ESLint', category: 'linting' },
+  { pattern: /^eslint\.config\.(js|cjs|mjs|ts)$/, name: 'ESLint', category: 'linting' },
+  {
+    pattern: /^\.prettierrc(\.(js|cjs|mjs|json|ya?ml))?$/,
+    name: 'Prettier',
+    category: 'formatting',
+  },
+  { pattern: /^prettier\.config\.(js|cjs|mjs|ts)$/, name: 'Prettier', category: 'formatting' },
+  { pattern: /^jest\.config\.(js|cjs|mjs|ts|json)$/, name: 'Jest', category: 'testing' },
+  { pattern: /^vitest\.config\.(js|cjs|mjs|ts)$/, name: 'Vitest', category: 'testing' },
+  { pattern: /^playwright\.config\.(js|ts)$/, name: 'Playwright', category: 'e2e' },
+  { pattern: /^cypress\.config\.(js|ts|cjs|mjs)$/, name: 'Cypress', category: 'e2e' },
+  { pattern: /^\.storybook\//, name: 'Storybook', category: 'testing' },
+  { pattern: /^biome\.json$/, name: 'Biome', category: 'linting' },
+  { pattern: /^\.ruff\.toml$/, name: 'Ruff', category: 'linting' },
+  { pattern: /^\.flake8$/, name: 'flake8', category: 'linting' },
+  { pattern: /^\.pylintrc$/, name: 'pylint', category: 'linting' },
+  { pattern: /^mypy\.ini$/, name: 'mypy', category: 'linting' },
+  { pattern: /^\.mypy\.ini$/, name: 'mypy', category: 'linting' },
+  { pattern: /^tox\.ini$/, name: 'tox', category: 'testing' },
+  { pattern: /^\.rubocop\.yml$/, name: 'RuboCop', category: 'linting' },
+  { pattern: /^\.husky\//, name: 'Husky', category: 'linting' },
+  { pattern: /^commitlint\.config\.(js|cjs|mjs|ts)$/, name: 'commitlint', category: 'linting' },
+  {
+    pattern: /^\.commitlintrc(\.(js|cjs|mjs|json|ya?ml))?$/,
+    name: 'commitlint',
+    category: 'linting',
+  },
+];
+
+export function detectTesting(files: FileInput[]): DetectedTestingTool[] {
+  const seen = new Map<string, DetectedTestingTool>();
+
+  function add(tool: DetectedTestingTool) {
+    if (!seen.has(tool.name)) seen.set(tool.name, tool);
+  }
+
+  for (const file of files) {
+    const basename = file.path.split('/').pop() || '';
+
+    // Config file patterns
+    for (const { pattern, name, category } of TESTING_CONFIG_PATTERNS) {
+      if (pattern.test(file.path) || pattern.test(basename)) {
+        add({ name, source: file.path, via: 'config', category });
+      }
+    }
+
+    // JS from package.json
+    if (basename === 'package.json') {
+      try {
+        const pkg = JSON.parse(file.content);
+        const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+        for (const [dep] of Object.entries(allDeps)) {
+          const tool = JS_TESTING_PACKAGES[dep];
+          if (tool) add({ ...tool, source: file.path, via: 'npm' });
+        }
+      } catch {
+        /* skip */
+      }
+    }
+
+    // Python
+    if (
+      basename === 'requirements.txt' ||
+      basename === 'pyproject.toml' ||
+      basename === 'Pipfile' ||
+      basename === 'setup.py' ||
+      basename === 'setup.cfg' ||
+      file.path.match(/requirements\/.*\.txt$/)
+    ) {
+      const content = file.content.toLowerCase();
+      for (const [pkg, tool] of Object.entries(PY_TESTING_PACKAGES)) {
+        if (content.includes(pkg)) add({ ...tool, source: file.path, via: 'pip' });
+      }
+    }
+
+    // Ruby
+    if (basename === 'Gemfile') {
+      const gemPattern = /gem\s+['"]([^'"]+)['"]/g;
+      let match;
+      while ((match = gemPattern.exec(file.content)) !== null) {
+        const tool = RUBY_TESTING_GEMS[match[1]];
+        if (tool) add({ ...tool, source: file.path, via: 'Gemfile' });
+      }
+      gemPattern.lastIndex = 0;
+    }
+
+    // Java
+    if (basename === 'pom.xml' || basename === 'build.gradle' || basename === 'build.gradle.kts') {
+      for (const [artifact, tool] of Object.entries(JAVA_TESTING_ARTIFACTS)) {
+        if (file.content.includes(artifact)) {
+          add({ ...tool, source: file.path, via: basename === 'pom.xml' ? 'Maven' : 'Gradle' });
+        }
+      }
+    }
+
+    // Go
+    if (basename === 'go.mod') {
+      for (const [pkg, tool] of Object.entries(GO_TESTING_PACKAGES)) {
+        if (file.content.includes(pkg)) add({ ...tool, source: file.path, via: 'go.mod' });
+      }
+    }
+  }
+
+  return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 // ── File Filtering ──
 
 const CFN_YAML_OR_JSON = /\.(?:ya?ml|json)$/;
@@ -1144,6 +1799,72 @@ export function filterTechFiles(tree: TreeEntry[]): string[] {
     )
     .map((e) => e.path);
   paths.push(...armFiles);
+
+  // CI/CD config files (shallow paths only — depth ≤ 3)
+  const cicdPatterns = [
+    /^\.github\/workflows\/.*\.ya?ml$/,
+    /^\.gitlab-ci\.ya?ml$/,
+    /^\.circleci\//,
+    /^Jenkinsfile$/,
+    /^\.travis\.yml$/,
+    /^azure-pipelines\.ya?ml$/,
+    /^bitbucket-pipelines\.yml$/,
+    /^\.buildkite\//,
+    /^Dockerfile(\..*)?$/,
+    /^docker-compose\.ya?ml$/,
+    /^compose\.ya?ml$/,
+    /^\.dockerignore$/,
+    /^(kubernetes|k8s)\//,
+    /^Chart\.yaml$/,
+    /^(charts|helm)\/.*Chart\.yaml$/,
+    /^skaffold\.yaml$/,
+    /^Makefile$/,
+    /^Taskfile\.ya?ml$/,
+    /^justfile$/,
+    /^Earthfile$/,
+    /^pulumi\.ya?ml$/,
+    /^Pulumi\.\w+\.ya?ml$/,
+    /^serverless\.ya?ml$/,
+    /^\.terraform\.lock\.hcl$/,
+    /^terragrunt\.hcl$/,
+  ];
+  for (const entry of filtered) {
+    if (entry.type !== 'blob') continue;
+    if (cicdPatterns.some((p) => p.test(entry.path))) {
+      if (!paths.includes(entry.path)) paths.push(entry.path);
+    }
+  }
+
+  // Testing/quality config files
+  const testingConfigPatterns = [
+    /^\.eslintrc/,
+    /^eslint\.config\./,
+    /^\.prettierrc/,
+    /^prettier\.config\./,
+    /^jest\.config\./,
+    /^vitest\.config\./,
+    /^playwright\.config\./,
+    /^cypress\.config\./,
+    /^\.storybook\//,
+    /^biome\.json$/,
+    /^\.ruff\.toml$/,
+    /^\.flake8$/,
+    /^\.pylintrc$/,
+    /^mypy\.ini$/,
+    /^\.mypy\.ini$/,
+    /^tox\.ini$/,
+    /^\.rubocop\.yml$/,
+    /^\.husky\//,
+    /^commitlint\.config\./,
+    /^\.commitlintrc/,
+  ];
+  for (const entry of filtered) {
+    if (entry.type !== 'blob') continue;
+    const basename = entry.path.split('/').pop() || '';
+    if (testingConfigPatterns.some((p) => p.test(entry.path) || p.test(basename))) {
+      if (!paths.includes(entry.path)) paths.push(entry.path);
+    }
+  }
 
   return [...new Set(paths)];
 }

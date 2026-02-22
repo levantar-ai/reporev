@@ -139,6 +139,7 @@ export type AnalysisStep =
 export interface AnalysisState {
   step: AnalysisStep;
   progress: number;
+  subProgress: number;
   report: AnalysisReport | null;
   error: string | null;
   filesTotal: number;

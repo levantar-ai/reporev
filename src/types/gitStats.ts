@@ -235,6 +235,7 @@ export interface GitStatsAnalysis {
 export type GitStatsStep =
   | 'idle'
   | 'cloning'
+  | 'reading-files'
   | 'extracting-commits'
   | 'extracting-details'
   | 'computing-stats'
@@ -248,6 +249,7 @@ export type GitStatsStep =
 export interface GitStatsState {
   step: GitStatsStep;
   progress: number;
+  subProgress: number;
   commitsFetched: number;
   detailsFetched: number;
   statusMessage: string;

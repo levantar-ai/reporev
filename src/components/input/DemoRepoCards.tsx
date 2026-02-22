@@ -1,4 +1,5 @@
 import { DEMO_REPOS } from '../../utils/constants';
+import { trackEvent } from '../../utils/analytics';
 
 interface Props {
   onSelect: (url: string) => void;
@@ -18,7 +19,10 @@ export function DemoRepoCards({ onSelect, disabled }: Props) {
         {DEMO_REPOS.map((demo) => (
           <button
             key={`${demo.owner}/${demo.repo}`}
-            onClick={() => onSelect(`${demo.owner}/${demo.repo}`)}
+            onClick={() => {
+              trackEvent('demo_repo_click', { repo: `${demo.owner}/${demo.repo}` });
+              onSelect(`${demo.owner}/${demo.repo}`);
+            }}
             disabled={disabled}
             className="card-glow text-left p-5 rounded-xl border border-border bg-surface-alt disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 group"
             aria-label={`Analyze ${demo.owner}/${demo.repo}: ${demo.description}`}

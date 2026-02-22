@@ -9,14 +9,15 @@ import {
 } from './repoCache';
 import type { CachedRepoData } from './repoCache';
 
-const TIMEOUT_MS = 120_000; // 2 minutes
+const TIMEOUT_MS = 120_000; // 2 min for file-only clones
+const STATS_TIMEOUT_MS = 300_000; // 5 min for history + diff extraction
 
 const CORS_PROXY = 'https://repoguru-git-proxy.andy-rea.workers.dev';
 
 interface CloneOptions {
   includeStats?: boolean;
   token?: string;
-  onProgress?: (step: string, percent: number, message: string) => void;
+  onProgress?: (step: string, percent: number, subPercent: number, message: string) => void;
 }
 
 interface CloneResult {
@@ -46,11 +47,12 @@ export function cloneRepo(
   const promise = new Promise<CloneResult>((resolve, reject) => {
     const worker = new Worker(new URL('./git.worker.ts', import.meta.url), { type: 'module' });
 
+    const timeoutMs = includeStats ? STATS_TIMEOUT_MS : TIMEOUT_MS;
     const timeout = setTimeout(() => {
       worker.terminate();
       clearPendingClone();
-      reject(new Error('Clone timed out after 2 minutes'));
-    }, TIMEOUT_MS);
+      reject(new Error(`Clone timed out after ${timeoutMs / 60_000} minutes`));
+    }, timeoutMs);
 
     let cachedData: CachedRepoData | null = null;
 
@@ -59,7 +61,7 @@ export function cloneRepo(
 
       switch (msg.type) {
         case 'progress':
-          onProgress?.(msg.step, msg.percent, msg.message);
+          onProgress?.(msg.step, msg.percent, msg.subPercent, msg.message);
           break;
 
         case 'clone-done':
@@ -126,7 +128,7 @@ export function cloneRepo(
 export function cloneAndExtract(
   owner: string,
   repo: string,
-  onProgress: (step: string, percent: number, message: string) => void,
+  onProgress: (step: string, percent: number, subPercent: number, message: string) => void,
   token?: string,
 ): Promise<GitStatsRawData> {
   return cloneRepo(owner, repo, { includeStats: true, token, onProgress }).then(
@@ -137,7 +139,7 @@ export function cloneAndExtract(
 export function ensureCloned(
   owner: string,
   repo: string,
-  onProgress?: (step: string, percent: number, message: string) => void,
+  onProgress?: (step: string, percent: number, subPercent: number, message: string) => void,
   token?: string,
 ): Promise<CachedRepoData> {
   return cloneRepo(owner, repo, { token, onProgress }).then((r) => r.cached);

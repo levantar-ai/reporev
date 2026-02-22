@@ -11,6 +11,8 @@ import { saveReport } from '../services/persistence/repoCache';
 import { addHistoryEntry } from '../services/persistence/history';
 import { invalidateIfDifferent } from '../services/git/repoCache';
 import { ensureCloned } from '../services/git/cloneService';
+import { humanizeCloneError, formatHumanizedError } from '../utils/humanizeError';
+import { trackEvent } from '../utils/analytics';
 import type { GitHubRepoResponse } from '../services/github/types';
 import type { RepoInfo, CategoryKey, TreeEntry, FileContent } from '../types';
 
@@ -34,6 +36,14 @@ export function useAnalysis() {
       }
 
       const token = appState.githubToken || undefined;
+      const startTime = performance.now();
+
+      trackEvent('analysis_start', {
+        tool: 'report-card',
+        repo: `${parsed.owner}/${parsed.repo}`,
+        has_token: !!token,
+      });
+
       const onRateLimit = (info: typeof appState.rateLimit) => {
         if (info) appDispatch({ type: 'SET_RATE_LIMIT', info });
       };
@@ -77,10 +87,15 @@ export function useAnalysis() {
           const cached = await ensureCloned(
             parsed.owner,
             parsed.repo,
-            (_step, percent) => {
+            (_step, percent, subPercent) => {
               // Scale clone progress from 20-60%
               const scaled = 20 + Math.round(percent * 0.4);
-              dispatch({ type: 'SET_STEP', step: 'cloning', progress: scaled });
+              dispatch({
+                type: 'SET_STEP',
+                step: 'cloning',
+                progress: scaled,
+                subProgress: subPercent,
+              });
             },
             token,
           );
@@ -123,7 +138,25 @@ export function useAnalysis() {
               },
             );
           } else {
-            throw cloneErr;
+            const msg = cloneErr instanceof Error ? cloneErr.message : 'Unknown error';
+            const humanized = humanizeCloneError(msg);
+            trackEvent('analysis_error', {
+              tool: 'report-card',
+              repo: `${parsed.owner}/${parsed.repo}`,
+              error_type: humanized.title.includes('too large')
+                ? 'storage'
+                : humanized.title.includes('timed out')
+                  ? 'timeout'
+                  : humanized.title.includes('not found')
+                    ? 'not-found'
+                    : humanized.title.includes('rate limit')
+                      ? 'rate-limit'
+                      : humanized.title.includes('invalid')
+                        ? 'auth'
+                        : 'unknown',
+              browser: navigator.userAgent,
+            });
+            throw new Error(formatHumanizedError(humanized));
           }
         }
 
@@ -144,6 +177,14 @@ export function useAnalysis() {
         }
 
         // Step 8: Cache and finish
+        const duration = Math.round(performance.now() - startTime);
+        trackEvent('analysis_complete', {
+          tool: 'report-card',
+          repo: `${parsed.owner}/${parsed.repo}`,
+          duration_ms: duration,
+          has_token: !!token,
+        });
+
         dispatch({ type: 'SET_REPORT', report });
 
         // Persist

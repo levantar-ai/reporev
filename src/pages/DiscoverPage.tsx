@@ -1,21 +1,27 @@
-import { useState, useCallback, useRef } from 'react';
-import type {
-  RepoInfo,
-  TreeEntry,
-  LightAnalysisReport,
-  LetterGrade,
-  DiscoveryFilters,
-} from '../types';
+import { useState, useCallback, useRef, useMemo } from 'react';
+import type { DiscoveryFilters, PageId } from '../types';
 import { githubFetch } from '../services/github/client';
-import { runLightAnalysis } from '../services/analysis/lightEngine';
-import type { GitHubTreeResponse } from '../services/github/types';
-import { formatNumber, gradeColorClass } from '../utils/formatters';
+import { formatNumber } from '../utils/formatters';
+import { trackEvent } from '../utils/analytics';
+import { isFirefox } from '../utils/browserDetect';
 import { useApp } from '../context/AppContext';
+
+/** GitHub `size` is in KB — format to human-readable string */
+function formatRepoSize(sizeKB: number): string {
+  if (sizeKB < 1024) return `${sizeKB} KB`;
+  const mb = sizeKB / 1024;
+  if (mb < 1024) return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
+  return `${(mb / 1024).toFixed(1)} GB`;
+}
+
+/** ~250 MB Firefox IDB limit — warn above 200 MB to leave headroom */
+const FIREFOX_SIZE_WARN_KB = 200 * 1024;
 
 // ── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
   onNavigate: (page: string) => void;
+  onSendToTool: (page: PageId, repo: string) => void;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -48,19 +54,6 @@ const SORT_OPTIONS: { value: DiscoveryFilters['sort']; label: string }[] = [
   { value: 'forks', label: 'Forks' },
 ];
 
-// ── Grade badge helpers ──────────────────────────────────────────────────────
-
-function gradeBadgeBg(grade: LetterGrade): string {
-  const map: Record<LetterGrade, string> = {
-    A: 'bg-grade-a/15 border-grade-a/30',
-    B: 'bg-grade-b/15 border-grade-b/30',
-    C: 'bg-grade-c/15 border-grade-c/30',
-    D: 'bg-grade-d/15 border-grade-d/30',
-    F: 'bg-grade-f/15 border-grade-f/30',
-  };
-  return map[grade];
-}
-
 // ── GitHub search result shape ───────────────────────────────────────────────
 
 interface GitHubSearchRepo {
@@ -88,19 +81,12 @@ interface GitHubSearchResponse {
   items: GitHubSearchRepo[];
 }
 
-// ── Per-card scan state ──────────────────────────────────────────────────────
-
-interface CardState {
-  scanning: boolean;
-  report: LightAnalysisReport | null;
-  error: string | null;
-}
-
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function DiscoverPage({ onNavigate }: Props) {
+export function DiscoverPage({ onNavigate, onSendToTool }: Props) {
   const { state: appState } = useApp();
   const token = appState.githubToken;
+  const firefox = useMemo(() => isFirefox(), []);
 
   // Filters
   const [language, setLanguage] = useState('');
@@ -114,9 +100,6 @@ export function DiscoverPage({ onNavigate }: Props) {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
-
-  // Per-card scan state keyed by full_name
-  const [cardStates, setCardStates] = useState<Record<string, CardState>>({});
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -147,7 +130,12 @@ export function DiscoverPage({ onNavigate }: Props) {
     setResults([]);
     setTotalCount(0);
     setHasSearched(true);
-    setCardStates({});
+
+    trackEvent('discover_search', {
+      language: language || 'all',
+      min_stars: minStars,
+      sort,
+    });
 
     try {
       const path = buildSearchPath();
@@ -164,69 +152,6 @@ export function DiscoverPage({ onNavigate }: Props) {
       setSearching(false);
     }
   }, [buildSearchPath, token]);
-
-  // ── Quick Scan a single repo ─────────────────────────────────────────────
-
-  const handleQuickScan = useCallback(
-    async (repo: GitHubSearchRepo) => {
-      const key = repo.full_name;
-
-      setCardStates((prev) => ({
-        ...prev,
-        [key]: { scanning: true, report: null, error: null },
-      }));
-
-      try {
-        // Build RepoInfo from search result
-        const repoInfo: RepoInfo = {
-          owner: repo.owner.login,
-          repo: repo.name,
-          defaultBranch: repo.default_branch,
-          description: repo.description ?? '',
-          stars: repo.stargazers_count,
-          forks: repo.forks_count,
-          openIssues: repo.open_issues_count,
-          license: repo.license?.spdx_id ?? null,
-          language: repo.language,
-          createdAt: repo.created_at,
-          updatedAt: repo.updated_at,
-          topics: repo.topics ?? [],
-          archived: repo.archived,
-          size: repo.size,
-        };
-
-        // Fetch tree
-        const treePath = `/repos/${encodeURIComponent(repo.owner.login)}/${encodeURIComponent(repo.name)}/git/trees/${encodeURIComponent(repo.default_branch)}?recursive=1`;
-        const treeData = await githubFetch<GitHubTreeResponse>(treePath, token || undefined);
-
-        const treeEntries: TreeEntry[] = treeData.tree.map((e) => ({
-          path: e.path,
-          mode: e.mode,
-          type: e.type,
-          sha: e.sha,
-          size: e.size,
-        }));
-
-        const parsedRepo = { owner: repo.owner.login, repo: repo.name };
-        const report = runLightAnalysis(parsedRepo, repoInfo, treeEntries);
-
-        setCardStates((prev) => ({
-          ...prev,
-          [key]: { scanning: false, report, error: null },
-        }));
-      } catch (err: unknown) {
-        setCardStates((prev) => ({
-          ...prev,
-          [key]: {
-            scanning: false,
-            report: null,
-            error: err instanceof Error ? err.message : 'Scan failed',
-          },
-        }));
-      }
-    },
-    [token],
-  );
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -249,8 +174,8 @@ export function DiscoverPage({ onNavigate }: Props) {
           Discover <span className="text-neon neon-text">Repositories</span>
         </h1>
         <p className="mt-4 text-lg text-text-secondary max-w-2xl mx-auto leading-relaxed">
-          Search GitHub for repositories by language, stars, and topic. Run a quick health scan on
-          any repo to see its grade before diving deeper.
+          Search GitHub for repositories by language, stars, and topic. Send any result to Report
+          Card, Git Stats, or Tech Detect for a deep analysis.
         </p>
       </div>
 
@@ -386,8 +311,8 @@ export function DiscoverPage({ onNavigate }: Props) {
 
           {!token && (
             <p className="text-xs text-text-muted mt-4 text-center">
-              Search uses the GitHub Search API. Without a token you have 10 search req/min. Add a
-              GitHub token in Settings for higher limits.
+              Uses the GitHub Search API. Without a token: 10 searches/min. Add a GitHub token in
+              Settings for higher limits and private repo access.
             </p>
           )}
         </div>
@@ -463,165 +388,87 @@ export function DiscoverPage({ onNavigate }: Props) {
       {/* ── Result Cards ────────────────────────────────────────────────────── */}
       {!searching && results.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-7xl mx-auto">
-          {results.map((repo) => {
-            const key = repo.full_name;
-            const card = cardStates[key];
-            const isScanning = card?.scanning ?? false;
-            const report = card?.report ?? null;
-            const scanError = card?.error ?? null;
+          {results.map((repo) => (
+            <div
+              key={repo.id}
+              className="group relative p-5 rounded-2xl bg-surface-alt border border-border hover:border-border-bright hover:shadow-lg hover:shadow-neon/5 transition-all duration-200"
+            >
+              {/* Repo name */}
+              <h3 className="text-base font-semibold text-neon truncate" title={repo.full_name}>
+                <a
+                  href={`https://github.com/${repo.full_name}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline"
+                >
+                  {repo.full_name}
+                </a>
+              </h3>
 
-            return (
-              <div
-                key={repo.id}
-                className="group relative p-5 rounded-2xl bg-surface-alt border border-border hover:border-border-bright hover:shadow-lg hover:shadow-neon/5 transition-all duration-200"
-              >
-                {/* Grade badge overlay when scanned */}
-                {report && (
-                  <div
-                    className={`absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${gradeBadgeBg(report.grade)}`}
+              {/* Description */}
+              <p className="mt-2 text-sm text-text-secondary line-clamp-2 min-h-[2.5rem]">
+                {repo.description || 'No description provided.'}
+              </p>
+
+              {/* Stats row */}
+              <div className="mt-4 flex items-center gap-4 text-xs text-text-muted">
+                <span className="inline-flex items-center gap-1">
+                  <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                  {formatNumber(repo.stargazers_count)}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <svg
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                   >
-                    <span className={`text-lg font-bold ${gradeColorClass(report.grade)}`}>
-                      {report.grade}
-                    </span>
-                    <span className={`text-xs font-medium ${gradeColorClass(report.grade)}`}>
-                      {report.overallScore}
-                    </span>
-                  </div>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"
+                    />
+                  </svg>
+                  {formatNumber(repo.forks_count)}
+                </span>
+                {repo.language && (
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2.5 w-2.5 rounded-full bg-neon/60" />
+                    {repo.language}
+                  </span>
                 )}
-
-                {/* Repo name */}
-                <div className="pr-16">
-                  <h3 className="text-base font-semibold text-neon truncate" title={repo.full_name}>
-                    <a
-                      href={`https://github.com/${repo.full_name}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:underline"
-                    >
-                      {repo.full_name}
-                    </a>
-                  </h3>
-                </div>
-
-                {/* Description */}
-                <p className="mt-2 text-sm text-text-secondary line-clamp-2 min-h-[2.5rem]">
-                  {repo.description || 'No description provided.'}
-                </p>
-
-                {/* Stats row */}
-                <div className="mt-4 flex items-center gap-4 text-xs text-text-muted">
-                  {/* Stars */}
-                  <span className="inline-flex items-center gap-1">
-                    <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                    </svg>
-                    {formatNumber(repo.stargazers_count)}
-                  </span>
-
-                  {/* Forks */}
-                  <span className="inline-flex items-center gap-1">
-                    <svg
-                      className="h-3.5 w-3.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"
-                      />
-                    </svg>
-                    {formatNumber(repo.forks_count)}
-                  </span>
-
-                  {/* Language */}
-                  {repo.language && (
-                    <span className="inline-flex items-center gap-1">
-                      <span className="h-2.5 w-2.5 rounded-full bg-neon/60" />
-                      {repo.language}
-                    </span>
-                  )}
-                </div>
-
-                {/* Topics */}
-                {repo.topics.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {repo.topics.slice(0, 5).map((t) => (
+                {repo.size > 0 &&
+                  (() => {
+                    const tooLarge = firefox && repo.size > FIREFOX_SIZE_WARN_KB;
+                    return (
                       <span
-                        key={t}
-                        className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-neon/10 text-neon border border-neon/20"
+                        className={`inline-flex items-center gap-1 ${tooLarge ? 'text-grade-f font-medium' : ''}`}
+                        title={
+                          tooLarge
+                            ? "This repo may exceed Firefox's ~250 MB IndexedDB limit. Try Chrome for large repos."
+                            : `Repository size: ${formatRepoSize(repo.size)}`
+                        }
                       >
-                        {t}
-                      </span>
-                    ))}
-                    {repo.topics.length > 5 && (
-                      <span className="px-2 py-0.5 text-[10px] text-text-muted">
-                        +{repo.topics.length - 5}
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {/* Scan error */}
-                {scanError && (
-                  <div className="mt-3 px-3 py-2 rounded-lg bg-grade-f/10 border border-grade-f/20 text-xs text-grade-f">
-                    {scanError}
-                  </div>
-                )}
-
-                {/* Category breakdown when scanned */}
-                {report && (
-                  <div className="mt-4 pt-3 border-t border-border">
-                    <div className="grid grid-cols-4 gap-2 text-center">
-                      {report.categories.slice(0, 4).map((cat) => {
-                        let catScoreColor = 'text-grade-f';
-                        if (cat.score >= 70) catScoreColor = 'text-grade-a';
-                        else if (cat.score >= 50) catScoreColor = 'text-grade-c';
-
-                        return (
-                          <div key={cat.key}>
-                            <div className={`text-xs font-bold ${catScoreColor}`}>{cat.score}</div>
-                            <div className="text-[10px] text-text-muted truncate">{cat.label}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Action buttons */}
-                <div className="mt-4 flex items-center gap-2">
-                  {!report ? (
-                    <button
-                      onClick={() => handleQuickScan(repo)}
-                      disabled={isScanning}
-                      className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-neon/30 text-neon hover:bg-neon/10 hover:border-neon/50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      {isScanning ? (
-                        <>
-                          <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            />
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                            />
-                          </svg>
-                          Scanning...
-                        </>
-                      ) : (
-                        <>
+                        <svg
+                          className="h-3.5 w-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"
+                          />
+                        </svg>
+                        {formatRepoSize(repo.size)}
+                        {tooLarge && (
                           <svg
-                            className="h-3.5 w-3.5"
+                            className="h-3 w-3 text-grade-f"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -629,39 +476,125 @@ export function DiscoverPage({ onNavigate }: Props) {
                             <path
                               strokeLinecap="round"
                               strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                              strokeWidth={2.5}
+                              d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                             />
                           </svg>
-                          Quick Scan
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => onNavigate(`analyze:${repo.full_name}`)}
-                      className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-xl bg-neon/10 border border-neon/30 text-neon hover:bg-neon/20 transition-all"
+                        )}
+                      </span>
+                    );
+                  })()}
+              </div>
+
+              {/* Firefox size warning */}
+              {firefox && repo.size > FIREFOX_SIZE_WARN_KB && (
+                <p className="mt-2 text-[11px] text-grade-f leading-snug">
+                  May exceed Firefox&apos;s ~250 MB IndexedDB limit. Try Chrome for this repo.
+                </p>
+              )}
+
+              {/* Topics */}
+              {repo.topics.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {repo.topics.slice(0, 5).map((t) => (
+                    <span
+                      key={t}
+                      className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-neon/10 text-neon border border-neon/20"
                     >
-                      <svg
-                        className="h-3.5 w-3.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                        />
-                      </svg>
-                      Full Analysis
-                    </button>
+                      {t}
+                    </span>
+                  ))}
+                  {repo.topics.length > 5 && (
+                    <span className="px-2 py-0.5 text-[10px] text-text-muted">
+                      +{repo.topics.length - 5}
+                    </span>
                   )}
                 </div>
+              )}
+
+              {/* Send to tool buttons */}
+              <div className="mt-4 grid grid-cols-3 gap-1.5">
+                <button
+                  onClick={() => {
+                    trackEvent('discover_send_to_tool', {
+                      tool: 'report-card',
+                      repo: repo.full_name,
+                    });
+                    onSendToTool('home', repo.full_name);
+                  }}
+                  className="inline-flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium rounded-lg border border-neon/30 text-neon hover:bg-neon/10 hover:border-neon/50 transition-all"
+                  title="Full Report Card analysis"
+                >
+                  <svg
+                    className="h-3.5 w-3.5 shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                    />
+                  </svg>
+                  Report Card
+                </button>
+                <button
+                  onClick={() => {
+                    trackEvent('discover_send_to_tool', {
+                      tool: 'git-stats',
+                      repo: repo.full_name,
+                    });
+                    onSendToTool('git-stats', repo.full_name);
+                  }}
+                  className="inline-flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium rounded-lg border border-neon/30 text-neon hover:bg-neon/10 hover:border-neon/50 transition-all"
+                  title="Git history stats"
+                >
+                  <svg
+                    className="h-3.5 w-3.5 shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                    />
+                  </svg>
+                  Git Stats
+                </button>
+                <button
+                  onClick={() => {
+                    trackEvent('discover_send_to_tool', {
+                      tool: 'tech-detect',
+                      repo: repo.full_name,
+                    });
+                    onSendToTool('tech-detect', repo.full_name);
+                  }}
+                  className="inline-flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium rounded-lg border border-neon/30 text-neon hover:bg-neon/10 hover:border-neon/50 transition-all"
+                  title="Technology detection"
+                >
+                  <svg
+                    className="h-3.5 w-3.5 shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
+                    />
+                  </svg>
+                  Tech Detect
+                </button>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
 
@@ -685,9 +618,10 @@ export function DiscoverPage({ onNavigate }: Props) {
           </div>
           <h3 className="text-lg font-semibold text-text mb-2">Discover Open Source Projects</h3>
           <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed">
-            Set your filters above and search to find repositories. Then use{' '}
-            <span className="text-neon font-medium">Quick Scan</span> on any repo to instantly see
-            its health grade using lightweight tree-only analysis (2 API calls per scan).
+            Set your filters above and search to find repositories. Then send any repo to{' '}
+            <span className="text-neon font-medium">Report Card</span>,{' '}
+            <span className="text-neon font-medium">Git Stats</span>, or{' '}
+            <span className="text-neon font-medium">Tech Detect</span> for a deep analysis.
           </p>
         </div>
       )}
