@@ -91,15 +91,13 @@ interface HeadWalkResult {
   files: CacheFileContent[];
 }
 
+const BLOB_BATCH_SIZE = 50;
+
 async function walkHead(fs: InstanceType<typeof LightningFS>): Promise<HeadWalkResult> {
   const headOid = await git.resolveRef({ fs, dir: DIR, ref: 'HEAD' });
-  const fileList: string[] = [];
-  let totalLinesOfCode = 0;
-  let binaryFileCount = 0;
-  const tree: CacheTreeEntry[] = [];
-  const files: CacheFileContent[] = [];
-  const decoder = new TextDecoder();
-  const dirSet = new Set<string>();
+
+  // Pass 1: Collect file paths + OIDs (no content reads — fast tree traversal)
+  const fileEntries: { path: string; oid: string }[] = [];
 
   await git.walk({
     fs,
@@ -119,44 +117,58 @@ async function walkHead(fs: InstanceType<typeof LightningFS>): Promise<HeadWalkR
       // Skip directory tree entries during walk — synthesize from file paths after
       if (type !== 'blob') return;
 
-      fileList.push(filepath);
-
-      try {
-        const content = await entry.content();
-        if (!content) return;
-
-        const locResult = countLinesOfCode(content);
-        if (locResult.binary) {
-          binaryFileCount++;
-          tree.push({
-            path: filepath,
-            mode: '100644',
-            type: 'blob',
-            sha: '',
-            size: content.length,
-          });
-        } else {
-          totalLinesOfCode += locResult.lines;
-          tree.push({
-            path: filepath,
-            mode: '100644',
-            type: 'blob',
-            sha: '',
-            size: content.length,
-          });
-
-          // Capture text file contents for cache (skip large files)
-          if (content.length <= MAX_TEXT_FILE_SIZE) {
-            files.push({ path: filepath, content: decoder.decode(content), size: content.length });
-          }
-        }
-      } catch {
-        tree.push({ path: filepath, mode: '100644', type: 'blob', sha: '', size: 0 });
-      }
+      const oid = await entry.oid();
+      if (oid) fileEntries.push({ path: filepath, oid });
     },
   });
 
+  // Pass 2: Read blob contents in parallel batches
+  const fileList: string[] = [];
+  let totalLinesOfCode = 0;
+  let binaryFileCount = 0;
+  const tree: CacheTreeEntry[] = [];
+  const files: CacheFileContent[] = [];
+  const decoder = new TextDecoder();
+
+  for (let i = 0; i < fileEntries.length; i += BLOB_BATCH_SIZE) {
+    const batch = fileEntries.slice(i, i + BLOB_BATCH_SIZE);
+    const results = await Promise.all(
+      batch.map(async ({ path, oid }) => {
+        try {
+          const { blob } = await git.readBlob({ fs, dir: DIR, oid });
+          return { path, content: blob };
+        } catch {
+          return { path, content: null as Uint8Array | null };
+        }
+      }),
+    );
+
+    for (const { path, content } of results) {
+      fileList.push(path);
+
+      if (!content) {
+        tree.push({ path, mode: '100644', type: 'blob', sha: '', size: 0 });
+        continue;
+      }
+
+      const locResult = countLinesOfCode(content);
+      if (locResult.binary) {
+        binaryFileCount++;
+        tree.push({ path, mode: '100644', type: 'blob', sha: '', size: content.length });
+      } else {
+        totalLinesOfCode += locResult.lines;
+        tree.push({ path, mode: '100644', type: 'blob', sha: '', size: content.length });
+
+        // Capture text file contents for cache (skip large files)
+        if (content.length <= MAX_TEXT_FILE_SIZE) {
+          files.push({ path, content: decoder.decode(content), size: content.length });
+        }
+      }
+    }
+  }
+
   // Synthesize directory tree entries from file paths
+  const dirSet = new Set<string>();
   for (const filepath of fileList) {
     let pos = filepath.indexOf('/');
     while (pos !== -1) {
@@ -211,6 +223,9 @@ async function handleClone(msg: CloneMessage) {
 
     postProgress('cloning', 40, 'Clone complete, reading files...');
 
+    // When includeStats, run walkHead and git.log in parallel (both read-only)
+    const logPromise = includeStats ? git.log({ fs, dir: DIR, depth: 1000 }) : null;
+
     const walkResult = await walkHead(fs);
 
     postProgress('cloning', 50, `Done — ${walkResult.files.length} files`);
@@ -227,14 +242,14 @@ async function handleClone(msg: CloneMessage) {
     if (includeStats) {
       postProgress('extracting-commits', 52, 'Reading commit history...');
 
-      const logEntries = await git.log({ fs, dir: DIR, depth: 1000 });
+      const logEntries = await logPromise!;
       const commits = logToCommits(logEntries);
 
       postProgress('extracting-commits', 55, `Found ${logEntries.length} commits`);
 
       postProgress('extracting-details', 57, 'Computing file diffs...');
 
-      const BATCH_SIZE = 10;
+      const BATCH_SIZE = 25;
       const FULL_DIFF_COUNT = 30;
       const totalCommits = logEntries.length;
       const commitDetails: GitStatsRawData['commitDetails'] = [];
