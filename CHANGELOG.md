@@ -1,3 +1,9 @@
+## [0.3.1](https://github.com/levantar-ai/repoguru/compare/v0.3.0...v0.3.1) (2026-02-22)
+
+### Bug Fixes
+
+- trigger SLSA provenance on release event and fix subject format ([4a25a00](https://github.com/levantar-ai/repoguru/commit/4a25a00f6156e99953f9e8461cb5897764c0668a))
+
 # [0.3.0](https://github.com/levantar-ai/repoguru/compare/v0.2.0...v0.3.0) (2026-02-22)
 
 ### Bug Fixes
