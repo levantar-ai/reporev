@@ -1,3 +1,9 @@
+## [0.3.3](https://github.com/levantar-ai/repoguru/compare/v0.3.2...v0.3.3) (2026-02-22)
+
+### Bug Fixes
+
+- paginate org repo fetches to return all repos ([d69b2cb](https://github.com/levantar-ai/repoguru/commit/d69b2cbf2ba2ea425f2d2b7ec14777ba087cbe58))
+
 ## [0.3.2](https://github.com/levantar-ai/repoguru/compare/v0.3.1...v0.3.2) (2026-02-22)
 
 ### Bug Fixes
