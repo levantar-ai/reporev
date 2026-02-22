@@ -62,6 +62,7 @@ function OAuthToast({ message, onDone }: { message: string; onDone: () => void }
 
 function AppContent() {
   const [page, setPage] = useState<PageId>('home');
+  const [visitedPages, setVisitedPages] = useState<Set<PageId>>(() => new Set(['home']));
   const [pendingRepo, setPendingRepo] = useState<string | null>(null);
   const [oauthLoading, setOauthLoading] = useState(() =>
     new URLSearchParams(window.location.search).has('code'),
@@ -72,11 +73,13 @@ function AppContent() {
 
   const handleNavigate = useCallback((targetPage: PageId) => {
     setPendingRepo(null);
+    setVisitedPages((prev) => (prev.has(targetPage) ? prev : new Set(prev).add(targetPage)));
     setPage(targetPage);
   }, []);
 
   const handleNavigateWithRepo = useCallback((targetPage: PageId, repo: string) => {
     setPendingRepo(repo);
+    setVisitedPages((prev) => (prev.has(targetPage) ? prev : new Set(prev).add(targetPage)));
     setPage(targetPage);
   }, []);
 
@@ -133,26 +136,68 @@ function AppContent() {
   return (
     <Layout onNavigate={handleNavigate} currentPage={page}>
       {oauthToast && <OAuthToast message={oauthToast} onDone={() => setOauthToast(null)} />}
-      <Suspense fallback={<LoadingScreen />}>
-        {page === 'home' && <HomePage onNavigate={handleNavigate} initialRepo={pendingRepo} />}
-        {page === 'docs' && <HowItWorksPage />}
-        {page === 'org-scan' && (
-          <OrgScanPage onAnalyze={() => handleNavigate('home')} githubToken={token} />
+      <div style={{ display: page === 'home' ? undefined : 'none' }}>
+        <HomePage onNavigate={handleNavigate} initialRepo={pendingRepo} />
+      </div>
+      <div style={{ display: page === 'docs' ? undefined : 'none' }}>
+        {visitedPages.has('docs') && (
+          <Suspense fallback={<LoadingScreen />}>
+            <HowItWorksPage />
+          </Suspense>
         )}
-        {page === 'compare' && <ComparePage githubToken={token} />}
-        {page === 'portfolio' && (
-          <PortfolioPage onAnalyze={() => handleNavigate('home')} githubToken={token} />
+      </div>
+      <div style={{ display: page === 'org-scan' ? undefined : 'none' }}>
+        {visitedPages.has('org-scan') && (
+          <Suspense fallback={<LoadingScreen />}>
+            <OrgScanPage onAnalyze={() => handleNavigate('home')} githubToken={token} />
+          </Suspense>
         )}
-        {page === 'discover' && (
-          <DiscoverPage
-            onNavigate={handleNavigate as (page: string) => void}
-            onSendToTool={handleNavigateWithRepo}
-          />
+      </div>
+      <div style={{ display: page === 'compare' ? undefined : 'none' }}>
+        {visitedPages.has('compare') && (
+          <Suspense fallback={<LoadingScreen />}>
+            <ComparePage githubToken={token} />
+          </Suspense>
         )}
-        {page === 'policy' && <PolicyPage onNavigate={handleNavigate as (page: string) => void} />}
-        {page === 'git-stats' && <GitStatsPage initialRepo={pendingRepo} />}
-        {page === 'tech-detect' && <TechDetectPage initialRepo={pendingRepo} />}
-      </Suspense>
+      </div>
+      <div style={{ display: page === 'portfolio' ? undefined : 'none' }}>
+        {visitedPages.has('portfolio') && (
+          <Suspense fallback={<LoadingScreen />}>
+            <PortfolioPage onAnalyze={() => handleNavigate('home')} githubToken={token} />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: page === 'discover' ? undefined : 'none' }}>
+        {visitedPages.has('discover') && (
+          <Suspense fallback={<LoadingScreen />}>
+            <DiscoverPage
+              onNavigate={handleNavigate as (page: string) => void}
+              onSendToTool={handleNavigateWithRepo}
+            />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: page === 'policy' ? undefined : 'none' }}>
+        {visitedPages.has('policy') && (
+          <Suspense fallback={<LoadingScreen />}>
+            <PolicyPage onNavigate={handleNavigate as (page: string) => void} />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: page === 'git-stats' ? undefined : 'none' }}>
+        {visitedPages.has('git-stats') && (
+          <Suspense fallback={<LoadingScreen />}>
+            <GitStatsPage initialRepo={pendingRepo} />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: page === 'tech-detect' ? undefined : 'none' }}>
+        {visitedPages.has('tech-detect') && (
+          <Suspense fallback={<LoadingScreen />}>
+            <TechDetectPage initialRepo={pendingRepo} />
+          </Suspense>
+        )}
+      </div>
     </Layout>
   );
 }
