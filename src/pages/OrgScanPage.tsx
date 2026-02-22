@@ -735,11 +735,7 @@ async function fetchOrgRepoList(
 
   if (allRepos.length === 0) return null;
 
-  const repoList = allRepos.filter((r: Record<string, unknown>) => !r.archived && !r.fork);
-
-  return repoList.length < 5
-    ? allRepos.filter((r: Record<string, unknown>) => !r.archived)
-    : repoList;
+  return allRepos;
 }
 
 // ── Analyze a list of repos with progress updates ───────────────────────────
