@@ -547,6 +547,8 @@ export function makeTechDetectResult(overrides?: Partial<TechDetectResult>): Tec
     rust: [],
     ruby: [],
     manifestFiles: ['package.json', 'tsconfig.json', 'Dockerfile'],
+    totalFiles: 42,
+    scanSource: 'clone' as const,
     ...overrides,
   };
 }

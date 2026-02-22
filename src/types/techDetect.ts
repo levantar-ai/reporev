@@ -51,6 +51,9 @@ export interface TechDetectResult {
   rust: DetectedPackage[];
   ruby: DetectedPackage[];
   manifestFiles: string[];
+  totalFiles: number;
+  scanSource: 'clone' | 'api';
+  cloneError?: string;
 }
 
 export interface TechDetectState {

@@ -204,7 +204,6 @@ async function handleCacheOnlyClone(
       http,
       dir: DIR,
       url,
-      depth: 1,
       singleBranch: true,
       noCheckout: true,
       noTags: true,
@@ -226,7 +225,7 @@ async function handleCacheOnlyClone(
 
     const walkResult = await walkHead(fs);
 
-    postProgress('cloning', 95, 'Done');
+    postProgress('cloning', 95, `Done — ${walkResult.files.length} files`);
 
     const resultMsg: CacheOnlyResultMessage = {
       type: 'cache-only-result',

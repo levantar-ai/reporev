@@ -308,23 +308,43 @@ function TextIcon({ label, color }: { label: string; color: string }) {
   );
 }
 
-/* ─── Manifest Files (collapsible) ─── */
+/* ─── Scan Info + Manifest Files (collapsible) ─── */
 function ManifestFilesSection({ result }: Props) {
   const [open, setOpen] = useState(false);
-  const { manifestFiles } = result;
+  const { manifestFiles, totalFiles, scanSource, cloneError } = result;
 
-  if (manifestFiles.length === 0) return null;
+  if (manifestFiles.length === 0 && totalFiles === 0) return null;
 
   return (
     <section className="rounded-xl border border-border bg-surface-alt overflow-hidden">
+      {cloneError && (
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-yellow-500/5 text-yellow-400 text-xs">
+          <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"
+            />
+          </svg>
+          <span>
+            Clone failed ({cloneError}). Used GitHub API instead — only manifest files were scanned.
+          </span>
+        </div>
+      )}
+
       <button
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 w-full text-left p-5"
       >
         <ChevronIcon open={open} />
         <h3 className="text-sm font-semibold text-text-secondary">
-          Files Scanned ({manifestFiles.length})
+          Files Scanned ({manifestFiles.length}
+          {totalFiles > manifestFiles.length ? ` of ${totalFiles} in repo` : ''})
         </h3>
+        <span className="ml-auto text-xs text-text-muted">
+          via {scanSource === 'clone' ? 'git clone' : 'GitHub API'}
+        </span>
       </button>
 
       {open && (

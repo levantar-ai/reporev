@@ -132,6 +132,9 @@ export function useTechDetect() {
 
         let techPaths: string[];
         let fileInputs: { path: string; content: string }[];
+        let totalFiles = 0;
+        let scanSource: 'clone' | 'api' = 'clone';
+        let cloneError: string | undefined;
 
         // Try clone-first approach
         try {
@@ -159,28 +162,34 @@ export function useTechDetect() {
           );
 
           // All files are already available from clone — pass everything to detectors
+          totalFiles = cached.files.length;
           dispatch({
             type: 'SET_STEP',
             step: 'fetching-files',
             progress: 55,
-            message: `Reading ${cached.files.length} files from cache...`,
+            message: `Scanning ${totalFiles} files from clone...`,
           });
 
           techPaths = cached.files.map((f) => f.path);
           fileInputs = cached.files.map((f) => ({ path: f.path, content: f.content }));
         } catch (cloneErr) {
+          const errMsg = cloneErr instanceof Error ? cloneErr.message : 'Unknown clone error';
+          console.error('[TechDetect] Clone failed:', errMsg);
+
           // Clone failed — fall back to API path if token available
           if (token) {
-            console.warn('Clone failed, falling back to API:', cloneErr);
+            scanSource = 'api';
+            cloneError = errMsg;
 
             dispatch({
               type: 'SET_STEP',
               step: 'fetching-tree',
               progress: 10,
-              message: 'Fetching file tree...',
+              message: `Clone failed, fetching via API...`,
             });
             const tree = await fetchTree(owner, repo, branch, token, handleRateLimit);
 
+            totalFiles = tree.filter((e) => e.type === 'blob').length;
             techPaths = filterTechFiles(tree);
             if (techPaths.length === 0) {
               dispatch({
@@ -197,6 +206,9 @@ export function useTechDetect() {
                   rust: [],
                   ruby: [],
                   manifestFiles: [],
+                  totalFiles,
+                  scanSource,
+                  cloneError,
                 },
               });
               return;
@@ -206,7 +218,7 @@ export function useTechDetect() {
               type: 'SET_STEP',
               step: 'fetching-files',
               progress: 20,
-              message: `Fetching ${techPaths.length} files...`,
+              message: `Fetching ${techPaths.length} manifest files via API...`,
             });
             let fetched = 0;
             const files = await fetchFileContents(
@@ -261,6 +273,9 @@ export function useTechDetect() {
             rust,
             ruby,
             manifestFiles: techPaths,
+            totalFiles,
+            scanSource,
+            cloneError,
           },
         });
       } catch (err) {
