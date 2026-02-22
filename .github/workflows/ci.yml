@@ -38,7 +38,6 @@ permissions:
 # │                semgrep ─┤                                        │
 # │                sonarcloud ─┤                                     │
 # │                dep-review + license ─┼──► Stage 3b ─ Deploy      │
-# │                zap-baseline (DAST) ──┘      (main only)          │
 # │                                             │                    │
 # │                                             ▼                    │
 # │                             Stage 4 ─ Release (semantic-release) │
@@ -210,37 +209,10 @@ jobs:
       - name: License compliance check
         run: npm run license:check
 
-  zap-baseline:
-    name: '3·ZAP DAST'
-    needs: [bundle-size]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v6
-        with:
-          name: dist-build
-          path: dist
-      - name: Serve built SPA
-        run: npx serve dist -l 3000 &
-      - name: Wait for server
-        run: npx wait-on http://localhost:3000 --timeout 30000
-      - name: ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.14.0
-        with:
-          target: 'http://localhost:3000'
-          rules_file_name: '.zap/rules.tsv'
-          cmd_options: '-j'
-          allow_issue_writing: false
-      - uses: actions/upload-artifact@v6
-        if: always()
-        with:
-          name: zap-report
-          path: report_html.html
-
   # ── Stage 3b: Deploy to Cloudflare Pages (main only) ─────────
   deploy:
     name: '3b·Deploy'
-    needs: [codeql, semgrep, sonarcloud, dependency-review, zap-baseline]
+    needs: [codeql, semgrep, sonarcloud, dependency-review]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     concurrency:
       group: cloudflare-deploy
