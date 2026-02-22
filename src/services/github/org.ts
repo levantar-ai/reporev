@@ -26,12 +26,22 @@ export async function fetchOrgRepos(
   token?: string,
   onRateLimit?: (info: RateLimitInfo) => void,
 ): Promise<RepoInfo[]> {
-  const raw = await githubFetch<GitHubRepoResponse[]>(
-    `/orgs/${encodeURIComponent(org)}/repos?per_page=100&sort=updated`,
-    token,
-    onRateLimit,
-  );
-  return raw.map(mapToRepoInfo);
+  const allRaw: GitHubRepoResponse[] = [];
+  let page = 1;
+  const maxPages = 10;
+
+  while (page <= maxPages) {
+    const batch = await githubFetch<GitHubRepoResponse[]>(
+      `/orgs/${encodeURIComponent(org)}/repos?per_page=100&sort=updated&page=${page}`,
+      token,
+      onRateLimit,
+    );
+    allRaw.push(...batch);
+    if (batch.length < 100) break;
+    page++;
+  }
+
+  return allRaw.map(mapToRepoInfo);
 }
 
 export async function fetchUserRepos(
@@ -78,13 +88,25 @@ export async function fetchMyRepos(
 
   if (orgs.size > 0) {
     const orgResults = await Promise.all(
-      [...orgs].map((org) =>
-        githubFetch<GitHubRepoResponse[]>(
-          `/orgs/${encodeURIComponent(org)}/repos?per_page=100&sort=updated`,
-          token,
-          onRateLimit,
-        ).catch(() => [] as GitHubRepoResponse[]),
-      ),
+      [...orgs].map(async (org) => {
+        const orgRaw: GitHubRepoResponse[] = [];
+        let orgPage = 1;
+        try {
+          while (orgPage <= 10) {
+            const batch = await githubFetch<GitHubRepoResponse[]>(
+              `/orgs/${encodeURIComponent(org)}/repos?per_page=100&sort=updated&page=${orgPage}`,
+              token,
+              onRateLimit,
+            );
+            orgRaw.push(...batch);
+            if (batch.length < 100) break;
+            orgPage++;
+          }
+        } catch {
+          // Ignore errors for individual orgs
+        }
+        return orgRaw;
+      }),
     );
     allRaw.push(...orgResults.flat());
   }

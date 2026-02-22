@@ -716,20 +716,29 @@ async function fetchOrgRepoList(
   ghFetchFn: (url: string, signal?: AbortSignal) => Promise<Response>,
   signal: AbortSignal,
 ): Promise<Record<string, unknown>[] | null> {
-  const reposRes = await ghFetchFn(
-    `${GITHUB_API_BASE}/orgs/${encodeURIComponent(org)}/repos?per_page=100&sort=updated`,
-    signal,
-  );
-  const reposJson = await reposRes.json();
+  const allRepos: Record<string, unknown>[] = [];
+  let page = 1;
+  const maxPages = 10; // Cap at 1000 repos to avoid runaway pagination
 
-  if (!Array.isArray(reposJson) || reposJson.length === 0) return null;
+  while (page <= maxPages) {
+    if (signal.aborted) break;
+    const reposRes = await ghFetchFn(
+      `${GITHUB_API_BASE}/orgs/${encodeURIComponent(org)}/repos?per_page=100&sort=updated&page=${page}`,
+      signal,
+    );
+    const batch: unknown = await reposRes.json();
+    if (!Array.isArray(batch) || batch.length === 0) break;
+    allRepos.push(...batch);
+    if (batch.length < 100) break;
+    page++;
+  }
 
-  const repoList = reposJson
-    .filter((r: Record<string, unknown>) => !r.archived && !r.fork)
-    .slice(0, 20);
+  if (allRepos.length === 0) return null;
+
+  const repoList = allRepos.filter((r: Record<string, unknown>) => !r.archived && !r.fork);
 
   return repoList.length < 5
-    ? reposJson.filter((r: Record<string, unknown>) => !r.archived).slice(0, 20)
+    ? allRepos.filter((r: Record<string, unknown>) => !r.archived)
     : repoList;
 }
 
