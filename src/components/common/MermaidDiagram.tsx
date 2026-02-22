@@ -37,7 +37,9 @@ export function MermaidDiagram({ chart }: Props) {
       try {
         const id = `mermaid-${Date.now()}`;
         const { svg } = await mermaid.render(id, chart);
-        containerRef.current.innerHTML = svg;
+        const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml');
+        const svgEl = parsed.documentElement;
+        containerRef.current.replaceChildren(svgEl);
         setError(false);
       } catch {
         setError(true);

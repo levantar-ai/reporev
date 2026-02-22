@@ -1,0 +1,6 @@
+10021	IGNORE	(X-Content-Type-Options — set by hosting platform)
+10036	IGNORE	(Server Leaks Version — from local serve, not production)
+10038	IGNORE	(CSP — deployment concern)
+10049	IGNORE	(Storable/Cacheable — static SPA is meant to be cached)
+10109	IGNORE	(Modern Web App — informational)
+10202	IGNORE	(Absence of Anti-CSRF Tokens — no backend forms)

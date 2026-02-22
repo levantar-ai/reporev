@@ -7,6 +7,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 import eslintConfigPrettier from 'eslint-config-prettier';
+import noUnsanitized from 'eslint-plugin-no-unsanitized';
 import { defineConfig, globalIgnores } from 'eslint/config';
 
 export default defineConfig([
@@ -22,6 +23,14 @@ export default defineConfig([
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+    },
+  },
+  {
+    files: ['**/*.{ts,tsx}'],
+    plugins: { 'no-unsanitized': noUnsanitized },
+    rules: {
+      'no-unsanitized/method': 'error',
+      'no-unsanitized/property': 'error',
     },
   },
   eslintConfigPrettier,
