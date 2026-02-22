@@ -12,7 +12,7 @@ import type { CachedRepoData } from './repoCache';
 const TIMEOUT_MS = 120_000; // 2 min for file-only clones
 const STATS_TIMEOUT_MS = 300_000; // 5 min for history + diff extraction
 
-const CORS_PROXY = 'https://repoguru-git-proxy.andy-rea.workers.dev';
+const CORS_PROXY = (import.meta.env.VITE_CORS_PROXY_URL as string) || 'https://proxy.repo.guru';
 
 interface CloneOptions {
   includeStats?: boolean;

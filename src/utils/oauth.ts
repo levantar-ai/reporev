@@ -1,7 +1,5 @@
 const GITHUB_CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID as string | undefined;
-const CORS_PROXY =
-  (import.meta.env.VITE_CORS_PROXY_URL as string) ||
-  'https://repoguru-git-proxy.andy-rea.workers.dev';
+const CORS_PROXY = (import.meta.env.VITE_CORS_PROXY_URL as string) || 'https://proxy.repo.guru';
 
 const STATE_KEY = 'oauth_state';
 
