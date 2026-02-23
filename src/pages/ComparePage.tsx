@@ -237,6 +237,7 @@ export function ComparePage({ githubToken }: Props) {
               onKeyDown={(e) => e.key === 'Enter' && handleCompare()}
               className="w-full px-4 py-3 rounded-xl bg-surface-alt border border-border text-text placeholder-text-muted focus:outline-none focus:border-border-bright focus:ring-1 focus:ring-border-bright transition-colors disabled:opacity-50"
             />
+            {state.step !== 'loading' && <RepoPicker onSelect={setInputA} />}
           </div>
           <div>
             <label
@@ -255,6 +256,7 @@ export function ComparePage({ githubToken }: Props) {
               onKeyDown={(e) => e.key === 'Enter' && handleCompare()}
               className="w-full px-4 py-3 rounded-xl bg-surface-alt border border-border text-text placeholder-text-muted focus:outline-none focus:border-border-bright focus:ring-1 focus:ring-border-bright transition-colors disabled:opacity-50"
             />
+            {state.step !== 'loading' && <RepoPicker onSelect={setInputB} />}
           </div>
         </div>
         <div className="flex justify-center gap-3">
@@ -274,19 +276,6 @@ export function ComparePage({ githubToken }: Props) {
             </button>
           )}
         </div>
-
-        {/* Repo picker — browse your repos to fill either slot */}
-        {state.step !== 'loading' && (
-          <div className="max-w-2xl mx-auto">
-            <RepoPicker
-              onSelect={(slug) => {
-                if (!inputA.trim()) setInputA(slug);
-                else if (!inputB.trim()) setInputB(slug);
-                else setInputA(slug);
-              }}
-            />
-          </div>
-        )}
       </div>
 
       {/* Loading */}
