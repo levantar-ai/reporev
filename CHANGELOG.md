@@ -1,3 +1,13 @@
+# [0.6.0](https://github.com/levantar-ai/repoguru/compare/v0.5.0...v0.6.0) (2026-02-23)
+
+### Bug Fixes
+
+- **oauth:** request repo and read:org scopes ([ab0d409](https://github.com/levantar-ai/repoguru/commit/ab0d4096c7a55bc3fa0c776bdf724269501349db))
+
+### Features
+
+- **compare:** add separate RepoPicker for each repo slot ([df74ce1](https://github.com/levantar-ai/repoguru/commit/df74ce1f34d5832ef601001602144f5097a1ebda))
+
 # [0.5.0](https://github.com/levantar-ai/repoguru/compare/v0.4.2...v0.5.0) (2026-02-22)
 
 ### Features
