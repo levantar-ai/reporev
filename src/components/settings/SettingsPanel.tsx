@@ -2,8 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
 import type { AppSettings } from '../../types';
 import { saveGithubToken, clearGithubToken } from '../../services/persistence/credentials';
-import { startOAuthFlow, isOAuthAvailable } from '../../utils/oauth';
+import { startOAuthFlow, isOAuthAvailable, getInstallationManageUrl } from '../../utils/oauth';
 import { trackEvent } from '../../utils/analytics';
+import { fetchInstallations } from '../../services/github/org';
+import type { GitHubInstallation } from '../../services/github/types';
 
 function GitHubIcon({ className }: { className?: string }) {
   return (
@@ -17,7 +19,35 @@ function GitHubTokenField() {
   const { state, dispatch } = useApp();
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'unsupported'>('idle');
   const [manualOpen, setManualOpen] = useState(false);
+  const [installations, setInstallations] = useState<GitHubInstallation[]>([]);
+  const [installsLoading, setInstallsLoading] = useState(false);
   const oauthAvailable = isOAuthAvailable();
+  const manageUrl = getInstallationManageUrl();
+
+  // Load installations when token is available
+  /* eslint-disable react-hooks/set-state-in-effect -- async data fetch on token change */
+  useEffect(() => {
+    if (!state.githubToken) {
+      setInstallations([]);
+      return;
+    }
+    let cancelled = false;
+    setInstallsLoading(true);
+    fetchInstallations(state.githubToken)
+      .then((result) => {
+        if (!cancelled) setInstallations(result);
+      })
+      .catch(() => {
+        if (!cancelled) setInstallations([]);
+      })
+      .finally(() => {
+        if (!cancelled) setInstallsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [state.githubToken]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSave = async () => {
     if (!state.githubToken) return;
@@ -38,26 +68,87 @@ function GitHubTokenField() {
     return (
       <div className="mb-8">
         <label className="block text-sm font-semibold text-text mb-1.5">GitHub</label>
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-grade-a/5 border border-grade-a/20">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <svg
-              className="h-4 w-4 text-grade-a shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
+        <div className="p-3 rounded-lg bg-grade-a/5 border border-grade-a/20">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <svg
+                className="h-4 w-4 text-grade-a shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="text-sm text-text-secondary truncate">Connected to GitHub</span>
+            </div>
+            <button
+              onClick={handleClear}
+              className="px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-surface-hover hover:border-grade-f/30 text-text-muted hover:text-grade-f transition-all"
+              aria-label="Disconnect GitHub"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-            <span className="text-sm text-text-secondary truncate">Connected to GitHub</span>
+              Disconnect
+            </button>
           </div>
-          <button
-            onClick={handleClear}
-            className="px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-surface-hover hover:border-grade-f/30 text-text-muted hover:text-grade-f transition-all"
-            aria-label="Disconnect GitHub"
-          >
-            Disconnect
-          </button>
+
+          {/* Installations / org access */}
+          <div className="mt-3 pt-3 border-t border-grade-a/10">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-text-muted uppercase tracking-wide">
+                Organization Access
+              </span>
+              {manageUrl && (
+                <a
+                  href={manageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-neon hover:underline"
+                  onClick={() => trackEvent('manage_installations_click')}
+                >
+                  Manage Access
+                </a>
+              )}
+            </div>
+            {installsLoading ? (
+              <p className="text-xs text-text-muted">Loading...</p>
+            ) : installations.length === 0 ? (
+              <div className="text-xs text-text-muted">
+                <p className="mb-1.5">No organizations connected yet.</p>
+                {manageUrl && (
+                  <a
+                    href={manageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neon/30 hover:bg-neon/10 text-neon transition-all"
+                    onClick={() => trackEvent('install_app_click')}
+                  >
+                    <svg
+                      className="h-3.5 w-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add organizations
+                  </a>
+                )}
+              </div>
+            ) : (
+              <ul className="space-y-1.5">
+                {installations.map((inst) => (
+                  <li key={inst.id} className="flex items-center gap-2 text-sm text-text-secondary">
+                    <img src={inst.account.avatar_url} alt="" className="h-5 w-5 rounded-full" />
+                    <span className="truncate">{inst.account.login}</span>
+                    <span className="text-xs text-text-muted ml-auto">
+                      {inst.repository_selection === 'all' ? 'All repos' : 'Selected repos'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
     );

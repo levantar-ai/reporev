@@ -37,3 +37,24 @@ export interface GitHubContentResponse {
   encoding: string;
   size: number;
 }
+
+export interface GitHubInstallation {
+  id: number;
+  account: {
+    login: string;
+    avatar_url: string;
+    type: string; // 'Organization' | 'User'
+  };
+  repository_selection: 'all' | 'selected';
+  permissions: Record<string, string>;
+}
+
+export interface GitHubInstallationsResponse {
+  total_count: number;
+  installations: GitHubInstallation[];
+}
+
+export interface GitHubInstallationReposResponse {
+  total_count: number;
+  repositories: GitHubRepoResponse[];
+}

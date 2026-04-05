@@ -1,4 +1,5 @@
 const GITHUB_CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID as string | undefined;
+const GITHUB_APP_SLUG = import.meta.env.VITE_GITHUB_APP_SLUG as string | undefined;
 const CORS_PROXY = (import.meta.env.VITE_CORS_PROXY_URL as string) || 'https://proxy.repo.guru';
 
 const STATE_KEY = 'oauth_state';
@@ -65,6 +66,12 @@ export async function handleOAuthCallback(): Promise<string | null> {
   } finally {
     cleanUrl();
   }
+}
+
+/** Returns the URL to manage GitHub App installations (select orgs/repos). */
+export function getInstallationManageUrl(): string | null {
+  if (!GITHUB_APP_SLUG) return null;
+  return `https://github.com/apps/${GITHUB_APP_SLUG}/installations/select_target`;
 }
 
 function cleanUrl(): void {

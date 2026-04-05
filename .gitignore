@@ -27,3 +27,6 @@ coverage
 
 *storybook.log
 storybook-static
+
+# Specs (stored in S3: ai.levantar.specs)
+SPEC.md

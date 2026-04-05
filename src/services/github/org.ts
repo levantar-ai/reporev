@@ -1,5 +1,10 @@
 import type { RepoInfo, RateLimitInfo } from '../../types';
-import type { GitHubRepoResponse } from './types';
+import type {
+  GitHubRepoResponse,
+  GitHubInstallation,
+  GitHubInstallationsResponse,
+  GitHubInstallationReposResponse,
+} from './types';
 import { githubFetch } from './client';
 
 function mapToRepoInfo(raw: GitHubRepoResponse): RepoInfo {
@@ -61,6 +66,51 @@ export async function fetchUserRepos(
     );
     allRaw.push(...batch);
     if (batch.length < 100) break;
+    page++;
+  }
+
+  return allRaw.map(mapToRepoInfo);
+}
+
+/** Fetch all GitHub App installations the authenticated user can access. */
+export async function fetchInstallations(
+  token: string,
+  onRateLimit?: (info: RateLimitInfo) => void,
+): Promise<GitHubInstallation[]> {
+  const all: GitHubInstallation[] = [];
+  let page = 1;
+
+  while (page <= 10) {
+    const data = await githubFetch<GitHubInstallationsResponse>(
+      `/user/installations?per_page=100&page=${page}`,
+      token,
+      onRateLimit,
+    );
+    all.push(...data.installations);
+    if (all.length >= data.total_count || data.installations.length < 100) break;
+    page++;
+  }
+
+  return all;
+}
+
+/** Fetch repos accessible via a specific installation. */
+export async function fetchInstallationRepos(
+  installationId: number,
+  token: string,
+  onRateLimit?: (info: RateLimitInfo) => void,
+): Promise<RepoInfo[]> {
+  const allRaw: GitHubRepoResponse[] = [];
+  let page = 1;
+
+  while (page <= 10) {
+    const data = await githubFetch<GitHubInstallationReposResponse>(
+      `/user/installations/${installationId}/repositories?per_page=100&page=${page}`,
+      token,
+      onRateLimit,
+    );
+    allRaw.push(...data.repositories);
+    if (allRaw.length >= data.total_count || data.repositories.length < 100) break;
     page++;
   }
 

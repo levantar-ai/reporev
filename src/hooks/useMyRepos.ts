@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { fetchMyRepos } from '../services/github/org';
+import { fetchMyRepos, fetchInstallations, fetchInstallationRepos } from '../services/github/org';
 import { useApp } from '../context/AppContext';
 import type { RepoInfo } from '../types';
+import type { GitHubInstallation } from '../services/github/types';
 
 const STORAGE_KEY = 'repoguru:my-repos';
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
@@ -85,6 +86,7 @@ export function useMyRepos() {
   const [repos, setRepos] = useState<RepoInfo[]>(() => readAnyCachedRepos());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [installations, setInstallations] = useState<GitHubInstallation[]>([]);
 
   const load = useCallback(
     (bypassCache = false) => {
@@ -93,6 +95,7 @@ export function useMyRepos() {
 
       if (!token) {
         setRepos([]);
+        setInstallations([]);
         clearCache();
         return;
       }
@@ -108,7 +111,42 @@ export function useMyRepos() {
       setLoading(true);
       setError(null);
 
-      fetchMyRepos(token, (info) => appDispatch({ type: 'SET_RATE_LIMIT', info }))
+      const onRate = (
+        info: Parameters<typeof appDispatch>[0] extends { type: 'SET_RATE_LIMIT'; info: infer I }
+          ? I
+          : never,
+      ) => appDispatch({ type: 'SET_RATE_LIMIT', info });
+
+      // Try installation-based fetch first; fall back to classic /user/repos
+      fetchInstallations(token, onRate)
+        .then(async (installs) => {
+          setInstallations(installs);
+
+          if (installs.length > 0) {
+            // Fetch repos from each installation in parallel
+            const perInstall = await Promise.all(
+              installs.map((inst) =>
+                fetchInstallationRepos(inst.id, token, onRate).catch(() => [] as RepoInfo[]),
+              ),
+            );
+            // Deduplicate by owner/repo
+            const seen = new Set<string>();
+            const unique: RepoInfo[] = [];
+            for (const batch of perInstall) {
+              for (const r of batch) {
+                const key = `${r.owner}/${r.repo}`;
+                if (!seen.has(key)) {
+                  seen.add(key);
+                  unique.push(r);
+                }
+              }
+            }
+            return unique;
+          }
+
+          // No installations — fall back to classic OAuth token fetch
+          return fetchMyRepos(token, onRate);
+        })
         .then((result) => {
           setCache(token, result);
           setRepos(result);
@@ -146,6 +184,7 @@ export function useMyRepos() {
     error,
     refresh,
     orgList,
+    installations,
     hasToken: loaded ? !!token : !!readAnyCachedRepos().length,
   };
 }
