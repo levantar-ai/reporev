@@ -117,6 +117,7 @@ jobs:
         env:
           VITE_CORS_PROXY_URL: ${{ secrets.VITE_CORS_PROXY_URL }}
           VITE_GITHUB_CLIENT_ID: ${{ secrets.VITE_GITHUB_CLIENT_ID }}
+          VITE_GITHUB_APP_SLUG: gitrepoguru
       - uses: actions/upload-artifact@v6
         with:
           name: dist-build
