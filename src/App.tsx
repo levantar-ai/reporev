@@ -6,8 +6,9 @@ import { SettingsPanel } from './components/settings/SettingsPanel';
 import { LoadingScreen } from './components/common/LoadingScreen';
 import { HomePage } from './pages/HomePage';
 import { trackPageView, trackEvent } from './utils/analytics';
-import { handleOAuthCallback } from './utils/oauth';
+import { handleOAuthCallback, getInstallationManageUrl } from './utils/oauth';
 import { saveGithubToken } from './services/persistence/credentials';
+import { fetchInstallations } from './services/github/org';
 import type { PageId } from './types';
 
 // Lazy-load heavier pages for code splitting
@@ -98,6 +99,21 @@ function AppContent() {
           dispatch({ type: 'SET_GITHUB_TOKEN', token: accessToken });
           await saveGithubToken(accessToken);
           trackEvent('token_added', { method: 'oauth' });
+
+          // After connecting, check for installations — if none, open the org picker
+          const manageUrl = getInstallationManageUrl();
+          if (manageUrl) {
+            try {
+              const installs = await fetchInstallations(accessToken);
+              if (installs.length === 0) {
+                window.open(manageUrl, '_blank');
+                setOauthToast('Connected! Select which organizations to grant access to.');
+                return;
+              }
+            } catch {
+              // Ignore — still connected, just skip the auto-redirect
+            }
+          }
           setOauthToast('Connected to GitHub!');
         }
       })
