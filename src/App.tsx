@@ -6,7 +6,12 @@ import { SettingsPanel } from './components/settings/SettingsPanel';
 import { LoadingScreen } from './components/common/LoadingScreen';
 import { HomePage } from './pages/HomePage';
 import { trackPageView, trackEvent } from './utils/analytics';
-import { handleOAuthCallback, getInstallationManageUrl } from './utils/oauth';
+import {
+  handleOAuthCallback,
+  handleInstallationCallback,
+  isInstallationCallback,
+  getInstallationManageUrl,
+} from './utils/oauth';
 import { saveGithubToken } from './services/persistence/credentials';
 import { fetchInstallations } from './services/github/org';
 import type { PageId } from './types';
@@ -65,9 +70,10 @@ function AppContent() {
   const [page, setPage] = useState<PageId>('home');
   const [visitedPages, setVisitedPages] = useState<Set<PageId>>(() => new Set(['home']));
   const [pendingRepo, setPendingRepo] = useState<string | null>(null);
-  const [oauthLoading, setOauthLoading] = useState(() =>
-    new URLSearchParams(window.location.search).has('code'),
-  );
+  const [oauthLoading, setOauthLoading] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.has('code') || params.has('setup_action');
+  });
   const [oauthToast, setOauthToast] = useState<string | null>(null);
   const { state: appState, dispatch } = useApp();
   const token = appState.githubToken || '';
@@ -88,19 +94,29 @@ function AppContent() {
     trackPageView(page);
   }, [page]);
 
-  // Handle OAuth callback on mount
+  // Handle OAuth or installation callback on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (!params.has('code')) return;
+    if (!params.has('code') && !params.has('setup_action')) return;
 
-    handleOAuthCallback()
+    const handleCallback = isInstallationCallback()
+      ? handleInstallationCallback()
+      : handleOAuthCallback();
+
+    handleCallback
       .then(async (accessToken) => {
         if (accessToken) {
           dispatch({ type: 'SET_GITHUB_TOKEN', token: accessToken });
           await saveGithubToken(accessToken);
-          trackEvent('token_added', { method: 'oauth' });
+          trackEvent('token_added', {
+            method: isInstallationCallback() ? 'installation' : 'oauth',
+          });
+        }
 
-          // After connecting, check for installations — if none, open the org picker
+        if (isInstallationCallback()) {
+          setOauthToast('Organization access updated!');
+        } else if (accessToken) {
+          // After OAuth, check for installations — if none, open the org picker
           const manageUrl = getInstallationManageUrl();
           if (manageUrl) {
             try {

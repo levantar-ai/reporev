@@ -115,6 +115,7 @@ export function useMyRepos() {
 
       // Try installation-based fetch first; fall back to classic /user/repos
       fetchInstallations(token, onRate)
+        .catch(() => [] as GitHubInstallation[]) // token may lack app scope — fall back gracefully
         .then(async (installs) => {
           setInstallations(installs);
 
