@@ -317,8 +317,9 @@ async function handleClone(msg: CloneMessage) {
         postProgress('extracting-details', 57, 0, 'Computing file diffs...');
       }
 
-      const BATCH_SIZE = 50;
+      const BATCH_SIZE = 25;
       const FULL_DIFF_COUNT = 15;
+      const CHECKPOINT_EVERY = 4; // checkpoint every 4 batches (100 commits)
       const totalCommits = logEntries.length;
       const commitDetails: GitStatsRawData['commitDetails'] = [];
       const diffStatsMap = new Map<string, { additions: number; deletions: number }>();
@@ -340,6 +341,9 @@ async function handleClone(msg: CloneMessage) {
 
       let completed = 0;
       let batchNumber = 0;
+      // Accumulate checkpoint data between checkpoint intervals
+      let pendingDetails: GitStatsRawData['commitDetails'] = [];
+      let pendingDiffStats: [string, { additions: number; deletions: number }][] = [];
 
       for (let batchStart = 0; batchStart < totalCommits; batchStart += BATCH_SIZE) {
         const batchEnd = Math.min(batchStart + BATCH_SIZE, totalCommits);
@@ -371,9 +375,6 @@ async function handleClone(msg: CloneMessage) {
             return { entry, result };
           }),
         );
-
-        const batchDetails: GitStatsRawData['commitDetails'] = [];
-        const batchDiffStats: [string, { additions: number; deletions: number }][] = [];
 
         for (const outcome of results) {
           if (outcome.status !== 'fulfilled') continue;
@@ -409,30 +410,36 @@ async function handleClone(msg: CloneMessage) {
             })),
           };
 
-          batchDetails.push(detail);
           commitDetails.push(detail);
+
+          // Lightweight version for checkpoint (no files — they're the bulk)
+          pendingDetails.push({ ...detail, files: [] });
+          pendingDiffStats.push([
+            entry.oid,
+            { additions: stats.additions, deletions: stats.deletions },
+          ]);
 
           diffStatsMap.set(entry.oid, {
             additions: stats.additions,
             deletions: stats.deletions,
           });
-          batchDiffStats.push([
-            entry.oid,
-            { additions: stats.additions, deletions: stats.deletions },
-          ]);
         }
 
-        // Post batch results for checkpointing on main thread
-        const batchDoneMsg: BatchDoneMessage = {
-          type: 'batch-done',
-          batchIndex: batchNumber,
-          totalCommits,
-          commitDetails: batchDetails,
-          diffStats: batchDiffStats,
-        };
-        self.postMessage(batchDoneMsg);
-
         batchNumber++;
+
+        // Checkpoint every Nth batch to avoid postMessage overhead
+        if (batchNumber % CHECKPOINT_EVERY === 0 || batchEnd >= totalCommits) {
+          const batchDoneMsg: BatchDoneMessage = {
+            type: 'batch-done',
+            batchIndex: batchNumber,
+            totalCommits,
+            commitDetails: pendingDetails,
+            diffStats: pendingDiffStats,
+          };
+          self.postMessage(batchDoneMsg);
+          pendingDetails = [];
+          pendingDiffStats = [];
+        }
         completed += batchEnd - batchStart;
         const overall = 57 + Math.round((completed / totalCommits) * 25);
         const subPct = Math.round((completed / totalCommits) * 100);
