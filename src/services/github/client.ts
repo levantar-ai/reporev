@@ -1,5 +1,6 @@
 import type { RateLimitInfo } from '../../types';
 import { GITHUB_API_BASE } from '../../utils/constants';
+import { clearGithubToken } from '../persistence/credentials';
 
 export class GitHubApiError extends Error {
   status: number;
@@ -47,6 +48,15 @@ export async function githubFetch<T>(
       throw new GitHubApiError(
         `GitHub API rate limit exceeded. Resets at ${resetDate.toLocaleTimeString()}.`,
         403,
+        rateLimit,
+      );
+    }
+    if (res.status === 401) {
+      // Token expired or revoked — clear it so the user can re-authenticate
+      clearGithubToken().catch(() => {});
+      throw new GitHubApiError(
+        'Your GitHub token has expired or been revoked. Please reconnect in Settings.',
+        401,
         rateLimit,
       );
     }

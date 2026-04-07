@@ -53,8 +53,8 @@ export function humanizeCloneError(rawMessage: string): HumanizedError {
   // Auth errors
   if (msg.includes('401') || msg.includes('bad credentials') || msg.includes('unauthorized')) {
     return {
-      title: 'GitHub token is invalid or expired',
-      body: 'Update your token in Settings with a valid personal access token.',
+      title: 'GitHub token expired or revoked',
+      body: 'Your session has been cleared. Reconnect via Settings to continue using private repos.',
     };
   }
 

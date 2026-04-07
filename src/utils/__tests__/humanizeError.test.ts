@@ -82,17 +82,17 @@ describe('humanizeCloneError', () => {
   describe('auth errors', () => {
     it('recognizes "401"', () => {
       const result = humanizeCloneError('HTTP Error: 401');
-      expect(result.title).toContain('invalid or expired');
+      expect(result.title).toContain('expired or revoked');
     });
 
     it('recognizes "bad credentials"', () => {
       const result = humanizeCloneError('Bad credentials');
-      expect(result.title).toContain('invalid or expired');
+      expect(result.title).toContain('expired or revoked');
     });
 
     it('recognizes "unauthorized"', () => {
       const result = humanizeCloneError('Unauthorized access');
-      expect(result.title).toContain('invalid or expired');
+      expect(result.title).toContain('expired or revoked');
     });
   });
 
