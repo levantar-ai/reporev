@@ -1,3 +1,9 @@
+# [0.11.0](https://github.com/levantar-ai/repoguru/compare/v0.10.0...v0.11.0) (2026-04-07)
+
+### Features
+
+- add context-aware GA4 custom events ([7adadf6](https://github.com/levantar-ai/repoguru/commit/7adadf6fa9c61bb4d203daf88c7723316aee503f))
+
 # [0.10.0](https://github.com/levantar-ai/repoguru/compare/v0.9.0...v0.10.0) (2026-04-07)
 
 ### Bug Fixes
