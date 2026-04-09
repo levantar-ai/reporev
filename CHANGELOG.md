@@ -1,3 +1,13 @@
+## [0.11.3](https://github.com/levantar-ai/repoguru/compare/v0.11.2...v0.11.3) (2026-04-09)
+
+### Bug Fixes
+
+- rewrite diffCommit with native tree diff to restore diffing speed ([e2b4a8e](https://github.com/levantar-ai/repoguru/commit/e2b4a8e6a31ba0e7d20e59fcfc1c84adb47689ec))
+
+### Reverts
+
+- remove checkpoint/resume system ([37a6823](https://github.com/levantar-ai/repoguru/commit/37a6823d47910e74d3ed6a66917532b065299823))
+
 ## [0.11.2](https://github.com/levantar-ai/repoguru/compare/v0.11.1...v0.11.2) (2026-04-07)
 
 ### Bug Fixes
