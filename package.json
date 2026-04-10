@@ -39,7 +39,7 @@
     "idb": "^8.0.3",
     "isomorphic-git": "^1.37.1",
     "mermaid": "^10.9.5",
-    "react": "^19.2.0",
+    "react": "^19.2.5",
     "react-dom": "^19.2.0",
     "tailwindcss": "^4.2.0"
   },
